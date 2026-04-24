@@ -69,7 +69,7 @@ const defaultDeps: StartPlanDeps = {
     select({
       message: 'Choose the issue to start',
       choices: issues.map((issue) => ({
-        name: `#${issue.number} ${issue.title}`,
+        name: buildIssueChoiceLabel(issue),
         value: issue
       }))
     }),
@@ -80,6 +80,10 @@ const defaultDeps: StartPlanDeps = {
     }),
   now: () => new Date()
 };
+
+export function buildIssueChoiceLabel(issue: IssueSummary): string {
+  return `[${issue.status ?? 'No Status'}] #${issue.number} ${issue.title}`;
+}
 
 function shellQuote(value: string): string {
   return /[^A-Za-z0-9_./:@=-]/.test(value) ? JSON.stringify(value) : value;

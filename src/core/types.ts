@@ -17,6 +17,7 @@ export interface IssueSummary {
   labels: string[];
   assignees: string[];
   slug: string;
+  status: string | null;
 }
 
 export interface IssueArtifactPaths {
