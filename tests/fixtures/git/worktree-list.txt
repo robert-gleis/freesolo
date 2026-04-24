@@ -1,0 +1,7 @@
+worktree /repo/issueflow
+HEAD 1234567890abcdef1234567890abcdef12345678
+branch refs/heads/main
+
+worktree /repo/issueflow-12-ship-issueflow-start
+HEAD fedcba0987654321fedcba0987654321fedcba09
+branch refs/heads/issue/12-ship-issueflow-start

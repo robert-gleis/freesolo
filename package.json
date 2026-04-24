@@ -1,0 +1,30 @@
+{
+  "name": "issueflow",
+  "version": "0.1.0",
+  "description": "Start focused issue sessions from the current git repository",
+  "type": "module",
+  "bin": {
+    "issueflow": "./dist/src/bin.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/bin.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^7.8.6",
+    "commander": "^14.0.1",
+    "execa": "^9.6.0",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "tsx": "^4.20.4",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
