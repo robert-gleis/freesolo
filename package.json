@@ -7,7 +7,7 @@
     "issueflow": "./dist/src/bin.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node ./scripts/ensure-bin-executable.mjs ./dist/src/bin.js",
     "dev": "tsx src/bin.ts",
     "test": "vitest run",
     "test:watch": "vitest"
