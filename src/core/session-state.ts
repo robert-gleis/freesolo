@@ -4,11 +4,15 @@ import path from 'node:path';
 import { execa } from 'execa';
 import { z } from 'zod';
 
-import type { HostTool } from './types.js';
+import type { HostTool, ReviewGateStatus } from './types.js';
+
+const reviewGateStatusValues = ['pending', 'pass', 'pass_with_findings', 'block'] as const;
+const reviewGateStatusSchema = z.enum(reviewGateStatusValues) as z.ZodType<ReviewGateStatus>;
 
 export const sessionStateSchema = z.object({
   issueNumber: z.number().int().positive(),
   issueSlug: z.string().min(1),
+  repoRoot: z.string().min(1),
   branchName: z.string().min(1),
   worktreePath: z.string().min(1),
   chosenHost: z.enum(['codex', 'claude', 'cursor']) as z.ZodType<HostTool>,
@@ -23,6 +27,12 @@ export const sessionStateSchema = z.object({
     'implementation-review',
     'verification'
   ]),
+  reviewGates: z.object({
+    plan: reviewGateStatusSchema,
+    implementation: reviewGateStatusSchema
+  }),
+  createdAt: z.string().min(1),
+  updatedAt: z.string().min(1),
   artifacts: z.object({
     spec: z.string().nullable(),
     plan: z.string().nullable(),

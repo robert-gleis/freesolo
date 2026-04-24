@@ -1,10 +1,9 @@
 import type { AdapterInput, LaunchPlan } from './types.js';
 
-export function buildCursorLaunchPlan(input: Pick<AdapterInput, 'worktreePath'>): LaunchPlan {
+export function buildCursorLaunchPlan(input: AdapterInput): LaunchPlan {
   return {
-    binary: 'cursor',
-    args: [input.worktreePath],
-    cwd: input.worktreePath,
-    postLaunchNote: 'Run the reusable issueflow command after Cursor opens the worktree.'
+    binary: 'cursor-agent',
+    args: ['--workspace', input.worktreePath, input.startupPrompt],
+    cwd: input.worktreePath
   };
 }

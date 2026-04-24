@@ -27,12 +27,13 @@ describe('buildClaudeLaunchPlan', () => {
 });
 
 describe('buildCursorLaunchPlan', () => {
-  it('opens the selected worktree in cursor', () => {
+  it('launches cursor-agent in the selected worktree with the startup prompt', () => {
     const plan = buildCursorLaunchPlan({
-      worktreePath: '/tmp/issueflow-12-ship-issueflow-start'
+      worktreePath: '/tmp/issueflow-12-ship-issueflow-start',
+      startupPrompt: 'Continue the issueflow workflow'
     });
 
-    expect(plan.binary).toBe('cursor');
-    expect(plan.args).toEqual(['/tmp/issueflow-12-ship-issueflow-start']);
+    expect(plan.binary).toBe('cursor-agent');
+    expect(plan.args).toEqual(['--workspace', '/tmp/issueflow-12-ship-issueflow-start', 'Continue the issueflow workflow']);
   });
 });

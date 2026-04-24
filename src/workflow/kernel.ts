@@ -1,10 +1,20 @@
+import type { IssueArtifactPaths } from '../core/types.js';
+
 export interface WorkflowKernelInput {
   issueNumber: number;
   issueTitle: string;
   issueBody: string;
   issueUrl: string;
+  labels: string[];
+  assignees: string[];
+  repoRoot: string;
   branchName: string;
   worktreePath: string;
+  artifacts: IssueArtifactPaths;
+}
+
+function formatList(values: string[]): string {
+  return values.length > 0 ? values.join(', ') : 'none';
 }
 
 export function buildIssuePacket(input: WorkflowKernelInput): string {
@@ -13,11 +23,26 @@ export function buildIssuePacket(input: WorkflowKernelInput): string {
 ## URL
 ${input.issueUrl}
 
+## Labels
+${formatList(input.labels)}
+
+## Assignees
+${formatList(input.assignees)}
+
+## Repo Root
+${input.repoRoot}
+
 ## Branch
 ${input.branchName}
 
 ## Worktree
 ${input.worktreePath}
+
+## Existing Artifacts
+spec: ${input.artifacts.spec ?? 'not created yet'}
+plan: ${input.artifacts.plan ?? 'not created yet'}
+planReview: ${input.artifacts.planReview ?? 'not created yet'}
+implementationReview: ${input.artifacts.implementationReview ?? 'not created yet'}
 
 ## Body
 ${input.issueBody}`.trim();
