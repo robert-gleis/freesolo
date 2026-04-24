@@ -26,6 +26,7 @@ export interface StartOptions {
 }
 
 type EmptyResult = { mode: 'empty'; message: string };
+type CancelledResult = { mode: 'cancelled'; message: string };
 type WorkspaceAction = 'create-worktree' | 'attach-branch-worktree' | 'reuse-worktree';
 type WorkspacePlan = { action: WorkspaceAction; setupCommands: string[] };
 type PrintOnlyResult = {
@@ -36,7 +37,7 @@ type PrintOnlyResult = {
 };
 type LaunchResult = { mode: 'launch'; launchPlan: LaunchPlan };
 
-export type StartPlanResult = EmptyResult | PrintOnlyResult | LaunchResult;
+export type StartPlanResult = EmptyResult | CancelledResult | PrintOnlyResult | LaunchResult;
 
 export interface StartPlanDeps {
   resolveRepoRoot: (cwd: string) => Promise<string>;
@@ -141,6 +142,21 @@ function buildAttachBranchPlan(repoRoot: string, worktreePath: string, branchNam
   };
 }
 
+function toCancelledResult(error: unknown): CancelledResult | null {
+  if (!(error instanceof Error)) {
+    return null;
+  }
+
+  if (error.name !== 'ExitPromptError' && error.message !== 'User force closed the prompt with SIGINT') {
+    return null;
+  }
+
+  return {
+    mode: 'cancelled',
+    message: 'Cancelled.'
+  };
+}
+
 export async function createStartPlan(input: { cwd: string; tool: HostTool; printOnly: boolean }, deps: StartPlanDeps = defaultDeps): Promise<StartPlanResult> {
   const rootDir = await deps.resolveRepoRoot(input.cwd);
   const remoteUrl = await deps.readOriginRemote(rootDir);
@@ -160,7 +176,20 @@ export async function createStartPlan(input: { cwd: string; tool: HostTool; prin
     };
   }
 
-  const issue = await deps.chooseIssue(issues);
+  let issue: IssueSummary;
+
+  try {
+    issue = await deps.chooseIssue(issues);
+  } catch (error) {
+    const cancelled = toCancelledResult(error);
+
+    if (cancelled) {
+      return cancelled;
+    }
+
+    throw error;
+  }
+
   const branchNames = await deps.listLocalBranches(rootDir);
   const worktreeEntries = await deps.listWorktreeEntries(rootDir);
   const existingMatch = findExistingWorkspaceMatch(branchNames, worktreeEntries, issue.number);
@@ -171,7 +200,19 @@ export async function createStartPlan(input: { cwd: string; tool: HostTool; prin
   let workspacePlan = buildCreateWorktreePlan(rootDir, worktreePath, branchName);
 
   if (existingMatch?.worktreePath) {
-    const reuse = await deps.confirmReuse(`Reuse existing worktree at ${existingMatch.worktreePath}?`);
+    let reuse: boolean;
+
+    try {
+      reuse = await deps.confirmReuse(`Reuse existing worktree at ${existingMatch.worktreePath}?`);
+    } catch (error) {
+      const cancelled = toCancelledResult(error);
+
+      if (cancelled) {
+        return cancelled;
+      }
+
+      throw error;
+    }
 
     if (reuse) {
       branchName = existingMatch.branchName;
@@ -190,7 +231,19 @@ export async function createStartPlan(input: { cwd: string; tool: HostTool; prin
       }
     }
   } else if (existingMatch?.branchName) {
-    const reuse = await deps.confirmReuse(`Reuse existing branch ${existingMatch.branchName} with a new worktree?`);
+    let reuse: boolean;
+
+    try {
+      reuse = await deps.confirmReuse(`Reuse existing branch ${existingMatch.branchName} with a new worktree?`);
+    } catch (error) {
+      const cancelled = toCancelledResult(error);
+
+      if (cancelled) {
+        return cancelled;
+      }
+
+      throw error;
+    }
 
     if (reuse) {
       branchName = existingMatch.branchName;
@@ -287,7 +340,7 @@ export async function startAction(options: StartOptions): Promise<void> {
     printOnly: Boolean(options.printOnly)
   });
 
-  if (result.mode === 'empty') {
+  if (result.mode === 'empty' || result.mode === 'cancelled') {
     console.log(result.message);
     return;
   }

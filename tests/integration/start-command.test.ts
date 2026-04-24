@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import { createStartPlan } from '../../src/commands/start.js';
 
+function createPromptCancelError(): Error {
+  const error = new Error('User force closed the prompt with SIGINT');
+  error.name = 'ExitPromptError';
+  return error;
+}
+
 describe('createStartPlan', () => {
   it('returns print-only output without launching a process', async () => {
     const result = await createStartPlan(
@@ -306,5 +312,123 @@ describe('createStartPlan', () => {
       mode: 'empty',
       message: 'No assigned open issues in this repository.'
     });
+  });
+
+  it('returns a cancelled result when issue selection is aborted', async () => {
+    const result = await createStartPlan(
+      {
+        cwd: '/repo',
+        tool: 'codex',
+        printOnly: false
+      },
+      {
+        resolveRepoRoot: async () => '/repo',
+        readOriginRemote: async () => 'git@github.com:robert-gleis/issueflow.git',
+        listAssignedIssues: async () => [
+          {
+            number: 12,
+            title: 'Ship issueflow start',
+            body: 'Build the first working start command.',
+            url: 'https://github.com/robert-gleis/issueflow/issues/12',
+            labels: ['workflow'],
+            assignees: ['robert-gleis'],
+            slug: 'ship-issueflow-start'
+          }
+        ],
+        listLocalBranches: async () => {
+          throw new Error('should not be called');
+        },
+        listWorktreeEntries: async () => {
+          throw new Error('should not be called');
+        },
+        createIssueWorktree: async () => {
+          throw new Error('should not be called');
+        },
+        attachExistingBranchToWorktree: async () => {
+          throw new Error('should not be called');
+        },
+        findIssueArtifacts: async () => {
+          throw new Error('should not be called');
+        },
+        writeSessionState: async () => {
+          throw new Error('should not be called');
+        },
+        writeIssuePacket: async () => {
+          throw new Error('should not be called');
+        },
+        chooseIssue: async () => {
+          throw createPromptCancelError();
+        },
+        confirmReuse: async () => true,
+        now: () => new Date('2026-04-24T10:00:00.000Z')
+      }
+    );
+
+    expect(result).toEqual({
+      mode: 'cancelled',
+      message: 'Cancelled.'
+    });
+  });
+
+  it('returns a cancelled result when worktree reuse confirmation is aborted', async () => {
+    const createWorktreeCalls: string[] = [];
+    const attachWorktreeCalls: string[] = [];
+
+    const result = await createStartPlan(
+      {
+        cwd: '/repo',
+        tool: 'claude',
+        printOnly: false
+      },
+      {
+        resolveRepoRoot: async () => '/repo',
+        readOriginRemote: async () => 'git@github.com:robert-gleis/issueflow.git',
+        listAssignedIssues: async () => [
+          {
+            number: 12,
+            title: 'Ship issueflow start',
+            body: 'Build the first working start command.',
+            url: 'https://github.com/robert-gleis/issueflow/issues/12',
+            labels: ['workflow'],
+            assignees: ['robert-gleis'],
+            slug: 'ship-issueflow-start'
+          }
+        ],
+        listLocalBranches: async () => ['issue/12-ship-issueflow-start'],
+        listWorktreeEntries: async () => [
+          {
+            branchName: 'issue/12-ship-issueflow-start',
+            worktreePath: '/repo-12-ship-issueflow-start'
+          }
+        ],
+        createIssueWorktree: async (_repoRoot, worktreePath) => {
+          createWorktreeCalls.push(worktreePath);
+        },
+        attachExistingBranchToWorktree: async (_repoRoot, worktreePath) => {
+          attachWorktreeCalls.push(worktreePath);
+        },
+        findIssueArtifacts: async () => {
+          throw new Error('should not be called');
+        },
+        writeSessionState: async () => {
+          throw new Error('should not be called');
+        },
+        writeIssuePacket: async () => {
+          throw new Error('should not be called');
+        },
+        chooseIssue: async (issues) => issues[0],
+        confirmReuse: async () => {
+          throw createPromptCancelError();
+        },
+        now: () => new Date('2026-04-24T10:00:00.000Z')
+      }
+    );
+
+    expect(result).toEqual({
+      mode: 'cancelled',
+      message: 'Cancelled.'
+    });
+    expect(createWorktreeCalls).toEqual([]);
+    expect(attachWorktreeCalls).toEqual([]);
   });
 });
