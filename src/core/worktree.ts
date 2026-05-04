@@ -1,8 +1,11 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import { execa } from 'execa';
 
 import type { ExistingWorkspaceMatch, IssueSummary, WorktreeEntry } from './types.js';
+
+export const WORKTREE_SETUP_SCRIPT = path.join('scripts', 'setup-new-worktree.sh');
 
 export function buildBranchName(issue: Pick<IssueSummary, 'number' | 'slug'>): string {
   return `issue/${issue.number}-${issue.slug}`;
@@ -66,6 +69,30 @@ export async function attachExistingBranchToWorktree(
   branchName: string
 ): Promise<void> {
   await execa('git', ['worktree', 'add', worktreePath, branchName], { cwd: repoRoot });
+}
+
+export async function runWorktreeSetup(sourceCheckout: string, worktreePath: string): Promise<boolean> {
+  const scriptPath = path.join(worktreePath, WORKTREE_SETUP_SCRIPT);
+
+  try {
+    await fs.access(scriptPath);
+  } catch (error) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+      return false;
+    }
+
+    throw error;
+  }
+
+  await execa('bash', [scriptPath], {
+    cwd: worktreePath,
+    env: {
+      MAIN_REPO_ROOT: sourceCheckout
+    },
+    stdio: 'inherit'
+  });
+
+  return true;
 }
 
 export function findExistingWorkspaceMatch(

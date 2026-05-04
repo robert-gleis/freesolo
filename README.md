@@ -26,6 +26,12 @@ issueflow start --tool cursor
 
 The `cursor` adapter uses `cursor-agent --workspace <worktree>` so the shared workflow kernel is injected at launch time instead of relying on a manual follow-up command.
 
+## Worktree setup hooks
+
+After creating or attaching a new worktree, `issueflow` runs `scripts/setup-new-worktree.sh` from that worktree when the script exists. The hook is optional; repositories that do not define it continue without setup. The hook receives `MAIN_REPO_ROOT` pointing at the source checkout so repo-specific scripts can reference files that should not be copied automatically.
+
+Existing worktrees are reused as-is and do not run the setup hook. `--print-only` includes the conditional hook command after the `git worktree add` command.
+
 ## Reusable host assets
 
 The reusable host assets are committed under `integrations/`:

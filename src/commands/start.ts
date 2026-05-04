@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import { confirm, select } from '@inquirer/prompts';
 import { execa } from 'execa';
 
@@ -16,7 +18,9 @@ import {
   ensureUniqueWorkspaceNames,
   findExistingWorkspaceMatch,
   listLocalBranches,
-  listWorktreeEntries
+  listWorktreeEntries,
+  runWorktreeSetup,
+  WORKTREE_SETUP_SCRIPT
 } from '../core/worktree.js';
 import { buildIssuePacket, buildWorkflowKernel } from '../workflow/kernel.js';
 
@@ -47,6 +51,7 @@ export interface StartPlanDeps {
   listWorktreeEntries: (repoRoot: string) => Promise<WorktreeEntry[]>;
   createIssueWorktree: (repoRoot: string, worktreePath: string, branchName: string) => Promise<void>;
   attachExistingBranchToWorktree: (repoRoot: string, worktreePath: string, branchName: string) => Promise<void>;
+  setupNewWorktree?: (sourceCheckout: string, worktreePath: string) => Promise<boolean>;
   findIssueArtifacts: (repoRoot: string, issueNumber: number) => Promise<IssueArtifactPaths>;
   writeSessionState: typeof writeSessionState;
   writeIssuePacket: typeof writeIssuePacket;
@@ -63,6 +68,7 @@ const defaultDeps: StartPlanDeps = {
   listWorktreeEntries,
   createIssueWorktree,
   attachExistingBranchToWorktree,
+  setupNewWorktree: runWorktreeSetup,
   findIssueArtifacts,
   writeSessionState,
   writeIssuePacket,
@@ -92,6 +98,10 @@ function shellQuote(value: string): string {
 
 function renderCommand(parts: string[]): string {
   return parts.map(shellQuote).join(' ');
+}
+
+function renderEnvAssignment(name: string, value: string): string {
+  return `${name}=${shellQuote(value)}`;
 }
 
 function summarizeLaunchCommand(launchPlan: LaunchPlan): string {
@@ -135,15 +145,28 @@ function buildPrintOnlySummary(input: {
 function buildCreateWorktreePlan(repoRoot: string, worktreePath: string, branchName: string): WorkspacePlan {
   return {
     action: 'create-worktree',
-    setupCommands: [renderCommand(['git', '-C', repoRoot, 'worktree', 'add', '-b', branchName, worktreePath])]
+    setupCommands: [
+      renderCommand(['git', '-C', repoRoot, 'worktree', 'add', '-b', branchName, worktreePath]),
+      renderWorktreeSetupCommand(repoRoot, worktreePath)
+    ]
   };
 }
 
 function buildAttachBranchPlan(repoRoot: string, worktreePath: string, branchName: string): WorkspacePlan {
   return {
     action: 'attach-branch-worktree',
-    setupCommands: [renderCommand(['git', '-C', repoRoot, 'worktree', 'add', worktreePath, branchName])]
+    setupCommands: [
+      renderCommand(['git', '-C', repoRoot, 'worktree', 'add', worktreePath, branchName]),
+      renderWorktreeSetupCommand(repoRoot, worktreePath)
+    ]
   };
+}
+
+function renderWorktreeSetupCommand(sourceCheckout: string, worktreePath: string): string {
+  const setupScriptPath = path.join(worktreePath, WORKTREE_SETUP_SCRIPT);
+  const setupInvocation = `${renderEnvAssignment('MAIN_REPO_ROOT', sourceCheckout)} ${renderCommand(['bash', WORKTREE_SETUP_SCRIPT])}`;
+
+  return `if [ -f ${shellQuote(setupScriptPath)} ]; then ${renderCommand(['cd', worktreePath])} && ${setupInvocation}; fi`;
 }
 
 function toCancelledResult(error: unknown): CancelledResult | null {
@@ -202,6 +225,7 @@ export async function createStartPlan(input: { cwd: string; tool: HostTool; prin
   let branchName = buildBranchName(issue);
   let worktreePath = buildSiblingWorktreePath(rootDir, issue);
   let workspacePlan = buildCreateWorktreePlan(rootDir, worktreePath, branchName);
+  let shouldRunSetup = false;
 
   if (existingMatch?.worktreePath) {
     let reuse: boolean;
@@ -232,6 +256,7 @@ export async function createStartPlan(input: { cwd: string; tool: HostTool; prin
 
       if (!input.printOnly) {
         await deps.createIssueWorktree(rootDir, worktreePath, branchName);
+        shouldRunSetup = true;
       }
     }
   } else if (existingMatch?.branchName) {
@@ -255,6 +280,7 @@ export async function createStartPlan(input: { cwd: string; tool: HostTool; prin
 
       if (!input.printOnly) {
         await deps.attachExistingBranchToWorktree(rootDir, worktreePath, branchName);
+        shouldRunSetup = true;
       }
     } else {
       branchName = uniqueNames.branchName;
@@ -263,10 +289,16 @@ export async function createStartPlan(input: { cwd: string; tool: HostTool; prin
 
       if (!input.printOnly) {
         await deps.createIssueWorktree(rootDir, worktreePath, branchName);
+        shouldRunSetup = true;
       }
     }
   } else if (!input.printOnly) {
     await deps.createIssueWorktree(rootDir, worktreePath, branchName);
+    shouldRunSetup = true;
+  }
+
+  if (shouldRunSetup) {
+    await deps.setupNewWorktree?.(rootDir, worktreePath);
   }
 
   const repoRoot = worktreePath;

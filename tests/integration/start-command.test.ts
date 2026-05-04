@@ -86,43 +86,46 @@ describe('createStartPlan', () => {
   });
 
   it('returns print-only output without launching a process', async () => {
+    const deps = {
+      resolveRepoRoot: async () => '/repo',
+      readOriginRemote: async () => 'git@github.com:robert-gleis/issueflow.git',
+      listAssignedIssues: async () => [
+        {
+          number: 12,
+          title: 'Ship issueflow start',
+          body: 'Build the first working start command.',
+          url: 'https://github.com/robert-gleis/issueflow/issues/12',
+          labels: ['workflow'],
+          assignees: ['robert-gleis'],
+          slug: 'ship-issueflow-start',
+          status: null
+        }
+      ],
+      listLocalBranches: async () => [],
+      listWorktreeEntries: async () => [],
+      createIssueWorktree: async () => undefined,
+      attachExistingBranchToWorktree: async () => undefined,
+      setupNewWorktree: async () => false,
+      findIssueArtifacts: async (repoRoot: string) => ({
+        spec: `${repoRoot}/docs/issueflow/specs/2026-04-24-issue-12-design.md`,
+        plan: null,
+        planReview: null,
+        implementationReview: null
+      }),
+      writeSessionState: async () => undefined,
+      writeIssuePacket: async () => undefined,
+      chooseIssue: async (issues) => issues[0],
+      confirmReuse: async () => true,
+      now: () => new Date('2026-04-24T10:00:00.000Z')
+    };
+
     const result = await createStartPlan(
       {
         cwd: '/repo',
         tool: 'codex',
         printOnly: true
       },
-      {
-        resolveRepoRoot: async () => '/repo',
-        readOriginRemote: async () => 'git@github.com:robert-gleis/issueflow.git',
-        listAssignedIssues: async () => [
-          {
-            number: 12,
-            title: 'Ship issueflow start',
-            body: 'Build the first working start command.',
-            url: 'https://github.com/robert-gleis/issueflow/issues/12',
-            labels: ['workflow'],
-            assignees: ['robert-gleis'],
-            slug: 'ship-issueflow-start',
-            status: null
-          }
-        ],
-        listLocalBranches: async () => [],
-        listWorktreeEntries: async () => [],
-        createIssueWorktree: async () => undefined,
-        attachExistingBranchToWorktree: async () => undefined,
-        findIssueArtifacts: async (repoRoot) => ({
-          spec: `${repoRoot}/docs/issueflow/specs/2026-04-24-issue-12-design.md`,
-          plan: null,
-          planReview: null,
-          implementationReview: null
-        }),
-        writeSessionState: async () => undefined,
-        writeIssuePacket: async () => undefined,
-        chooseIssue: async (issues) => issues[0],
-        confirmReuse: async () => true,
-        now: () => new Date('2026-04-24T10:00:00.000Z')
-      }
+      deps
     );
 
     expect(result.mode).toBe('print-only');
@@ -132,7 +135,8 @@ describe('createStartPlan', () => {
       expect(result.launchPlan.cwd).toBe('/repo-12-ship-issueflow-start');
       expect(result.workspacePlan.action).toBe('create-worktree');
       expect(result.workspacePlan.setupCommands).toEqual([
-        'git -C /repo worktree add -b issue/12-ship-issueflow-start /repo-12-ship-issueflow-start'
+        'git -C /repo worktree add -b issue/12-ship-issueflow-start /repo-12-ship-issueflow-start',
+        'if [ -f /repo-12-ship-issueflow-start/scripts/setup-new-worktree.sh ]; then cd /repo-12-ship-issueflow-start && MAIN_REPO_ROOT=/repo bash scripts/setup-new-worktree.sh; fi'
       ]);
       expect(result.summaryLines).toContain('Source checkout: /repo');
       expect(result.summaryLines).toContain('Repo: /repo-12-ship-issueflow-start');
@@ -211,6 +215,68 @@ describe('createStartPlan', () => {
         implementationReview: null
       }
     });
+  });
+
+  it('runs a project setup hook after creating a new worktree and before discovering artifacts', async () => {
+    const calls: string[] = [];
+
+    const deps = {
+      resolveRepoRoot: async () => '/repo',
+      readOriginRemote: async () => 'git@github.com:robert-gleis/issueflow.git',
+      listAssignedIssues: async () => [
+        {
+          number: 12,
+          title: 'Ship issueflow start',
+          body: 'Build the first working start command.',
+          url: 'https://github.com/robert-gleis/issueflow/issues/12',
+          labels: ['workflow'],
+          assignees: ['robert-gleis'],
+          slug: 'ship-issueflow-start',
+          status: null
+        }
+      ],
+      listLocalBranches: async () => [],
+      listWorktreeEntries: async () => [],
+      createIssueWorktree: async (repoRoot: string, worktreePath: string, branchName: string) => {
+        calls.push(`create:${repoRoot}:${worktreePath}:${branchName}`);
+      },
+      attachExistingBranchToWorktree: async () => undefined,
+      setupNewWorktree: async (sourceCheckout: string, worktreePath: string) => {
+        calls.push(`setup:${sourceCheckout}:${worktreePath}`);
+        return true;
+      },
+      findIssueArtifacts: async (repoRoot: string) => {
+        calls.push(`artifacts:${repoRoot}`);
+
+        return {
+          spec: `${repoRoot}/docs/issueflow/specs/2026-04-24-issue-12-design.md`,
+          plan: null,
+          planReview: null,
+          implementationReview: null
+        };
+      },
+      writeSessionState: async () => undefined,
+      writeIssuePacket: async () => undefined,
+      chooseIssue: async (issues) => issues[0],
+      confirmReuse: async () => true,
+      now: () => new Date('2026-04-24T10:00:00.000Z')
+    };
+
+    const result = await createStartPlan(
+      {
+        cwd: '/repo',
+        tool: 'codex',
+        printOnly: false
+      },
+      deps
+    );
+
+    expect(result.mode).toBe('launch');
+    expect(calls).toEqual([
+      'create:/repo:/repo-12-ship-issueflow-start:issue/12-ship-issueflow-start',
+      'setup:/repo:/repo-12-ship-issueflow-start',
+      'artifacts:/repo-12-ship-issueflow-start'
+    ]);
   });
 
   it('reuses the selected worktree as the artifact lookup and session root', async () => {
