@@ -18,6 +18,15 @@ export function buildCli(): Command {
         .makeOptionMandatory()
     )
     .option('--print-only', 'Print the derived actions without launching the host')
+    .addHelpText(
+      'after',
+      `
+
+Worktree setup:
+  After creating or attaching a worktree, issueflow runs scripts/setup-new-worktree.sh
+  from that worktree when it exists. The hook receives MAIN_REPO_ROOT pointing at
+  the source checkout. Existing reused worktrees skip this hook.`
+    )
     .action(startAction);
 
   return program;
