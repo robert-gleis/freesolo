@@ -1,7 +1,18 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('execa', () => ({
+  execa: vi.fn()
+}));
 
 import fixture from '../fixtures/gh/issues.json' with { type: 'json' };
-import { buildIssueStatusLookup, normalizeIssueList, sortIssuesByStatus } from '../../src/core/github.js';
+import { execa } from 'execa';
+import { buildIssueStatusLookup, listAssignedIssues, normalizeIssueList, sortIssuesByStatus } from '../../src/core/github.js';
+
+const mockedExeca = vi.mocked(execa);
+
+beforeEach(() => {
+  mockedExeca.mockReset();
+});
 
 describe('buildIssueStatusLookup', () => {
   it('uses the first non-empty project status for each issue id', () => {
@@ -62,5 +73,58 @@ describe('sortIssuesByStatus', () => {
     ]);
 
     expect(sorted.map((issue) => issue.number)).toEqual([1, 2, 3, 4]);
+  });
+});
+
+describe('listAssignedIssues', () => {
+  it('drops closed issues if GitHub returns a mixed-state payload', async () => {
+    mockedExeca
+      .mockResolvedValueOnce({
+        stdout: JSON.stringify([
+          {
+            id: 'ISSUE_8270',
+            number: 8270,
+            title: 'Baskets entpunkt im Gateway ergänzen',
+            body: '',
+            url: 'https://github.com/loql-com/ghp-app-firebase/issues/8270',
+            labels: [],
+            assignees: [],
+            state: 'closed'
+          },
+          {
+            id: 'ISSUE_8714',
+            number: 8714,
+            title: 'Priorisierte Customer-Groups pro Kunde für ERP-Preislisten unterstützen',
+            body: '',
+            url: 'https://github.com/loql-com/ghp-app-firebase/issues/8714',
+            labels: [],
+            assignees: [],
+            state: 'open'
+          }
+        ])
+      } as never)
+      .mockResolvedValueOnce({
+        stdout: JSON.stringify({
+          data: {
+            nodes: []
+          }
+        })
+      } as never);
+
+    const issues = await listAssignedIssues({
+      host: 'github.com',
+      owner: 'example',
+      repo: 'repo',
+      remoteUrl: 'git@github.com:example/repo.git',
+      rootDir: '/repo'
+    });
+
+    expect(issues.map((issue) => issue.number)).toEqual([8714]);
+    expect(mockedExeca).toHaveBeenNthCalledWith(
+      1,
+      'gh',
+      expect.arrayContaining(['--json', 'id,number,title,body,url,labels,assignees,state'])
+    );
+    expect(issues.map((issue) => issue.url)).toEqual(['https://github.com/loql-com/ghp-app-firebase/issues/8714']);
   });
 });

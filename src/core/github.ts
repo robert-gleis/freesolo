@@ -11,6 +11,7 @@ interface GitHubIssueJson {
   url: string;
   labels?: Array<{ name?: string }>;
   assignees?: Array<{ login?: string }>;
+  state?: string;
 }
 
 interface GitHubIssueStatusNodeJson {
@@ -109,16 +110,18 @@ export function normalizeIssueList(
   issues: GitHubIssueJson[],
   statusesByIssueId: Record<string, string | null> = {}
 ): IssueSummary[] {
-  return issues.map((issue) => ({
-    number: issue.number,
-    title: issue.title,
-    body: issue.body ?? '',
-    url: issue.url,
-    labels: (issue.labels ?? []).map((label) => label.name ?? '').filter(Boolean),
-    assignees: (issue.assignees ?? []).map((assignee) => assignee.login ?? '').filter(Boolean),
-    slug: slugifyIssueTitle(issue.title),
-    status: normalizeStatus(statusesByIssueId[issue.id])
-  }));
+  return issues
+    .filter((issue) => issue.state === undefined || issue.state.toUpperCase() === 'OPEN')
+    .map((issue) => ({
+      number: issue.number,
+      title: issue.title,
+      body: issue.body ?? '',
+      url: issue.url,
+      labels: (issue.labels ?? []).map((label) => label.name ?? '').filter(Boolean),
+      assignees: (issue.assignees ?? []).map((assignee) => assignee.login ?? '').filter(Boolean),
+      slug: slugifyIssueTitle(issue.title),
+      status: normalizeStatus(statusesByIssueId[issue.id])
+    }));
 }
 
 export function sortIssuesByStatus(issues: IssueSummary[]): IssueSummary[] {
@@ -174,7 +177,7 @@ export async function listAssignedIssues(repo: RepoContext): Promise<IssueSummar
       '--state',
       'open',
       '--json',
-      'id,number,title,body,url,labels,assignees',
+      'id,number,title,body,url,labels,assignees,state',
       '--limit',
       '100'
     ]));
