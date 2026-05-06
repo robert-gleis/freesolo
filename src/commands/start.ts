@@ -17,6 +17,7 @@ import {
   createIssueWorktree,
   ensureUniqueWorkspaceNames,
   findExistingWorkspaceMatch,
+  ISSUE_BRANCH_START_POINT,
   listLocalBranches,
   listWorktreeEntries,
   runWorktreeSetup,
@@ -146,7 +147,7 @@ function buildCreateWorktreePlan(repoRoot: string, worktreePath: string, branchN
   return {
     action: 'create-worktree',
     setupCommands: [
-      renderCommand(['git', '-C', repoRoot, 'worktree', 'add', '-b', branchName, worktreePath]),
+      renderCommand(['git', '-C', repoRoot, 'worktree', 'add', '-b', branchName, worktreePath, ISSUE_BRANCH_START_POINT]),
       renderWorktreeSetupCommand(repoRoot, worktreePath)
     ]
   };

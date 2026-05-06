@@ -2,10 +2,12 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
+import { execa } from 'execa';
 import { describe, expect, it } from 'vitest';
 
 import {
   buildBranchName,
+  createIssueWorktree,
   ensureUniqueWorkspaceNames,
   findExistingWorkspaceMatch,
   runWorktreeSetup
@@ -42,6 +44,35 @@ describe('ensureUniqueWorkspaceNames', () => {
       branchName: 'issue/12-ship-issueflow-start-2',
       worktreePath: '/repo/issueflow-12-ship-issueflow-start-2'
     });
+  });
+});
+
+describe('createIssueWorktree', () => {
+  it('creates the issue branch from origin/main instead of the current branch', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-git-'));
+    const repoRoot = path.join(tempDir, 'repo');
+    const worktreePath = path.join(tempDir, 'issue-worktree');
+
+    try {
+      await fs.mkdir(repoRoot);
+      await execa('git', ['init', '--initial-branch=main'], { cwd: repoRoot });
+      await execa('git', ['config', 'user.name', 'Issueflow Test'], { cwd: repoRoot });
+      await execa('git', ['config', 'user.email', 'issueflow@example.test'], { cwd: repoRoot });
+      await fs.writeFile(path.join(repoRoot, 'marker.txt'), 'main\n');
+      await execa('git', ['add', 'marker.txt'], { cwd: repoRoot });
+      await execa('git', ['commit', '-m', 'main state'], { cwd: repoRoot });
+      await execa('git', ['update-ref', 'refs/remotes/origin/main', 'HEAD'], { cwd: repoRoot });
+
+      await execa('git', ['checkout', '-b', 'feature'], { cwd: repoRoot });
+      await fs.writeFile(path.join(repoRoot, 'marker.txt'), 'feature\n');
+      await execa('git', ['commit', '-am', 'feature state'], { cwd: repoRoot });
+
+      await createIssueWorktree(repoRoot, worktreePath, 'issue/12-ship-issueflow-start');
+
+      await expect(fs.readFile(path.join(worktreePath, 'marker.txt'), 'utf8')).resolves.toBe('main\n');
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
   });
 });
 

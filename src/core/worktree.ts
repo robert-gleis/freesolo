@@ -6,6 +6,7 @@ import { execa } from 'execa';
 import type { ExistingWorkspaceMatch, IssueSummary, WorktreeEntry } from './types.js';
 
 export const WORKTREE_SETUP_SCRIPT = path.join('scripts', 'setup-new-worktree.sh');
+export const ISSUE_BRANCH_START_POINT = 'origin/main';
 
 export function buildBranchName(issue: Pick<IssueSummary, 'number' | 'slug'>): string {
   return `issue/${issue.number}-${issue.slug}`;
@@ -60,7 +61,7 @@ export async function listWorktreeEntries(repoRoot: string): Promise<WorktreeEnt
 }
 
 export async function createIssueWorktree(repoRoot: string, worktreePath: string, branchName: string): Promise<void> {
-  await execa('git', ['worktree', 'add', '-b', branchName, worktreePath], { cwd: repoRoot });
+  await execa('git', ['worktree', 'add', '-b', branchName, worktreePath, ISSUE_BRANCH_START_POINT], { cwd: repoRoot });
 }
 
 export async function attachExistingBranchToWorktree(

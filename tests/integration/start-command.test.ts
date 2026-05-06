@@ -135,7 +135,7 @@ describe('createStartPlan', () => {
       expect(result.launchPlan.cwd).toBe('/repo-12-ship-issueflow-start');
       expect(result.workspacePlan.action).toBe('create-worktree');
       expect(result.workspacePlan.setupCommands).toEqual([
-        'git -C /repo worktree add -b issue/12-ship-issueflow-start /repo-12-ship-issueflow-start',
+        'git -C /repo worktree add -b issue/12-ship-issueflow-start /repo-12-ship-issueflow-start origin/main',
         'if [ -f /repo-12-ship-issueflow-start/scripts/setup-new-worktree.sh ]; then cd /repo-12-ship-issueflow-start && MAIN_REPO_ROOT=/repo bash scripts/setup-new-worktree.sh; fi'
       ]);
       expect(result.summaryLines).toContain('Source checkout: /repo');
