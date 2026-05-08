@@ -1,5 +1,3 @@
-import path from 'node:path';
-
 import { confirm, select } from '@inquirer/prompts';
 import { execa } from 'execa';
 
@@ -11,18 +9,19 @@ import { parseGitHubRemote, readOriginRemote, resolveRepoRoot } from '../core/gi
 import { writeIssuePacket, writeSessionState } from '../core/session-state.js';
 import type { HostTool, IssueArtifactPaths, IssueSummary, RepoContext, WorktreeEntry } from '../core/types.js';
 import {
-  attachExistingBranchToWorktree,
   buildBranchName,
-  buildSiblingWorktreePath,
-  createIssueWorktree,
+  ensureWorktrunkAvailable,
   ensureUniqueWorkspaceNames,
   findExistingWorkspaceMatch,
-  ISSUE_BRANCH_START_POINT,
   listLocalBranches,
   listWorktreeEntries,
+  resolveBranchWorktreePath,
   runWorktreeSetup,
+  switchExistingIssueWorktree,
+  switchNewIssueWorktree,
   WorktreeSetupError,
-  WORKTREE_SETUP_SCRIPT
+  WorktrunkMissingError,
+  WorktrunkPathResolutionError
 } from '../core/worktree.js';
 import { buildIssuePacket, buildWorkflowKernel } from '../workflow/kernel.js';
 
@@ -48,11 +47,13 @@ export type StartPlanResult = EmptyResult | CancelledResult | PrintOnlyResult | 
 export interface StartPlanDeps {
   resolveRepoRoot: (cwd: string) => Promise<string>;
   readOriginRemote: (cwd: string) => Promise<string>;
+  ensureWorktrunkAvailable: () => Promise<void>;
   listAssignedIssues: (repo: RepoContext) => Promise<IssueSummary[]>;
   listLocalBranches: (repoRoot: string) => Promise<string[]>;
   listWorktreeEntries: (repoRoot: string) => Promise<WorktreeEntry[]>;
-  createIssueWorktree: (repoRoot: string, worktreePath: string, branchName: string) => Promise<void>;
-  attachExistingBranchToWorktree: (repoRoot: string, worktreePath: string, branchName: string) => Promise<void>;
+  switchNewIssueWorktree: (repoRoot: string, branchName: string) => Promise<void>;
+  switchExistingIssueWorktree: (repoRoot: string, branchName: string) => Promise<void>;
+  resolveBranchWorktreePath: (repoRoot: string, branchName: string) => Promise<string>;
   setupNewWorktree?: (sourceCheckout: string, worktreePath: string) => Promise<boolean>;
   findIssueArtifacts: (repoRoot: string, issueNumber: number) => Promise<IssueArtifactPaths>;
   writeSessionState: typeof writeSessionState;
@@ -65,11 +66,13 @@ export interface StartPlanDeps {
 const defaultDeps: StartPlanDeps = {
   resolveRepoRoot,
   readOriginRemote,
+  ensureWorktrunkAvailable,
   listAssignedIssues,
   listLocalBranches,
   listWorktreeEntries,
-  createIssueWorktree,
-  attachExistingBranchToWorktree,
+  switchNewIssueWorktree,
+  switchExistingIssueWorktree,
+  resolveBranchWorktreePath,
   setupNewWorktree: (sourceCheckout, worktreePath) =>
     runWorktreeSetup(sourceCheckout, worktreePath, {
       spinnerLabel: 'Running worktree setup'
@@ -93,6 +96,8 @@ const defaultDeps: StartPlanDeps = {
   now: () => new Date()
 };
 
+const WORKTRUNK_CHECKOUT_PLACEHOLDER = '<worktrunk-checkout>';
+
 export function buildIssueChoiceLabel(issue: IssueSummary): string {
   return `[${issue.status ?? 'No Status'}] #${issue.number} ${issue.title}`;
 }
@@ -103,10 +108,6 @@ function shellQuote(value: string): string {
 
 function renderCommand(parts: string[]): string {
   return parts.map(shellQuote).join(' ');
-}
-
-function renderEnvAssignment(name: string, value: string): string {
-  return `${name}=${shellQuote(value)}`;
 }
 
 function summarizeLaunchCommand(launchPlan: LaunchPlan): string {
@@ -127,7 +128,7 @@ function buildPrintOnlySummary(input: {
     `Repo: ${input.repoRoot}`,
     `Issue: #${input.issue.number} ${input.issue.title}`,
     `Branch: ${input.branchName}`,
-    `Worktree: ${input.worktreePath}`,
+    input.worktreePath === WORKTRUNK_CHECKOUT_PLACEHOLDER ? 'Worktree: resolved by Worktrunk' : `Worktree: ${input.worktreePath}`,
     `Workspace action: ${input.workspacePlan.action}`
   ];
 
@@ -147,31 +148,24 @@ function buildPrintOnlySummary(input: {
   return summaryLines;
 }
 
-function buildCreateWorktreePlan(repoRoot: string, worktreePath: string, branchName: string): WorkspacePlan {
+function buildCreateWorktreePlan(branchName: string): WorkspacePlan {
   return {
     action: 'create-worktree',
     setupCommands: [
-      renderCommand(['git', '-C', repoRoot, 'worktree', 'add', '-b', branchName, worktreePath, ISSUE_BRANCH_START_POINT]),
-      renderWorktreeSetupCommand(repoRoot, worktreePath)
+      renderCommand(['wt', 'switch', '--create', branchName]),
+      'Worktree path will be resolved by Worktrunk when executed.'
     ]
   };
 }
 
-function buildAttachBranchPlan(repoRoot: string, worktreePath: string, branchName: string): WorkspacePlan {
+function buildAttachBranchPlan(branchName: string): WorkspacePlan {
   return {
     action: 'attach-branch-worktree',
     setupCommands: [
-      renderCommand(['git', '-C', repoRoot, 'worktree', 'add', worktreePath, branchName]),
-      renderWorktreeSetupCommand(repoRoot, worktreePath)
+      renderCommand(['wt', 'switch', branchName]),
+      'Worktree path will be resolved by Worktrunk when executed.'
     ]
   };
-}
-
-function renderWorktreeSetupCommand(sourceCheckout: string, worktreePath: string): string {
-  const setupScriptPath = path.join(worktreePath, WORKTREE_SETUP_SCRIPT);
-  const setupInvocation = `${renderEnvAssignment('MAIN_REPO_ROOT', sourceCheckout)} ${renderCommand(['bash', WORKTREE_SETUP_SCRIPT])}`;
-
-  return `if [ -f ${shellQuote(setupScriptPath)} ]; then ${renderCommand(['cd', worktreePath])} && ${setupInvocation}; fi`;
 }
 
 function toCancelledResult(error: unknown): CancelledResult | null {
@@ -197,6 +191,8 @@ export async function createStartPlan(input: { cwd: string; tool: HostTool; prin
   if (!parsedRepo) {
     throw new Error('origin is not a supported GitHub remote');
   }
+
+  await deps.ensureWorktrunkAvailable();
 
   const repo = { ...parsedRepo, rootDir };
   const issues = await deps.listAssignedIssues(repo);
@@ -228,8 +224,8 @@ export async function createStartPlan(input: { cwd: string; tool: HostTool; prin
   const uniqueNames = ensureUniqueWorkspaceNames(rootDir, issue, branchNames, worktreeEntries);
 
   let branchName = buildBranchName(issue);
-  let worktreePath = buildSiblingWorktreePath(rootDir, issue);
-  let workspacePlan = buildCreateWorktreePlan(rootDir, worktreePath, branchName);
+  let worktreePath = input.printOnly ? WORKTRUNK_CHECKOUT_PLACEHOLDER : '';
+  let workspacePlan = buildCreateWorktreePlan(branchName);
   let shouldRunSetup = false;
 
   if (existingMatch?.worktreePath) {
@@ -256,11 +252,12 @@ export async function createStartPlan(input: { cwd: string; tool: HostTool; prin
       };
     } else {
       branchName = uniqueNames.branchName;
-      worktreePath = uniqueNames.worktreePath;
-      workspacePlan = buildCreateWorktreePlan(rootDir, worktreePath, branchName);
+      worktreePath = input.printOnly ? WORKTRUNK_CHECKOUT_PLACEHOLDER : '';
+      workspacePlan = buildCreateWorktreePlan(branchName);
 
       if (!input.printOnly) {
-        await deps.createIssueWorktree(rootDir, worktreePath, branchName);
+        await deps.switchNewIssueWorktree(rootDir, branchName);
+        worktreePath = await deps.resolveBranchWorktreePath(rootDir, branchName);
         shouldRunSetup = true;
       }
     }
@@ -281,24 +278,28 @@ export async function createStartPlan(input: { cwd: string; tool: HostTool; prin
 
     if (reuse) {
       branchName = existingMatch.branchName;
-      workspacePlan = buildAttachBranchPlan(rootDir, worktreePath, branchName);
+      worktreePath = input.printOnly ? WORKTRUNK_CHECKOUT_PLACEHOLDER : '';
+      workspacePlan = buildAttachBranchPlan(branchName);
 
       if (!input.printOnly) {
-        await deps.attachExistingBranchToWorktree(rootDir, worktreePath, branchName);
+        await deps.switchExistingIssueWorktree(rootDir, branchName);
+        worktreePath = await deps.resolveBranchWorktreePath(rootDir, branchName);
         shouldRunSetup = true;
       }
     } else {
       branchName = uniqueNames.branchName;
-      worktreePath = uniqueNames.worktreePath;
-      workspacePlan = buildCreateWorktreePlan(rootDir, worktreePath, branchName);
+      worktreePath = input.printOnly ? WORKTRUNK_CHECKOUT_PLACEHOLDER : '';
+      workspacePlan = buildCreateWorktreePlan(branchName);
 
       if (!input.printOnly) {
-        await deps.createIssueWorktree(rootDir, worktreePath, branchName);
+        await deps.switchNewIssueWorktree(rootDir, branchName);
+        worktreePath = await deps.resolveBranchWorktreePath(rootDir, branchName);
         shouldRunSetup = true;
       }
     }
   } else if (!input.printOnly) {
-    await deps.createIssueWorktree(rootDir, worktreePath, branchName);
+    await deps.switchNewIssueWorktree(rootDir, branchName);
+    worktreePath = await deps.resolveBranchWorktreePath(rootDir, branchName);
     shouldRunSetup = true;
   }
 
@@ -384,7 +385,7 @@ export async function startAction(options: StartOptions): Promise<void> {
       printOnly: Boolean(options.printOnly)
     });
   } catch (error) {
-    if (error instanceof WorktreeSetupError) {
+    if (error instanceof WorktreeSetupError || error instanceof WorktrunkMissingError || error instanceof WorktrunkPathResolutionError) {
       console.error(error.message);
       process.exitCode = 1;
       return;

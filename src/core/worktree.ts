@@ -7,7 +7,13 @@ import { execa, type ExecaError } from 'execa';
 import type { ExistingWorkspaceMatch, IssueSummary, WorktreeEntry } from './types.js';
 
 export const WORKTREE_SETUP_SCRIPT = path.join('scripts', 'setup-new-worktree.sh');
-export const ISSUE_BRANCH_START_POINT = 'origin/main';
+
+type CommandRunner = (command: string, args: string[], options?: { cwd?: string }) => Promise<unknown> | unknown;
+type StdoutCommandRunner = (
+  command: string,
+  args: string[],
+  options?: { cwd?: string }
+) => Promise<{ stdout: string }> | { stdout: string };
 
 export interface WorktreeSetupOptions {
   spinnerLabel?: string;
@@ -20,6 +26,27 @@ export class WorktreeSetupError extends Error {
     this.name = 'WorktreeSetupError';
   }
 }
+
+export class WorktrunkMissingError extends Error {
+  constructor() {
+    super('Worktrunk is required for issueflow start. Install wt from https://worktrunk.dev/worktrunk/ and try again.');
+    this.name = 'WorktrunkMissingError';
+  }
+}
+
+export class WorktrunkPathResolutionError extends Error {
+  constructor(branchName: string) {
+    super(`Could not resolve Worktrunk checkout for branch ${branchName}.`);
+    this.name = 'WorktrunkPathResolutionError';
+  }
+}
+
+const defaultCommandRunner: CommandRunner = (command, args, options) => execa(command, args, options);
+
+const defaultStdoutRunner: StdoutCommandRunner = async (command, args, options) => {
+  const { stdout } = await execa(command, args, options);
+  return { stdout };
+};
 
 function formatCapturedOutput(error: ExecaError): string {
   const lines = [error.shortMessage ?? error.message];
@@ -106,8 +133,7 @@ export async function listLocalBranches(repoRoot: string): Promise<string[]> {
     .filter(Boolean);
 }
 
-export async function listWorktreeEntries(repoRoot: string): Promise<WorktreeEntry[]> {
-  const { stdout } = await execa('git', ['worktree', 'list', '--porcelain'], { cwd: repoRoot });
+function parseWorktreeEntries(stdout: string): WorktreeEntry[] {
   const chunks = stdout.trim().split('\n\n').filter(Boolean);
 
   return chunks.map((chunk) => {
@@ -119,16 +145,56 @@ export async function listWorktreeEntries(repoRoot: string): Promise<WorktreeEnt
   });
 }
 
-export async function createIssueWorktree(repoRoot: string, worktreePath: string, branchName: string): Promise<void> {
-  await execa('git', ['worktree', 'add', '-b', branchName, worktreePath, ISSUE_BRANCH_START_POINT], { cwd: repoRoot });
+export async function listWorktreeEntries(repoRoot: string): Promise<WorktreeEntry[]> {
+  const { stdout } = await execa('git', ['worktree', 'list', '--porcelain'], { cwd: repoRoot });
+  return parseWorktreeEntries(stdout);
 }
 
-export async function attachExistingBranchToWorktree(
+function isMissingExecutableError(error: unknown): boolean {
+  return Boolean(error && typeof error === 'object' && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT');
+}
+
+export async function ensureWorktrunkAvailable(runner: CommandRunner = defaultCommandRunner): Promise<void> {
+  try {
+    await runner('wt', ['--version']);
+  } catch (error) {
+    if (isMissingExecutableError(error)) {
+      throw new WorktrunkMissingError();
+    }
+
+    throw error;
+  }
+}
+
+export async function switchNewIssueWorktree(
   repoRoot: string,
-  worktreePath: string,
-  branchName: string
+  branchName: string,
+  runner: CommandRunner = defaultCommandRunner
 ): Promise<void> {
-  await execa('git', ['worktree', 'add', worktreePath, branchName], { cwd: repoRoot });
+  await runner('wt', ['switch', '--create', branchName], { cwd: repoRoot });
+}
+
+export async function switchExistingIssueWorktree(
+  repoRoot: string,
+  branchName: string,
+  runner: CommandRunner = defaultCommandRunner
+): Promise<void> {
+  await runner('wt', ['switch', branchName], { cwd: repoRoot });
+}
+
+export async function resolveBranchWorktreePath(
+  repoRoot: string,
+  branchName: string,
+  runner: StdoutCommandRunner = defaultStdoutRunner
+): Promise<string> {
+  const { stdout } = await runner('git', ['worktree', 'list', '--porcelain'], { cwd: repoRoot });
+  const match = parseWorktreeEntries(stdout).find((entry) => entry.branchName === branchName);
+
+  if (!match?.worktreePath) {
+    throw new WorktrunkPathResolutionError(branchName);
+  }
+
+  return match.worktreePath;
 }
 
 export async function runWorktreeSetup(sourceCheckout: string, worktreePath: string, options: WorktreeSetupOptions = {}): Promise<boolean> {

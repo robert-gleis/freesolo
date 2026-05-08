@@ -6,6 +6,7 @@ The reusable assets live in `integrations/` so they can be committed, reviewed, 
 
 - `issueflow` checked out locally
 - `git` available in the host environment
+- Worktrunk (`wt`) installed
 - The host you want to use: Codex, Claude, or Cursor
 - `cursor-agent` available if you want `issueflow start --tool cursor` to launch the Cursor adapter directly
 

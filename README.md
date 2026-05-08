@@ -6,6 +6,7 @@ Issue-driven session launcher for Codex, Claude, and Cursor.
 
 - Node.js 20+
 - `gh` installed and authenticated
+- Worktrunk (`wt`) installed; issueflow delegates worktree creation and placement to Worktrunk
 - At least one supported host installed: Codex, Claude, or Cursor Agent (`cursor-agent`)
 
 ## Local development
@@ -54,9 +55,11 @@ The `cursor` adapter uses `cursor-agent --workspace <worktree>` so the shared wo
 
 ## Worktree setup hooks
 
-After creating or attaching a new worktree, `issueflow` runs `scripts/setup-new-worktree.sh` from that worktree when the script exists. The hook is optional; repositories that do not define it continue without setup. The hook receives `MAIN_REPO_ROOT` pointing at the source checkout so repo-specific scripts can reference files that should not be copied automatically.
+`issueflow start` uses Worktrunk (`wt`) to create or switch issue worktrees. Worktree paths follow your Worktrunk configuration rather than issueflow's own sibling-directory convention.
 
-Existing worktrees are reused as-is and do not run the setup hook. `--print-only` includes the conditional hook command after the `git worktree add` command.
+After Worktrunk creates or attaches a new worktree, `issueflow` runs `scripts/setup-new-worktree.sh` from that worktree when the script exists. The hook is optional; repositories that do not define it continue without setup. The hook receives `MAIN_REPO_ROOT` pointing at the source checkout so repo-specific scripts can reference files that should not be copied automatically.
+
+Existing worktrees are reused as-is and do not run the setup hook. `--print-only` shows the `wt switch` command that would run and notes when Worktrunk must resolve the final checkout path at execution time.
 
 ## Reusable host assets
 

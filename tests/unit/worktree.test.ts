@@ -7,11 +7,16 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildBranchName,
-  createIssueWorktree,
   ensureUniqueWorkspaceNames,
+  ensureWorktrunkAvailable,
   findExistingWorkspaceMatch,
+  resolveBranchWorktreePath,
   runWorktreeSetup,
-  WorktreeSetupError
+  switchExistingIssueWorktree,
+  switchNewIssueWorktree,
+  WorktreeSetupError,
+  WorktrunkMissingError,
+  WorktrunkPathResolutionError
 } from '../../src/core/worktree.js';
 
 describe('findExistingWorkspaceMatch', () => {
@@ -48,32 +53,93 @@ describe('ensureUniqueWorkspaceNames', () => {
   });
 });
 
-describe('createIssueWorktree', () => {
-  it('creates the issue branch from origin/main instead of the current branch', async () => {
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-git-'));
-    const repoRoot = path.join(tempDir, 'repo');
-    const worktreePath = path.join(tempDir, 'issue-worktree');
+describe('ensureWorktrunkAvailable', () => {
+  it('returns when wt is available', async () => {
+    const calls: Array<{ command: string; args: string[]; cwd?: string }> = [];
 
-    try {
-      await fs.mkdir(repoRoot);
-      await execa('git', ['init', '--initial-branch=main'], { cwd: repoRoot });
-      await execa('git', ['config', 'user.name', 'Issueflow Test'], { cwd: repoRoot });
-      await execa('git', ['config', 'user.email', 'issueflow@example.test'], { cwd: repoRoot });
-      await fs.writeFile(path.join(repoRoot, 'marker.txt'), 'main\n');
-      await execa('git', ['add', 'marker.txt'], { cwd: repoRoot });
-      await execa('git', ['commit', '-m', 'main state'], { cwd: repoRoot });
-      await execa('git', ['update-ref', 'refs/remotes/origin/main', 'HEAD'], { cwd: repoRoot });
+    await expect(
+      ensureWorktrunkAvailable(async (command, args, options) => {
+        calls.push({ command, args, cwd: options?.cwd });
+      })
+    ).resolves.toBeUndefined();
 
-      await execa('git', ['checkout', '-b', 'feature'], { cwd: repoRoot });
-      await fs.writeFile(path.join(repoRoot, 'marker.txt'), 'feature\n');
-      await execa('git', ['commit', '-am', 'feature state'], { cwd: repoRoot });
+    expect(calls).toEqual([{ command: 'wt', args: ['--version'], cwd: undefined }]);
+  });
 
-      await createIssueWorktree(repoRoot, worktreePath, 'issue/12-ship-issueflow-start');
+  it('throws a clear error when wt is missing', async () => {
+    await expect(
+      ensureWorktrunkAvailable(async () => {
+        const error = new Error('spawn wt ENOENT') as NodeJS.ErrnoException;
+        error.code = 'ENOENT';
+        throw error;
+      })
+    ).rejects.toMatchObject({
+      name: 'WorktrunkMissingError',
+      message: expect.stringContaining('Worktrunk is required')
+    } satisfies Partial<WorktrunkMissingError>);
+  });
+});
 
-      await expect(fs.readFile(path.join(worktreePath, 'marker.txt'), 'utf8')).resolves.toBe('main\n');
-    } finally {
-      await fs.rm(tempDir, { recursive: true, force: true });
-    }
+describe('Worktrunk switch helpers', () => {
+  it('creates a new issue workspace through wt switch --create', async () => {
+    const calls: Array<{ command: string; args: string[]; cwd?: string }> = [];
+
+    await switchNewIssueWorktree('/repo', 'issue/12-ship-issueflow-start', async (command, args, options) => {
+      calls.push({ command, args, cwd: options?.cwd });
+    });
+
+    expect(calls).toEqual([
+      {
+        command: 'wt',
+        args: ['switch', '--create', 'issue/12-ship-issueflow-start'],
+        cwd: '/repo'
+      }
+    ]);
+  });
+
+  it('switches an existing issue branch through wt switch', async () => {
+    const calls: Array<{ command: string; args: string[]; cwd?: string }> = [];
+
+    await switchExistingIssueWorktree('/repo', 'issue/12-ship-issueflow-start', async (command, args, options) => {
+      calls.push({ command, args, cwd: options?.cwd });
+    });
+
+    expect(calls).toEqual([
+      {
+        command: 'wt',
+        args: ['switch', 'issue/12-ship-issueflow-start'],
+        cwd: '/repo'
+      }
+    ]);
+  });
+});
+
+describe('resolveBranchWorktreePath', () => {
+  it('returns the worktree path for a branch', async () => {
+    const branchPath = await resolveBranchWorktreePath('/repo', 'issue/12-ship-issueflow-start', async () => ({
+      stdout: [
+        'worktree /repo',
+        'HEAD 1111111',
+        'branch refs/heads/main',
+        '',
+        'worktree /worktrees/issueflow/12',
+        'HEAD 2222222',
+        'branch refs/heads/issue/12-ship-issueflow-start'
+      ].join('\n')
+    }));
+
+    expect(branchPath).toBe('/worktrees/issueflow/12');
+  });
+
+  it('throws when the branch has no resolved worktree', async () => {
+    await expect(
+      resolveBranchWorktreePath('/repo', 'issue/12-ship-issueflow-start', async () => ({
+        stdout: ['worktree /repo', 'HEAD 1111111', 'branch refs/heads/main'].join('\n')
+      }))
+    ).rejects.toMatchObject({
+      name: 'WorktrunkPathResolutionError',
+      message: expect.stringContaining('Could not resolve Worktrunk checkout')
+    } satisfies Partial<WorktrunkPathResolutionError>);
   });
 });
 
