@@ -39,4 +39,58 @@ describe('findIssueArtifacts', () => {
       implementationReview: implementationReviewPath
     });
   });
+
+  it('prefers the latest numbered plan review artifact', async () => {
+    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-artifacts-'));
+    tempDirs.push(repoRoot);
+
+    await fs.mkdir(path.join(repoRoot, 'docs/issueflow/reviews'), { recursive: true });
+
+    const oldPlanReviewPath = path.join(repoRoot, 'docs/issueflow/reviews/2026-04-21-issue-12-plan-review.md');
+    const roundOnePath = path.join(repoRoot, 'docs/issueflow/reviews/2026-04-22-issue-12-plan-review-round-1.md');
+    const roundTwoPath = path.join(repoRoot, 'docs/issueflow/reviews/2026-04-22-issue-12-plan-review-round-2.md');
+
+    await fs.writeFile(oldPlanReviewPath, '# old review');
+    await fs.writeFile(roundOnePath, '# round 1');
+    await fs.writeFile(roundTwoPath, '# round 2');
+
+    const artifacts = await findIssueArtifacts(repoRoot, 12);
+
+    expect(artifacts.planReview).toBe(roundTwoPath);
+  });
+
+  it('prefers the latest numbered implementation review artifact', async () => {
+    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-artifacts-'));
+    tempDirs.push(repoRoot);
+
+    await fs.mkdir(path.join(repoRoot, 'docs/issueflow/reviews'), { recursive: true });
+
+    const roundThreePath = path.join(repoRoot, 'docs/issueflow/reviews/2026-04-23-issue-12-implementation-review-round-3.md');
+    const roundFourPath = path.join(repoRoot, 'docs/issueflow/reviews/2026-04-23-issue-12-implementation-review-round-4.md');
+
+    await fs.writeFile(roundThreePath, '# round 3');
+    await fs.writeFile(roundFourPath, '# round 4');
+
+    const artifacts = await findIssueArtifacts(repoRoot, 12);
+
+    expect(artifacts.implementationReview).toBe(roundFourPath);
+  });
+
+  it('keeps reading old unnumbered review artifact names', async () => {
+    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-artifacts-'));
+    tempDirs.push(repoRoot);
+
+    await fs.mkdir(path.join(repoRoot, 'docs/issueflow/reviews'), { recursive: true });
+
+    const planReviewPath = path.join(repoRoot, 'docs/issueflow/reviews/2026-04-21-issue-12-plan-review.md');
+    const implementationReviewPath = path.join(repoRoot, 'docs/issueflow/reviews/2026-04-22-issue-12-implementation-review.md');
+
+    await fs.writeFile(planReviewPath, '# plan review');
+    await fs.writeFile(implementationReviewPath, '# implementation review');
+
+    const artifacts = await findIssueArtifacts(repoRoot, 12);
+
+    expect(artifacts.planReview).toBe(planReviewPath);
+    expect(artifacts.implementationReview).toBe(implementationReviewPath);
+  });
 });
