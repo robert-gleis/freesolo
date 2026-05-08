@@ -1,6 +1,16 @@
 export type HostTool = 'codex' | 'claude' | 'cursor';
 export type ReviewGateStatus = 'pending' | 'pass' | 'pass_with_findings' | 'block';
 
+export interface ReviewLoopState {
+  currentRound: number;
+  maxRounds: 5;
+}
+
+export interface ReviewLoopsState {
+  plan: ReviewLoopState;
+  implementation: ReviewLoopState;
+}
+
 export interface RepoContext {
   host: string;
   owner: string;

@@ -4,10 +4,24 @@ import path from 'node:path';
 import { execa } from 'execa';
 import { z } from 'zod';
 
-import type { HostTool, ReviewGateStatus } from './types.js';
+import type { HostTool, ReviewGateStatus, ReviewLoopsState } from './types.js';
 
 const reviewGateStatusValues = ['pending', 'pass', 'pass_with_findings', 'block'] as const;
 const reviewGateStatusSchema = z.enum(reviewGateStatusValues) as z.ZodType<ReviewGateStatus>;
+const defaultReviewLoops: ReviewLoopsState = {
+  plan: {
+    currentRound: 1,
+    maxRounds: 5
+  },
+  implementation: {
+    currentRound: 1,
+    maxRounds: 5
+  }
+};
+const reviewLoopSchema = z.object({
+  currentRound: z.number().int().min(1).max(5).default(1),
+  maxRounds: z.literal(5).default(5)
+});
 
 export const sessionStateSchema = z.object({
   issueNumber: z.number().int().positive(),
@@ -31,6 +45,12 @@ export const sessionStateSchema = z.object({
     plan: reviewGateStatusSchema,
     implementation: reviewGateStatusSchema
   }),
+  reviewLoops: z
+    .object({
+      plan: reviewLoopSchema.default(defaultReviewLoops.plan),
+      implementation: reviewLoopSchema.default(defaultReviewLoops.implementation)
+    })
+    .default(defaultReviewLoops),
   createdAt: z.string().min(1),
   updatedAt: z.string().min(1),
   artifacts: z.object({
