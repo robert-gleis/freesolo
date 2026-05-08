@@ -6,6 +6,13 @@ import type { LaunchPlan } from '../adapters/types.js';
 import { findIssueArtifacts } from '../core/artifacts.js';
 import { listAssignedIssues } from '../core/github.js';
 import { parseGitHubRemote, readOriginRemote, resolveRepoRoot } from '../core/git.js';
+import {
+  checkHostAsset,
+  getHostAssetSpec,
+  installHostAsset,
+  type HostAssetSpec,
+  type HostAssetStatus
+} from '../core/host-asset.js';
 import { writeIssuePacket, writeSessionState } from '../core/session-state.js';
 import type { HostTool, IssueArtifactPaths, IssueSummary, RepoContext, WorktreeEntry } from '../core/types.js';
 import {
@@ -39,6 +46,7 @@ type PrintOnlyResult = {
   launchPlan: LaunchPlan;
   workspacePlan: WorkspacePlan;
   summaryLines: string[];
+  hostAssetStatus: HostAssetStatus;
 };
 type LaunchResult = { mode: 'launch'; launchPlan: LaunchPlan };
 
@@ -60,6 +68,10 @@ export interface StartPlanDeps {
   writeIssuePacket: typeof writeIssuePacket;
   chooseIssue: (issues: IssueSummary[]) => Promise<IssueSummary>;
   confirmReuse: (message: string) => Promise<boolean>;
+  getHostAssetSpec: (tool: HostTool, worktreePath: string) => HostAssetSpec;
+  checkHostAsset: (spec: HostAssetSpec) => Promise<HostAssetStatus>;
+  installHostAsset: (spec: HostAssetSpec) => Promise<void>;
+  confirmHostAssetInstall: (message: string) => Promise<boolean>;
   now: () => Date;
 }
 
@@ -93,6 +105,14 @@ const defaultDeps: StartPlanDeps = {
       message,
       default: true
     }),
+  getHostAssetSpec,
+  checkHostAsset,
+  installHostAsset,
+  confirmHostAssetInstall: async (message) =>
+    confirm({
+      message,
+      default: true
+    }),
   now: () => new Date()
 };
 
@@ -122,6 +142,8 @@ function buildPrintOnlySummary(input: {
   worktreePath: string;
   workspacePlan: WorkspacePlan;
   launchPlan: LaunchPlan;
+  hostAssetSpec: HostAssetSpec;
+  hostAssetStatus: HostAssetStatus;
 }): string[] {
   const summaryLines = [
     `Source checkout: ${input.sourceCheckout}`,
@@ -139,6 +161,7 @@ function buildPrintOnlySummary(input: {
     summaryLines.push('Setup commands: reuse existing worktree');
   }
 
+  summaryLines.push(`Host asset: ${input.hostAssetSpec.label} — ${input.hostAssetStatus} at ${input.hostAssetSpec.target}`);
   summaryLines.push(`Launch command: ${summarizeLaunchCommand(input.launchPlan)}`);
 
   if (input.launchPlan.postLaunchNote) {
@@ -357,6 +380,41 @@ export async function createStartPlan(input: { cwd: string; tool: HostTool; prin
     await deps.writeIssuePacket(worktreePath, buildIssuePacket(workflowInput));
   }
 
+  const hostAssetSpec = deps.getHostAssetSpec(input.tool, worktreePath);
+  let hostAssetStatus = await deps.checkHostAsset(hostAssetSpec);
+
+  if (!input.printOnly && hostAssetStatus !== 'current') {
+    const verb = hostAssetStatus === 'missing' ? 'Install' : 'Update';
+    let confirmed: boolean;
+
+    try {
+      confirmed = await deps.confirmHostAssetInstall(`${verb} ${hostAssetSpec.label} at ${hostAssetSpec.target}?`);
+    } catch (error) {
+      const cancelled = toCancelledResult(error);
+
+      if (cancelled) {
+        return cancelled;
+      }
+
+      throw error;
+    }
+
+    if (confirmed) {
+      const pastTense = hostAssetStatus === 'missing' ? 'Installed' : 'Updated';
+
+      try {
+        await deps.installHostAsset(hostAssetSpec);
+        hostAssetStatus = 'current';
+        console.log(`${pastTense} ${hostAssetSpec.label} at ${hostAssetSpec.target}.`);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.warn(`Failed to install ${hostAssetSpec.label} at ${hostAssetSpec.target}: ${message}`);
+      }
+    } else {
+      console.warn(`Continuing without ${hostAssetSpec.label}; the host may not find the issueflow workflow.`);
+    }
+  }
+
   const launchPlan = getAdapter(input.tool)({
     worktreePath,
     startupPrompt
@@ -374,8 +432,11 @@ export async function createStartPlan(input: { cwd: string; tool: HostTool; prin
         branchName,
         worktreePath,
         workspacePlan,
-        launchPlan
-      })
+        launchPlan,
+        hostAssetSpec,
+        hostAssetStatus
+      }),
+      hostAssetStatus
     };
   }
 

@@ -45,6 +45,16 @@ function createDeps(overrides: Partial<StartPlanDeps> = {}): StartPlanDeps {
     writeIssuePacket: async () => undefined,
     chooseIssue: async (issues) => issues[0],
     confirmReuse: async () => true,
+    getHostAssetSpec: (tool, worktreePath) => ({
+      tool,
+      source: `/pkg/integrations/${tool}.md`,
+      target: `${worktreePath}/.${tool}/issueflow.md`,
+      isDirectory: false,
+      label: `${tool} asset`
+    }),
+    checkHostAsset: async () => 'current',
+    installHostAsset: async () => undefined,
+    confirmHostAssetInstall: async () => true,
     now: () => new Date('2026-04-24T10:00:00.000Z'),
     ...overrides
   };
@@ -421,6 +431,140 @@ describe('createStartPlan', () => {
       mode: 'cancelled',
       message: 'Cancelled.'
     });
+  });
+
+  it('installs the host asset when missing and the user confirms', async () => {
+    const installs: string[] = [];
+    const prompts: string[] = [];
+
+    const result = await createStartPlan(
+      {
+        cwd: '/repo',
+        tool: 'claude',
+        printOnly: false
+      },
+      createDeps({
+        checkHostAsset: async () => 'missing',
+        confirmHostAssetInstall: async (message) => {
+          prompts.push(message);
+          return true;
+        },
+        installHostAsset: async (spec) => {
+          installs.push(spec.target);
+        }
+      })
+    );
+
+    expect(result.mode).toBe('launch');
+    expect(prompts[0]).toContain('Install');
+    expect(prompts[0]).toContain('claude asset');
+    expect(installs).toEqual(['/wt/issue-12-ship-issueflow-start/.claude/issueflow.md']);
+  });
+
+  it('updates the host asset when outdated and the user confirms', async () => {
+    const installs: string[] = [];
+    const prompts: string[] = [];
+
+    await createStartPlan(
+      {
+        cwd: '/repo',
+        tool: 'codex',
+        printOnly: false
+      },
+      createDeps({
+        checkHostAsset: async () => 'outdated',
+        confirmHostAssetInstall: async (message) => {
+          prompts.push(message);
+          return true;
+        },
+        installHostAsset: async (spec) => {
+          installs.push(spec.target);
+        }
+      })
+    );
+
+    expect(prompts[0]).toMatch(/^Update /);
+    expect(installs).toHaveLength(1);
+  });
+
+  it('skips installation when the user declines but still launches', async () => {
+    const installs: string[] = [];
+
+    const result = await createStartPlan(
+      {
+        cwd: '/repo',
+        tool: 'cursor',
+        printOnly: false
+      },
+      createDeps({
+        checkHostAsset: async () => 'missing',
+        confirmHostAssetInstall: async () => false,
+        installHostAsset: async (spec) => {
+          installs.push(spec.target);
+        }
+      })
+    );
+
+    expect(result.mode).toBe('launch');
+    expect(installs).toEqual([]);
+  });
+
+  it('does not prompt or install when the host asset is already current', async () => {
+    const prompts: string[] = [];
+    const installs: string[] = [];
+
+    await createStartPlan(
+      {
+        cwd: '/repo',
+        tool: 'claude',
+        printOnly: false
+      },
+      createDeps({
+        checkHostAsset: async () => 'current',
+        confirmHostAssetInstall: async (message) => {
+          prompts.push(message);
+          return true;
+        },
+        installHostAsset: async (spec) => {
+          installs.push(spec.target);
+        }
+      })
+    );
+
+    expect(prompts).toEqual([]);
+    expect(installs).toEqual([]);
+  });
+
+  it('reports host asset status in print-only mode without installing', async () => {
+    const installs: string[] = [];
+    const prompts: string[] = [];
+
+    const result = await createStartPlan(
+      {
+        cwd: '/repo',
+        tool: 'codex',
+        printOnly: true
+      },
+      createDeps({
+        checkHostAsset: async () => 'missing',
+        confirmHostAssetInstall: async (message) => {
+          prompts.push(message);
+          return true;
+        },
+        installHostAsset: async (spec) => {
+          installs.push(spec.target);
+        }
+      })
+    );
+
+    expect(result.mode).toBe('print-only');
+    expect(prompts).toEqual([]);
+    expect(installs).toEqual([]);
+
+    if (result.mode === 'print-only') {
+      expect(result.hostAssetStatus).toBe('missing');
+      expect(result.summaryLines.some((line) => line.startsWith('Host asset:') && line.includes('missing'))).toBe(true);
+    }
   });
 
   it('returns a cancelled result when worktree reuse confirmation is aborted', async () => {
