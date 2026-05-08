@@ -339,6 +339,16 @@ export async function createStartPlan(input: { cwd: string; tool: HostTool; prin
         plan: 'pending',
         implementation: 'pending'
       },
+      reviewLoops: {
+        plan: {
+          currentRound: 1,
+          maxRounds: 5
+        },
+        implementation: {
+          currentRound: 1,
+          maxRounds: 5
+        }
+      },
       createdAt: timestamp,
       updatedAt: timestamp,
       artifacts

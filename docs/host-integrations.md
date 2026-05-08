@@ -12,7 +12,7 @@ The reusable assets live in `integrations/` so they can be committed, reviewed, 
 
 ## Codex
 
-Copy `integrations/codex/issueflow-workflow/SKILL.md` into your Codex skills directory as `issueflow-workflow/SKILL.md`.
+Copy `integrations/skills/issueflow-workflow/SKILL.md` into your Codex skills directory as `issueflow-workflow/SKILL.md`.
 
 If your Codex installation uses a different skills path, keep the directory name `issueflow-workflow` and place the file wherever Codex loads custom skills from.
 

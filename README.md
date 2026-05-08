@@ -65,7 +65,7 @@ Existing worktrees are reused as-is and do not run the setup hook. `--print-only
 
 The reusable host assets are committed under `integrations/`:
 
-- `integrations/codex/issueflow-workflow/SKILL.md`
+- `integrations/skills/issueflow-workflow/SKILL.md`
 - `integrations/claude/commands/issueflow.md`
 - `integrations/cursor/commands/issueflow.md`
 

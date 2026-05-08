@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
 const assetFiles = [
-  'integrations/codex/issueflow-workflow/SKILL.md',
+  'integrations/skills/issueflow-workflow/SKILL.md',
   'integrations/claude/commands/issueflow.md',
   'integrations/cursor/commands/issueflow.md'
 ];
@@ -16,10 +16,15 @@ const requiredSnippets = [
   'Spec',
   'User Review Gate',
   'Plan',
-  'Review Gate 1',
+  'Plan Review/Fix Loop',
   'Implementation',
-  'Review Gate 2',
-  'Verification'
+  'Implementation Review/Fix Loop',
+  'Verification',
+  'fresh reviewer agent',
+  'separate fixer agent',
+  'up to 5 rounds',
+  'Do not proceed after round 5',
+  'scripts/review-loop.mjs'
 ];
 
 describe('host workflow assets', () => {
@@ -37,9 +42,9 @@ describe('host workflow assets', () => {
         'Spec',
         'User Review Gate',
         'Plan',
-        'Review Gate 1',
+        'Plan Review/Fix Loop',
         'Implementation',
-        'Review Gate 2',
+        'Implementation Review/Fix Loop',
         'Verification'
       ];
 
