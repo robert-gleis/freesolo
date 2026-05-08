@@ -9,7 +9,7 @@ The new behavior should make both review gates iterative. A reviewer agent revie
 ## Goals
 
 - Apply the review/fix loop to both the plan review gate and the implementation review gate.
-- Put deterministic loop mechanics in a reusable skill script where the Codex issueflow skill can call them.
+- Put deterministic loop mechanics in a reusable skill script where Codex and Claude Code can call the same issueflow skill.
 - Use a fresh reviewer agent for every review round.
 - Use a separate fixer agent when findings need to be addressed.
 - Exit the loop only when the reviewer passes with no findings.
@@ -21,6 +21,7 @@ The new behavior should make both review gates iterative. A reviewer agent revie
 
 - The CLI will not directly orchestrate spawned agents in this change.
 - The skill script will not directly call model-specific spawn-agent tools. It will produce the next reviewer or fixer action for the active agent to execute.
+- Host-specific command assets may remain as convenience wrappers, but the review loop behavior should live in the shared skill.
 - The workflow will not merge the reviewer and fixer responsibilities into one agent.
 - The loop will not proceed past a gate with unresolved findings.
 
@@ -85,11 +86,11 @@ Each gate should additionally track the active round and maximum rounds. A compa
 
 Existing session files without `reviewLoops` must remain valid, defaulting both gates to round 1 of 5.
 
-## Skill Script
+## Shared Skill Script
 
-The Codex issueflow skill should include a script under:
+The issueflow workflow should have a shared skill directory that can be installed by hosts that support skills, including Codex and Claude Code. The script should live under:
 
-- `integrations/codex/issueflow-workflow/scripts/review-loop.mjs`
+- `integrations/skills/issueflow-workflow/scripts/review-loop.mjs`
 
 The script owns the deterministic loop behavior:
 
@@ -104,6 +105,8 @@ The script owns the deterministic loop behavior:
 - when findings exist after round 5, mark the gate as `block` and tell the active agent to stop for user input
 
 The script should be deterministic and local-file based. It should not depend on a particular model provider or attempt to spawn agents by itself.
+
+The existing Codex skill asset should move to the shared skill directory. Claude can then use the same skill instead of duplicating the loop script in a command asset. Cursor can keep a command-style asset if it does not support this skill format.
 
 ## Kernel and Integrations
 
@@ -130,7 +133,7 @@ Unit tests should cover:
 - Session state remains compatible with existing files if defaults are added by parser logic.
 - Artifact discovery prefers the latest numbered review artifact.
 - Artifact discovery still accepts old unnumbered review artifact names.
-- The skill script prints reviewer and fixer handoffs, advances rounds, and blocks after round 5.
+- The shared skill script prints reviewer and fixer handoffs, advances rounds, and blocks after round 5.
 - Host integration assets mention separate reviewer and fixer agents and the 5-round cap.
 
 Integration tests should confirm that `issueflow start` writes initialized loop state for both gates and includes the loop instructions in the startup prompt.

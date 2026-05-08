@@ -4,7 +4,7 @@
 
 **Goal:** Add up-to-5-round review/fix loops to both issueflow review gates.
 
-**Architecture:** Keep issueflow as an instruction-injection launcher rather than a runtime orchestrator, but move deterministic loop bookkeeping into the Codex issueflow skill script. The CLI will initialize loop state, discover numbered review artifacts, and inject explicit loop instructions that tell the host agent to use the script before spawning fresh reviewer agents and separate fixer agents until a clean pass or round 5 block.
+**Architecture:** Keep issueflow as an instruction-injection launcher rather than a runtime orchestrator, but move deterministic loop bookkeeping into a shared issueflow skill script usable by Codex and Claude Code. The CLI will initialize loop state, discover numbered review artifacts, and inject explicit loop instructions that tell the host agent to use the script before spawning fresh reviewer agents and separate fixer agents until a clean pass or round 5 block.
 
 **Tech Stack:** TypeScript, Node.js 20, Zod, Vitest, markdown host integration assets.
 
@@ -17,11 +17,12 @@
 - Modify `src/core/artifacts.ts`: prefer latest numbered review artifacts while preserving old names.
 - Modify `src/workflow/kernel.ts`: replace single-pass gate language with shared review/fix loop instructions.
 - Modify `src/commands/start.ts`: initialize loop state in new sessions.
-- Create `integrations/codex/issueflow-workflow/scripts/review-loop.mjs`: provide the skill-local loop driver for round state, artifact paths, and reviewer/fixer handoff text.
+- Create `integrations/skills/issueflow-workflow/scripts/review-loop.mjs`: provide the shared skill-local loop driver for round state, artifact paths, and reviewer/fixer handoff text.
 - Create `tests/unit/review-loop-script.test.ts`: verify the skill script behavior through Node.
-- Modify `integrations/codex/issueflow-workflow/SKILL.md`: mirror loop workflow for Codex.
+- Move and modify `integrations/codex/issueflow-workflow/SKILL.md` to `integrations/skills/issueflow-workflow/SKILL.md`: make the workflow skill canonical for Codex and Claude Code.
 - Modify `integrations/claude/commands/issueflow.md`: mirror loop workflow for Claude.
 - Modify `integrations/cursor/commands/issueflow.md`: mirror loop workflow for Cursor.
+- Modify `README.md` and `docs/host-integrations.md`: document the shared skill path.
 - Modify `tests/unit/session-state.test.ts`: cover new state and legacy defaults.
 - Modify `tests/unit/artifacts.test.ts`: cover round-specific artifact discovery.
 - Modify `tests/unit/workflow.test.ts`: cover loop instructions in startup prompt.
@@ -499,10 +500,10 @@ git add src/commands/start.ts tests/integration/start-command.test.ts
 git commit -m "Initialize review loop state"
 ```
 
-## Task 5: Codex Skill Review Loop Script
+## Task 5: Shared Skill Review Loop Script
 
 **Files:**
-- Create: `integrations/codex/issueflow-workflow/scripts/review-loop.mjs`
+- Create: `integrations/skills/issueflow-workflow/scripts/review-loop.mjs`
 - Create: `tests/unit/review-loop-script.test.ts`
 
 - [ ] **Step 1: Write failing script tests**
@@ -518,7 +519,7 @@ import { execa } from 'execa';
 import { afterEach, describe, expect, it } from 'vitest';
 
 const tempDirs: string[] = [];
-const scriptPath = path.resolve('integrations/codex/issueflow-workflow/scripts/review-loop.mjs');
+const scriptPath = path.resolve('integrations/skills/issueflow-workflow/scripts/review-loop.mjs');
 const scriptEnv = { ISSUEFLOW_REVIEW_DATE: '2026-04-24' };
 
 async function createRepo(): Promise<string> {
@@ -644,11 +645,11 @@ describe('review-loop skill script', () => {
 
 Run: `npm test -- tests/unit/review-loop-script.test.ts`
 
-Expected: FAIL because `integrations/codex/issueflow-workflow/scripts/review-loop.mjs` does not exist.
+Expected: FAIL because `integrations/skills/issueflow-workflow/scripts/review-loop.mjs` does not exist.
 
 - [ ] **Step 3: Implement the skill script**
 
-Create `integrations/codex/issueflow-workflow/scripts/review-loop.mjs`:
+Create `integrations/skills/issueflow-workflow/scripts/review-loop.mjs`:
 
 ```js
 #!/usr/bin/env node
@@ -811,16 +812,18 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add integrations/codex/issueflow-workflow/scripts/review-loop.mjs tests/unit/review-loop-script.test.ts
-git commit -m "Add Codex review loop script"
+git add integrations/skills/issueflow-workflow/scripts/review-loop.mjs tests/unit/review-loop-script.test.ts
+git commit -m "Add shared review loop script"
 ```
 
 ## Task 6: Host Integration Assets
 
 **Files:**
-- Modify: `integrations/codex/issueflow-workflow/SKILL.md`
+- Move: `integrations/codex/issueflow-workflow/SKILL.md` to `integrations/skills/issueflow-workflow/SKILL.md`
 - Modify: `integrations/claude/commands/issueflow.md`
 - Modify: `integrations/cursor/commands/issueflow.md`
+- Modify: `README.md`
+- Modify: `docs/host-integrations.md`
 - Test: `tests/unit/integrations.test.ts`
 
 - [ ] **Step 1: Write failing integration asset test**
@@ -828,6 +831,12 @@ git commit -m "Add Codex review loop script"
 Update `requiredSnippets` in `tests/unit/integrations.test.ts`:
 
 ```ts
+const assetFiles = [
+  'integrations/skills/issueflow-workflow/SKILL.md',
+  'integrations/claude/commands/issueflow.md',
+  'integrations/cursor/commands/issueflow.md'
+];
+
 const requiredSnippets = [
   'git rev-parse --git-path issueflow/current-issue.md',
   'git rev-parse --git-path issueflow/session.json',
@@ -872,7 +881,7 @@ Expected: FAIL because host assets still mention `Review Gate 1` and `Review Gat
 
 - [ ] **Step 3: Update Codex skill asset**
 
-Replace the stage list and gate language in `integrations/codex/issueflow-workflow/SKILL.md` with:
+Move `integrations/codex/issueflow-workflow/SKILL.md` to `integrations/skills/issueflow-workflow/SKILL.md`, then replace its stage list and gate language with:
 
 ```md
 3. Continue the stage order exactly:
@@ -885,13 +894,13 @@ Replace the stage list and gate language in `integrations/codex/issueflow-workfl
    - Implementation with `superpowers:test-driven-development`
    - Implementation Review/Fix Loop in separate reviewer and fixer agents, up to 5 rounds
    - Verification with `superpowers:verification-before-completion`
-4. For Codex, use the skill script for review loop bookkeeping:
-   - Run `node integrations/codex/issueflow-workflow/scripts/review-loop.mjs next-review --gate plan` before each plan review round.
-   - After a plan review with findings, run `node integrations/codex/issueflow-workflow/scripts/review-loop.mjs record-review --gate plan --status pass_with_findings --artifact docs/issueflow/reviews/2026-04-24-issue-12-plan-review-round-1.md`.
-   - After a clean plan review, run `node integrations/codex/issueflow-workflow/scripts/review-loop.mjs record-review --gate plan --status pass --artifact docs/issueflow/reviews/2026-04-24-issue-12-plan-review-round-1.md`.
-   - Run `node integrations/codex/issueflow-workflow/scripts/review-loop.mjs next-review --gate implementation` before each implementation review round.
-   - After an implementation review with findings, run `node integrations/codex/issueflow-workflow/scripts/review-loop.mjs record-review --gate implementation --status pass_with_findings --artifact docs/issueflow/reviews/2026-04-24-issue-12-implementation-review-round-1.md`.
-   - After a clean implementation review, run `node integrations/codex/issueflow-workflow/scripts/review-loop.mjs record-review --gate implementation --status pass --artifact docs/issueflow/reviews/2026-04-24-issue-12-implementation-review-round-1.md`.
+4. For hosts that support skills, use the skill script for review loop bookkeeping:
+   - Run `node integrations/skills/issueflow-workflow/scripts/review-loop.mjs next-review --gate plan` before each plan review round.
+   - After a plan review with findings, run `node integrations/skills/issueflow-workflow/scripts/review-loop.mjs record-review --gate plan --status pass_with_findings --artifact docs/issueflow/reviews/2026-04-24-issue-12-plan-review-round-1.md`.
+   - After a clean plan review, run `node integrations/skills/issueflow-workflow/scripts/review-loop.mjs record-review --gate plan --status pass --artifact docs/issueflow/reviews/2026-04-24-issue-12-plan-review-round-1.md`.
+   - Run `node integrations/skills/issueflow-workflow/scripts/review-loop.mjs next-review --gate implementation` before each implementation review round.
+   - After an implementation review with findings, run `node integrations/skills/issueflow-workflow/scripts/review-loop.mjs record-review --gate implementation --status pass_with_findings --artifact docs/issueflow/reviews/2026-04-24-issue-12-implementation-review-round-1.md`.
+   - After a clean implementation review, run `node integrations/skills/issueflow-workflow/scripts/review-loop.mjs record-review --gate implementation --status pass --artifact docs/issueflow/reviews/2026-04-24-issue-12-implementation-review-round-1.md`.
 5. Review/fix loop rules for both review gates:
    - Run each review gate for up to 5 rounds.
    - For each round, spawn a fresh reviewer agent.
@@ -934,16 +943,32 @@ Never skip the two review/fix loops.
 
 Replace the stage list and gate language in `integrations/cursor/commands/issueflow.md` with the same stage order and review/fix loop rules used in the Claude command asset.
 
-- [ ] **Step 6: Run the focused test and verify it passes**
+- [ ] **Step 6: Update shared skill documentation**
+
+In `README.md`, replace the Codex-specific reusable asset bullet:
+
+```md
+- `integrations/skills/issueflow-workflow/SKILL.md`
+```
+
+In `docs/host-integrations.md`, update the skill path references from `integrations/codex/issueflow-workflow/SKILL.md` to:
+
+```md
+integrations/skills/issueflow-workflow/SKILL.md
+```
+
+Expected: documentation points at the shared skill directory for hosts that support skills.
+
+- [ ] **Step 7: Run the focused test and verify it passes**
 
 Run: `npm test -- tests/unit/integrations.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add integrations/codex/issueflow-workflow/SKILL.md integrations/claude/commands/issueflow.md integrations/cursor/commands/issueflow.md tests/unit/integrations.test.ts
+git add README.md docs/host-integrations.md integrations/codex/issueflow-workflow/SKILL.md integrations/skills/issueflow-workflow/SKILL.md integrations/claude/commands/issueflow.md integrations/cursor/commands/issueflow.md tests/unit/integrations.test.ts
 git commit -m "Update host assets for review loops"
 ```
 
@@ -981,10 +1006,10 @@ git add src/workflow/kernel.ts tests/unit/workflow.test.ts
 git commit -m "Fix review loop verification"
 ```
 
-Expected: no commit is needed when Tasks 1-5 were implemented exactly and tests/build pass.
+Expected: no commit is needed when Tasks 1-6 were implemented exactly and tests/build pass.
 
 ## Self-Review Notes
 
-- Spec coverage: Tasks cover loop instructions, max rounds, fresh reviewers, separate fixers, block after round 5, numbered artifacts, backwards-compatible artifact discovery, session defaults, host assets, and tests.
+- Spec coverage: Tasks cover loop instructions, max rounds, fresh reviewers, separate fixers, block after round 5, numbered artifacts, backwards-compatible artifact discovery, session defaults, the shared skill script, host assets, documentation, and tests.
 - Type consistency: `reviewLoops.plan.currentRound`, `reviewLoops.plan.maxRounds`, `reviewLoops.implementation.currentRound`, and `reviewLoops.implementation.maxRounds` are used consistently.
 - Scope: The plan intentionally avoids runtime host-specific agent orchestration. That belongs in a later CLI-orchestrated agents design if issueflow should spawn agents itself.
