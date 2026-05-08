@@ -55,8 +55,14 @@ describe('buildWorkflowKernel', () => {
     });
 
     expect(kernel).toContain('superpowers:brainstorming');
-    expect(kernel).toContain('Review Gate 1');
     expect(kernel).toContain('superpowers:test-driven-development');
     expect(kernel).toContain('superpowers:verification-before-completion');
+    expect(kernel).toContain('Plan Review/Fix Loop');
+    expect(kernel).toContain('Implementation Review/Fix Loop');
+    expect(kernel).toContain('up to 5 rounds');
+    expect(kernel).toContain('fresh reviewer agent');
+    expect(kernel).toContain('separate fixer agent');
+    expect(kernel).toContain('passes with no findings');
+    expect(kernel).toContain('Do not proceed after round 5');
   });
 });
