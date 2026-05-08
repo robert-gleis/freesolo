@@ -9,6 +9,7 @@ The new behavior should make both review gates iterative. A reviewer agent revie
 ## Goals
 
 - Apply the review/fix loop to both the plan review gate and the implementation review gate.
+- Put deterministic loop mechanics in a reusable skill script where the Codex issueflow skill can call them.
 - Use a fresh reviewer agent for every review round.
 - Use a separate fixer agent when findings need to be addressed.
 - Exit the loop only when the reviewer passes with no findings.
@@ -19,6 +20,7 @@ The new behavior should make both review gates iterative. A reviewer agent revie
 ## Non-Goals
 
 - The CLI will not directly orchestrate spawned agents in this change.
+- The skill script will not directly call model-specific spawn-agent tools. It will produce the next reviewer or fixer action for the active agent to execute.
 - The workflow will not merge the reviewer and fixer responsibilities into one agent.
 - The loop will not proceed past a gate with unresolved findings.
 
@@ -27,13 +29,15 @@ The new behavior should make both review gates iterative. A reviewer agent revie
 Both review gates use the same loop:
 
 1. Start round 1 for the active gate.
-2. Spawn a reviewer agent for the current artifact under review.
-3. The reviewer writes a round-specific review artifact.
-4. If the review passes with no findings, mark the gate as passed and continue to the next stage.
-5. If the review has findings, spawn a separate fixer agent with the review artifact and relevant source artifacts as input.
-6. The fixer applies changes and updates the relevant artifact or implementation.
-7. Start the next round with a fresh reviewer agent.
-8. Stop after round 5 if findings remain, mark the gate as blocked, and ask the user how to proceed.
+2. Use the issueflow skill script to determine the current round, review artifact path, and reviewer prompt.
+3. Spawn a reviewer agent for the current artifact under review.
+4. The reviewer writes a round-specific review artifact.
+5. Record the review result through the skill script.
+6. If the review passes with no findings, mark the gate as passed and continue to the next stage.
+7. If the review has findings, use the skill script to produce the fixer handoff, then spawn a separate fixer agent with the review artifact and relevant source artifacts as input.
+8. The fixer applies changes and updates the relevant artifact or implementation.
+9. Start the next round with a fresh reviewer agent.
+10. Stop after round 5 if findings remain, mark the gate as blocked, and ask the user how to proceed.
 
 The plan review loop runs after `superpowers:writing-plans` and before implementation. The implementation review loop runs after implementation and before verification.
 
@@ -81,6 +85,26 @@ Each gate should additionally track the active round and maximum rounds. A compa
 
 Existing session files without `reviewLoops` must remain valid, defaulting both gates to round 1 of 5.
 
+## Skill Script
+
+The Codex issueflow skill should include a script under:
+
+- `integrations/codex/issueflow-workflow/scripts/review-loop.mjs`
+
+The script owns the deterministic loop behavior:
+
+- locate `issueflow/session.json` through `git rev-parse --git-path issueflow/session.json`
+- validate the requested gate, either `plan` or `implementation`
+- read or default `reviewLoops`
+- report the current round and max rounds
+- print the expected review artifact path for the current round
+- print a reviewer handoff prompt for a fresh reviewer agent
+- record review outcomes as `pass`, `pass_with_findings`, or `block`
+- when findings exist and rounds remain, increment the round and print a fixer handoff prompt
+- when findings exist after round 5, mark the gate as `block` and tell the active agent to stop for user input
+
+The script should be deterministic and local-file based. It should not depend on a particular model provider or attempt to spawn agents by itself.
+
 ## Kernel and Integrations
 
 The shared workflow kernel and reusable host assets should describe the new stage order:
@@ -106,6 +130,7 @@ Unit tests should cover:
 - Session state remains compatible with existing files if defaults are added by parser logic.
 - Artifact discovery prefers the latest numbered review artifact.
 - Artifact discovery still accepts old unnumbered review artifact names.
+- The skill script prints reviewer and fixer handoffs, advances rounds, and blocks after round 5.
 - Host integration assets mention separate reviewer and fixer agents and the 5-round cap.
 
 Integration tests should confirm that `issueflow start` writes initialized loop state for both gates and includes the loop instructions in the startup prompt.
