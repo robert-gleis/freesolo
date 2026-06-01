@@ -37,4 +37,14 @@ describe('buildCli', () => {
     expect(optionFlags).toContain('--print-only');
     expect(optionFlags).toContain('--bail');
   });
+
+  it('rejects non-integer --issue values', () => {
+    const program = buildCli();
+    const verify = program.commands.find((command) => command.name() === 'verify');
+    expect(verify).toBeDefined();
+
+    // commander throws CommanderError on InvalidArgumentError when exitOverride is set
+    verify?.exitOverride();
+    expect(() => verify?.parse(['--issue', '1abc'], { from: 'user' })).toThrow(/positive integer/);
+  });
 });

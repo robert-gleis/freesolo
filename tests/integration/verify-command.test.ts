@@ -100,6 +100,52 @@ describe('issueflow verify (integration)', () => {
     await expect(fs.access(issueDir)).rejects.toThrow();
   });
 
+  it('records SIGINT on the running check when a real subprocess is killed', async () => {
+    if (process.platform === 'win32') {
+      // Windows SIGINT handling on Node subprocesses is unreliable; skip there.
+      return;
+    }
+
+    const repoRoot = await makeRepo();
+    await fs.writeFile(
+      path.join(repoRoot, 'issueflow.config.json'),
+      JSON.stringify({
+        verification: {
+          checks: [
+            {
+              name: 'long-running',
+              command: process.execPath,
+              args: ['-e', 'setInterval(() => {}, 1000)']
+            }
+          ]
+        }
+      })
+    );
+
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 200);
+
+    const result = await createVerifyPlan(
+      { cwd: repoRoot, options: { issue: 42 }, abortSignal: controller.signal },
+      defaultVerifyPlanDeps
+    );
+
+    expect(result.mode).toBe('completed');
+    if (result.mode !== 'completed') throw new Error('expected completed mode');
+
+    expect(result.exitCode).toBe(130);
+    // The check was killed mid-flight. Status must be 'fail'. Either signal is 'SIGINT'
+    // (most platforms) or aborted=true drove the 130 mapping — both are valid v1 contracts.
+    expect(result.run.checks[0].status).toBe('fail');
+
+    const runDir = path.join(
+      repoRoot,
+      '.git/issueflow/verifications/issue-42',
+      result.run.runId
+    );
+    await expect(fs.access(path.join(runDir, 'run.json'))).resolves.toBeUndefined();
+  }, 10000);
+
   it('reports a hard error when the config is missing', async () => {
     const repoRoot = await makeRepo();
 

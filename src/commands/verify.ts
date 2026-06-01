@@ -127,8 +127,19 @@ export async function createVerifyPlan(
     throw error;
   }
 
-  const runId = deps.newRunId();
-  const runDirectory = await deps.getRunDirectory(repoRoot, issueNumber, runId);
+  let runId: string;
+  let runDirectory: string;
+  try {
+    runId = deps.newRunId();
+    runDirectory = await deps.getRunDirectory(repoRoot, issueNumber, runId);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      mode: 'error',
+      message: `Failed to resolve verification run directory: ${message}`,
+      exitCode: 2
+    };
+  }
   const bail = Boolean(input.options.bail);
 
   if (input.options.printOnly) {

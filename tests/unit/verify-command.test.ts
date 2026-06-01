@@ -217,6 +217,22 @@ describe('createVerifyPlan', () => {
     }
   });
 
+  it('returns an error result with exit 2 when getRunDirectory fails', async () => {
+    const result = await createVerifyPlan(
+      { cwd: '/cwd', options: {} },
+      makeDeps({
+        getRunDirectory: async () => {
+          throw new Error('git rev-parse failed');
+        }
+      })
+    );
+
+    expect(result.mode).toBe('error');
+    if (result.mode !== 'error') throw new Error('expected error mode');
+    expect(result.exitCode).toBe(2);
+    expect(result.message).toMatch(/git rev-parse failed/);
+  });
+
   it('passes bail through to the pipeline', async () => {
     let captured = false;
 
