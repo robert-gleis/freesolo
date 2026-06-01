@@ -27,16 +27,13 @@ interface Harness {
 }
 
 function buildHarness(overrides: Partial<WorkflowEngineDeps> = {}): Harness {
-  const readState = vi.fn().mockResolvedValue('implementing');
-  const writeState = vi.fn().mockResolvedValue(undefined);
-  const policy = vi.fn<(input: PolicyInput) => EngineAction>(() => ({
-    kind: 'wait',
-    reason: 'default fixture wait'
-  }));
   const deps: WorkflowEngineDeps = {
-    readState,
-    writeState,
-    policy,
+    readState: vi.fn().mockResolvedValue('implementing'),
+    writeState: vi.fn().mockResolvedValue(undefined),
+    policy: vi.fn<(input: PolicyInput) => EngineAction>(() => ({
+      kind: 'wait',
+      reason: 'default fixture wait'
+    })),
     now: () => fixedNow,
     ...overrides
   };
@@ -45,7 +42,14 @@ function buildHarness(overrides: Partial<WorkflowEngineDeps> = {}): Harness {
   engine.on((event) => {
     events.push(event);
   });
-  return { engine, deps, events, policy, readState, writeState };
+  return {
+    engine,
+    deps,
+    events,
+    policy: deps.policy as unknown as ReturnType<typeof vi.fn>,
+    readState: deps.readState as unknown as ReturnType<typeof vi.fn>,
+    writeState: deps.writeState as unknown as ReturnType<typeof vi.fn>
+  };
 }
 
 describe('createWorkflowEngine tick refusals', () => {
@@ -141,5 +145,64 @@ describe('createWorkflowEngine tick: wait action', () => {
         action: { kind: 'wait', reason: 'agent owns implementation' }
       }
     ]);
+  });
+});
+
+describe('createWorkflowEngine tick: transition action', () => {
+  it('calls writeState, emits decision then transition events, and returns the new state', async () => {
+    const harness = buildHarness({
+      readState: vi.fn().mockResolvedValue('merged'),
+      writeState: vi.fn().mockResolvedValue(undefined),
+      policy: vi
+        .fn<(input: PolicyInput) => EngineAction>()
+        .mockReturnValue({ kind: 'transition', to: 'closed' })
+    });
+
+    const result = await harness.engine.tick({ repo, issueNumber: 24 });
+
+    expect(harness.writeState).toHaveBeenCalledWith(repo, 24, 'merged', 'closed');
+    expect(result).toEqual({
+      issueNumber: 24,
+      fromState: 'merged',
+      toState: 'closed',
+      action: { kind: 'transition', to: 'closed' }
+    });
+    expect(harness.events).toEqual([
+      {
+        kind: 'decision',
+        at: fixedNow,
+        issueNumber: 24,
+        fromState: 'merged',
+        action: { kind: 'transition', to: 'closed' }
+      },
+      {
+        kind: 'transition',
+        at: fixedNow,
+        issueNumber: 24,
+        from: 'merged',
+        to: 'closed'
+      }
+    ]);
+  });
+
+  it('translates InvalidTransitionError from writeState into a refused result', async () => {
+    const harness = buildHarness({
+      readState: vi.fn().mockResolvedValue('triaged'),
+      writeState: vi
+        .fn()
+        .mockRejectedValue(new InvalidTransitionError('triaged', 'closed', ['planned'])),
+      policy: vi
+        .fn<(input: PolicyInput) => EngineAction>()
+        .mockReturnValue({ kind: 'transition', to: 'closed' })
+    });
+
+    const result = await harness.engine.tick({ repo, issueNumber: 24 });
+
+    expect(result.refused?.code).toBe('invalid-transition');
+    expect(result.refused?.reason).toContain('Invalid workflow transition');
+    expect(result.toState).toBeNull();
+    expect(result.action).toEqual({ kind: 'transition', to: 'closed' });
+    expect(harness.events.filter((event) => event.kind === 'transition')).toHaveLength(0);
+    expect(harness.events.filter((event) => event.kind === 'decision')).toHaveLength(1);
   });
 });

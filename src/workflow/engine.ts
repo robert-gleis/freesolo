@@ -1,6 +1,6 @@
 import type { AgentAdapter } from '../agents/index.js';
 import type { EngineAction, PolicyInput } from './policy.js';
-import { type WorkflowState } from './state-machine.js';
+import { InvalidTransitionError, type WorkflowState } from './state-machine.js';
 import {
   InvalidStateLabelError,
   MultipleStateLabelsError,
@@ -130,6 +130,31 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
 
       if (action.kind === 'wait') {
         return { issueNumber, fromState: current, toState: current, action };
+      }
+
+      if (action.kind === 'transition') {
+        try {
+          await deps.writeState(repo, issueNumber, current, action.to);
+        } catch (error) {
+          if (error instanceof InvalidTransitionError) {
+            return {
+              issueNumber,
+              fromState: current,
+              toState: null,
+              action,
+              refused: { code: 'invalid-transition', reason: error.message }
+            };
+          }
+          throw error;
+        }
+        emit({
+          kind: 'transition',
+          at: now(),
+          issueNumber,
+          from: current,
+          to: action.to
+        });
+        return { issueNumber, fromState: current, toState: action.to, action };
       }
 
       return {
