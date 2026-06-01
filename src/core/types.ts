@@ -46,3 +46,5 @@ export interface WorktreeEntry {
   branchName: string;
   worktreePath: string;
 }
+
+export type RepoRef = Pick<RepoContext, 'owner' | 'repo'>;
