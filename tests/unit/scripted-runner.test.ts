@@ -93,4 +93,24 @@ describe('ScriptedRunner', () => {
       expect(afterSpawn.state).toBe('running');
     });
   });
+
+  describe('spawn() — failOnSpawn drives the runner into the error state', () => {
+    it('rejects with spawn-failed and exposes the reason via status.error', async () => {
+      const runner = new ScriptedRunner('r1', { failOnSpawn: 'boom' });
+
+      await expect(
+        runner.spawn({ binary: '/bin/true', args: [], cwd: '/tmp' })
+      ).rejects.toMatchObject({
+        name: 'RunnerError',
+        code: 'spawn-failed',
+        message: 'boom'
+      });
+
+      const status = await runner.status();
+      expect(status.state).toBe('error');
+      expect(status.error).toBe('boom');
+      expect(status.startedAt).toBeInstanceOf(Date);
+      expect(status.stoppedAt).toBeUndefined();
+    });
+  });
 });
