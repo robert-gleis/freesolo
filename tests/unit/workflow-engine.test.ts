@@ -113,3 +113,33 @@ describe('createWorkflowEngine tick refusals', () => {
     expect(harness.events[0].kind).toBe('decision');
   });
 });
+
+describe('createWorkflowEngine tick: wait action', () => {
+  it('returns the policy wait reason and emits a single decision event', async () => {
+    const harness = buildHarness({
+      readState: vi.fn().mockResolvedValue('implementing'),
+      policy: vi
+        .fn<(input: PolicyInput) => EngineAction>()
+        .mockReturnValue({ kind: 'wait', reason: 'agent owns implementation' })
+    });
+
+    const result = await harness.engine.tick({ repo, issueNumber: 24 });
+
+    expect(result).toEqual({
+      issueNumber: 24,
+      fromState: 'implementing',
+      toState: 'implementing',
+      action: { kind: 'wait', reason: 'agent owns implementation' }
+    });
+    expect(harness.writeState).not.toHaveBeenCalled();
+    expect(harness.events).toEqual([
+      {
+        kind: 'decision',
+        at: fixedNow,
+        issueNumber: 24,
+        fromState: 'implementing',
+        action: { kind: 'wait', reason: 'agent owns implementation' }
+      }
+    ]);
+  });
+});
