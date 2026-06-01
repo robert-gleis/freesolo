@@ -405,11 +405,11 @@ describe('ensureStateLabels', () => {
 });
 
 describe('defaultRunner', () => {
-  it('maps ENOENT to a clear "GitHub CLI not installed" message', async () => {
-    const enoent: NodeJS.ErrnoException = Object.assign(new Error('spawn gh ENOENT'), {
-      code: 'ENOENT'
-    });
-    vi.mocked(execa).mockRejectedValueOnce(enoent);
+  it('throws a friendly "GitHub CLI" message when execa rejects without an exitCode (spawn failure)', async () => {
+    // Real execa 9 spawn failures (e.g. missing `gh` binary) reject with an
+    // ExecaError whose `exitCode` is undefined. Mirror that shape with a plain
+    // Error that has no `exitCode` property.
+    vi.mocked(execa).mockRejectedValueOnce(new Error('spawn gh ENOENT'));
 
     await expect(defaultRunner(['issue', 'view', '1'])).rejects.toThrow(/GitHub CLI/);
   });
@@ -419,7 +419,9 @@ describe('defaultRunner', () => {
       Object.assign(new Error('command failed'), {
         exitCode: 1,
         stderr: 'gh: no auth',
-        stdout: ''
+        stdout: '',
+        failed: true,
+        shortMessage: 'Command failed with exit code 1: gh issue view 1'
       })
     );
 
@@ -436,6 +438,8 @@ Run: `npm test -- tests/unit/state-store.test.ts`
 Expected: FAIL with module-not-found.
 
 - [ ] **Step 3: Implement the state store**
+
+`defaultRunner` discriminates on `execaError.exitCode`: a spawn failure (binary missing, permission denied) rejects with `exitCode === undefined` and is thrown as the friendly "issueflow requires GitHub CLI access" message; a non-zero exit (binary ran, returned non-zero) carries a numeric `exitCode` and is returned as a `GhResult` so consumers can keep their `result.exitCode !== 0` checks. This is more robust across execa upgrades than sniffing `error.code === 'ENOENT'`.
 
 First update `src/core/types.ts` to add the canonical `RepoRef` alias so we don't double up on repo-identifier types. Append:
 
@@ -476,22 +480,28 @@ export const defaultRunner: GhRunner = async (args) => {
       exitCode: result.exitCode ?? 0
     };
   } catch (error) {
-    if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
-      throw new Error('issueflow requires GitHub CLI access. Run `gh auth status` and retry.');
-    }
-
-    // Non-ENOENT execa rejections (non-zero exit, gh stderr, etc.) are surfaced
-    // as a GhResult so consumers (`readState`, `writeState`, `createStateLabel`)
-    // can keep using `result.exitCode !== 0` checks and produce their own messages.
+    // execa 9 distinguishes spawn failures (binary missing, permission denied,
+    // etc.) from non-zero exits by whether the rejection carries an `exitCode`.
+    // Spawn failures reject with `exitCode === undefined`; treat those as
+    // "gh isn't usable" and surface the friendly install hint. Rejections that
+    // DO carry an `exitCode` mean the binary ran but exited non-zero — surface
+    // those as a GhResult so consumers (`readState`, `writeState`,
+    // `createStateLabel`) can keep using `result.exitCode !== 0` checks and
+    // produce their own messages from the captured stderr.
     const execaError = error as {
       exitCode?: number;
       stdout?: string;
       stderr?: string;
     };
+
+    if (execaError?.exitCode === undefined) {
+      throw new Error('issueflow requires GitHub CLI access. Run `gh auth status` and retry.');
+    }
+
     return {
       stdout: execaError.stdout ?? '',
       stderr: execaError.stderr ?? '',
-      exitCode: execaError.exitCode ?? 1
+      exitCode: execaError.exitCode
     };
   }
 };
@@ -1196,9 +1206,9 @@ git commit -m "Register issueflow state command group on the CLI"
 
 - [ ] **Step 1: Add a usage section for the state commands**
 
-Append a new section under the existing `## Usage` section in `README.md`:
+Insert the following markdown verbatim into `README.md`, immediately after the existing `## Usage` code block (the `cursor` example) and before the `## Worktree setup hooks` heading. The outer fence below uses tildes (`~~~markdown` / `~~~`) only so the inner triple-backtick `bash` block renders as part of the snippet — the tildes themselves are NOT part of what you paste; only the content between them is.
 
-```markdown
+~~~markdown
 ### Workflow state
 
 Inspect and advance the IssueFlow workflow state for a tracked issue:
@@ -1212,7 +1222,7 @@ ISSUEFLOW_ENGINE=1 issueflow state transition --issue 17 --to planned
 ```
 
 Valid states: `triaged`, `planned`, `approved`, `implementing`, `reviewing`, `verifying`, `pr-ready`, `merged`, `closed`. State is stored as a single `state:*` label on the GitHub issue.
-```
+~~~
 
 - [ ] **Step 2: Commit**
 
