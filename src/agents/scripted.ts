@@ -29,7 +29,16 @@ export class ScriptedAgentAdapter implements AgentAdapter {
   }
 
   async start(_input: AgentStartInput): Promise<void> {
-    throw new AgentAdapterError('start-failed', 'not implemented yet');
+    if (this.state !== 'idle' && this.state !== 'stopped') {
+      throw new AgentAdapterError(
+        'invalid-state',
+        `Cannot start from state "${this.state}"`
+      );
+    }
+    this.state = 'running';
+    this.startedAt = new Date();
+    this.lastActivityAt = undefined;
+    this.errorMessage = undefined;
   }
 
   async stop(): Promise<void> {
