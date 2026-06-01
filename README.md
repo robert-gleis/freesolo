@@ -53,6 +53,20 @@ issueflow start --tool cursor
 
 The `cursor` adapter uses `cursor-agent --workspace <worktree>` so the shared workflow kernel is injected at launch time instead of relying on a manual follow-up command.
 
+### Workflow state
+
+Inspect and advance the IssueFlow workflow state for a tracked issue:
+
+```bash
+issueflow state get --issue 17
+# prints the current state, or "null" with exit code 2 when no state:* label is set
+
+ISSUEFLOW_ENGINE=1 issueflow state transition --issue 17 --to planned
+# advances the state; the env var gates the transition so agent processes cannot bypass it
+```
+
+Valid states: `triaged`, `planned`, `approved`, `implementing`, `reviewing`, `verifying`, `pr-ready`, `merged`, `closed`. State is stored as a single `state:*` label on the GitHub issue.
+
 ## Worktree setup hooks
 
 `issueflow start` uses Worktrunk (`wt`) to create or switch issue worktrees. Worktree paths follow your Worktrunk configuration rather than issueflow's own sibling-directory convention.

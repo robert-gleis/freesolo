@@ -1,5 +1,7 @@
 import { Command, InvalidArgumentError, Option } from 'commander';
 
+import { registerEngineCommands } from './commands/engine.js';
+import { registerStateCommands } from './commands/state.js';
 import { startAction } from './commands/start.js';
 import { verifyAction } from './commands/verify.js';
 
@@ -43,6 +45,9 @@ Worktree setup:
     .option('--print-only', 'Print the resolved plan without spawning checks')
     .option('--bail', 'Stop the pipeline after the first failing check')
     .action(verifyAction);
+
+  registerStateCommands(program);
+  registerEngineCommands(program);
 
   return program;
 }
