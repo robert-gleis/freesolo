@@ -67,4 +67,47 @@ describe('ScriptedAgentAdapter', () => {
       expect(status.state).toBe('stopped');
     });
   });
+
+  describe('send() happy path', () => {
+    it('returns the output of the first matching step (string match)', async () => {
+      const adapter = new ScriptedAgentAdapter({
+        steps: [
+          { match: 'ping', output: 'pong' },
+          { match: 'ping', output: 'wrong' }
+        ]
+      });
+      await adapter.start({ workingDirectory: '/tmp/work' });
+
+      const response = await adapter.send('ping');
+
+      expect(response.output).toBe('pong');
+    });
+
+    it('returns the output of the first matching step (regex match)', async () => {
+      const adapter = new ScriptedAgentAdapter({
+        steps: [{ match: /^hello/i, output: 'hi' }]
+      });
+      await adapter.start({ workingDirectory: '/tmp/work' });
+
+      const response = await adapter.send('Hello world');
+
+      expect(response.output).toBe('hi');
+    });
+
+    it('updates lastActivityAt on successful send', async () => {
+      const adapter = new ScriptedAgentAdapter({
+        steps: [{ match: 'ping', output: 'pong' }]
+      });
+      await adapter.start({ workingDirectory: '/tmp/work' });
+      const startedAt = (await adapter.status()).startedAt;
+
+      const before = (await adapter.status()).lastActivityAt;
+      await adapter.send('ping');
+      const after = (await adapter.status()).lastActivityAt;
+
+      expect(before).toBeUndefined();
+      expect(after).toBeInstanceOf(Date);
+      expect(after!.getTime()).toBeGreaterThanOrEqual(startedAt!.getTime());
+    });
+  });
 });

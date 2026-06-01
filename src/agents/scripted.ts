@@ -46,8 +46,30 @@ export class ScriptedAgentAdapter implements AgentAdapter {
     this.state = 'stopped';
   }
 
-  async send(_input: string): Promise<AgentResponse> {
-    throw new AgentAdapterError('send-failed', 'not implemented yet');
+  async send(input: string): Promise<AgentResponse> {
+    if (this.state !== 'running') {
+      throw new AgentAdapterError(
+        'invalid-state',
+        `Cannot send while in state "${this.state}"`
+      );
+    }
+
+    for (const step of this.script.steps) {
+      if (matches(step.match, input)) {
+        this.lastActivityAt = new Date();
+        return { output: step.output };
+      }
+    }
+
+    if (this.script.fallback !== undefined) {
+      this.lastActivityAt = new Date();
+      return { output: this.script.fallback };
+    }
+
+    throw new AgentAdapterError(
+      'send-failed',
+      `No script step matched input: ${input}`
+    );
   }
 
   async status(): Promise<AgentStatus> {
@@ -57,4 +79,10 @@ export class ScriptedAgentAdapter implements AgentAdapter {
     if (this.errorMessage) snapshot.error = this.errorMessage;
     return snapshot;
   }
+}
+
+// A string `match` is exact case-sensitive equality; use a RegExp for substring or case-insensitive matching.
+function matches(match: string | RegExp, input: string): boolean {
+  if (typeof match === 'string') return match === input;
+  return match.test(input);
 }
