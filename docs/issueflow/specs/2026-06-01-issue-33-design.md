@@ -110,7 +110,7 @@ Purpose: a deterministic test double that validates the interface and will be re
 // src/agents/scripted.ts
 
 export interface ScriptStep {
-  match: string | RegExp;     // matched against send() input
+  match: string | RegExp;     // matched against send() input; a string `match` is exact case-sensitive equality, use a RegExp for substring or case-insensitive matching
   output: string;             // returned in AgentResponse.output
 }
 
