@@ -34,4 +34,13 @@ describe('buildCli', () => {
     const subcommands = stateCommand?.commands.map((command) => command.name()) ?? [];
     expect(subcommands).toEqual(expect.arrayContaining(['get', 'transition']));
   });
+
+  it('registers the engine command group with a tick subcommand', () => {
+    const program = buildCli();
+    const engineCommand = program.commands.find((command) => command.name() === 'engine');
+
+    expect(engineCommand).toBeDefined();
+    const subcommands = engineCommand?.commands.map((command) => command.name()) ?? [];
+    expect(subcommands).toEqual(expect.arrayContaining(['tick']));
+  });
 });

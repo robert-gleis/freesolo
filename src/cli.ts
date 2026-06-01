@@ -1,6 +1,7 @@
 import { Command, Option } from 'commander';
 
 import { startAction } from './commands/start.js';
+import { registerEngineCommands } from './commands/engine.js';
 import { registerStateCommands } from './commands/state.js';
 
 export function buildCli(): Command {
@@ -31,6 +32,7 @@ Worktree setup:
     .action(startAction);
 
   registerStateCommands(program);
+  registerEngineCommands(program);
 
   return program;
 }
