@@ -4,7 +4,7 @@ import { Command } from 'commander';
 
 import { registerStateCommands, type StateCommandDeps } from '../../src/commands/state.js';
 import { InvalidTransitionError } from '../../src/workflow/state-machine.js';
-import { MultipleStateLabelsError } from '../../src/workflow/state-store.js';
+import { InvalidStateLabelError, MultipleStateLabelsError } from '../../src/workflow/state-store.js';
 
 interface CapturedIo {
   stdout: string[];
@@ -89,6 +89,18 @@ describe('issueflow state get', () => {
 
     expect(io.stdout).toEqual([]);
     expect(io.stderr.join('')).toContain('multiple workflow state labels');
+    expect(io.exitCode).toBe(4);
+  });
+
+  it('reports an invalid state label and exits 4', async () => {
+    const { program, io } = buildHarness({
+      readState: vi.fn().mockRejectedValue(new InvalidStateLabelError(17, ['state:bogus']))
+    });
+
+    await program.parseAsync(['node', 'issueflow', 'state', 'get', '--issue', '17']);
+
+    expect(io.stdout).toEqual([]);
+    expect(io.stderr.join('')).toContain('unrecognised workflow state label');
     expect(io.exitCode).toBe(4);
   });
 });

@@ -84,6 +84,20 @@ export class MultipleStateLabelsError extends Error {
   }
 }
 
+export class InvalidStateLabelError extends Error {
+  readonly issueNumber: number;
+  readonly labels: string[];
+
+  constructor(issueNumber: number, labels: string[]) {
+    super(
+      `Issue #${issueNumber} has unrecognised workflow state label(s): ${labels.join(', ')}. Repair manually before retrying.`
+    );
+    this.name = 'InvalidStateLabelError';
+    this.issueNumber = issueNumber;
+    this.labels = labels;
+  }
+}
+
 export async function readState(
   repo: RepoRef,
   issueNumber: number,
@@ -104,9 +118,27 @@ export async function readState(
     throw new Error(`Failed to read labels for issue #${issueNumber}: ${result.stderr.trim() || 'gh exited non-zero'}`);
   }
 
-  const payload = JSON.parse(result.stdout || '{}') as IssueLabelsResponse;
-  const states = (payload.labels ?? [])
-    .map((label) => parseState(label.name ?? ''))
+  let payload: IssueLabelsResponse;
+  try {
+    payload = JSON.parse(result.stdout || '{}') as IssueLabelsResponse;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to parse \`gh issue view\` output for issue #${issueNumber}: ${message}`);
+  }
+
+  const labelNames = (payload.labels ?? []).map((label) => label.name ?? '');
+  const invalidStateLabels = labelNames.filter(
+    (name) =>
+      name.startsWith(STATE_LABEL_PREFIX) &&
+      !(WORKFLOW_STATES as readonly string[]).includes(name.slice(STATE_LABEL_PREFIX.length))
+  );
+
+  if (invalidStateLabels.length > 0) {
+    throw new InvalidStateLabelError(issueNumber, invalidStateLabels);
+  }
+
+  const states = labelNames
+    .map((name) => parseState(name))
     .filter((value): value is WorkflowState => value !== null);
 
   if (states.length === 0) {

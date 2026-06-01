@@ -4,6 +4,7 @@ import { InvalidTransitionError } from '../../src/workflow/state-machine.js';
 import {
   defaultRunner,
   ensureStateLabels,
+  InvalidStateLabelError,
   MultipleStateLabelsError,
   readState,
   STATE_LABEL_PREFIX,
@@ -82,6 +83,30 @@ describe('readState', () => {
     }));
 
     await expect(readState(repo, 42, { gh: runner })).rejects.toBeInstanceOf(MultipleStateLabelsError);
+  });
+
+  it('throws InvalidStateLabelError when a state:* label has an unknown suffix', async () => {
+    const { runner } = buildRunner(() => ({
+      stdout: JSON.stringify({ labels: [{ name: 'state:bogus' }] })
+    }));
+
+    await expect(readState(repo, 42, { gh: runner })).rejects.toBeInstanceOf(InvalidStateLabelError);
+  });
+
+  it('throws InvalidStateLabelError even when a known state:* label is also present', async () => {
+    const { runner } = buildRunner(() => ({
+      stdout: JSON.stringify({
+        labels: [{ name: 'state:planned' }, { name: 'state:bogus' }]
+      })
+    }));
+
+    await expect(readState(repo, 42, { gh: runner })).rejects.toBeInstanceOf(InvalidStateLabelError);
+  });
+
+  it('wraps malformed gh output in a helpful error message', async () => {
+    const { runner } = buildRunner(() => ({ stdout: 'not json' }));
+
+    await expect(readState(repo, 42, { gh: runner })).rejects.toThrow(/Failed to parse .* issue #42/);
   });
 });
 

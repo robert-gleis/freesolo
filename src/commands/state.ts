@@ -7,6 +7,7 @@ import {
   type WorkflowState
 } from '../workflow/state-machine.js';
 import {
+  InvalidStateLabelError,
   MultipleStateLabelsError,
   readState as defaultReadState,
   writeState as defaultWriteState,
@@ -81,7 +82,7 @@ function withCommanderErrorHandling(
     const message = error instanceof Error ? error.message : String(error);
     deps.write('stderr', `${message}\n`);
 
-    if (error instanceof MultipleStateLabelsError) {
+    if (error instanceof MultipleStateLabelsError || error instanceof InvalidStateLabelError) {
       deps.setExitCode(4);
       return;
     }
