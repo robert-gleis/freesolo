@@ -269,3 +269,138 @@ describe('createWorkflowEngine event subscribers', () => {
     expect(events).toEqual([]);
   });
 });
+
+function buildFakeAgent(): AgentAdapter & {
+  startCalls: Array<{ workingDirectory: string; initialInstructions?: string }>;
+  sendCalls: string[];
+  stopCalls: number;
+} {
+  const startCalls: Array<{ workingDirectory: string; initialInstructions?: string }> = [];
+  const sendCalls: string[] = [];
+  let stopCalls = 0;
+  const agent: AgentAdapter = {
+    async start(input) {
+      startCalls.push(input);
+    },
+    async stop() {
+      stopCalls += 1;
+    },
+    async send(input): Promise<AgentResponse> {
+      sendCalls.push(input);
+      return { output: 'ok' };
+    },
+    async status(): Promise<AgentStatus> {
+      return { state: 'running' };
+    }
+  };
+  return Object.assign(agent, {
+    startCalls,
+    sendCalls,
+    get stopCalls() {
+      return stopCalls;
+    }
+  });
+}
+
+describe('createWorkflowEngine tick: spawn action', () => {
+  it('refuses with no-agent-adapter when policy asks for spawn but none is configured', async () => {
+    const harness = buildHarness({
+      readState: vi.fn().mockResolvedValue('approved'),
+      policy: vi
+        .fn<(input: PolicyInput) => EngineAction>()
+        .mockReturnValue({
+          kind: 'spawn',
+          agent: { workingDirectory: '/tmp/wt', initialInstructions: 'go' },
+          nextState: 'implementing'
+        })
+    });
+
+    const result = await harness.engine.tick({ repo, issueNumber: 24 });
+
+    expect(result.refused?.code).toBe('no-agent-adapter');
+    expect(harness.writeState).not.toHaveBeenCalled();
+    expect(harness.events.filter((event) => event.kind === 'decision')).toHaveLength(1);
+    expect(harness.events.filter((event) => event.kind === 'transition')).toHaveLength(0);
+  });
+
+  it('starts the agent, sends the initial instructions once, then writes the next state', async () => {
+    const agent = buildFakeAgent();
+    const harness = buildHarness({
+      readState: vi.fn().mockResolvedValue('approved'),
+      writeState: vi.fn().mockResolvedValue(undefined),
+      policy: vi
+        .fn<(input: PolicyInput) => EngineAction>()
+        .mockReturnValue({
+          kind: 'spawn',
+          agent: { workingDirectory: '/tmp/wt', initialInstructions: 'continue issueflow' },
+          nextState: 'implementing'
+        }),
+      agent
+    });
+
+    const result = await harness.engine.tick({ repo, issueNumber: 24 });
+
+    expect(agent.startCalls).toEqual([
+      { workingDirectory: '/tmp/wt', initialInstructions: 'continue issueflow' }
+    ]);
+    expect(agent.sendCalls).toEqual(['continue issueflow']);
+    expect(harness.writeState).toHaveBeenCalledWith(repo, 24, 'approved', 'implementing');
+    expect(result.toState).toBe('implementing');
+    expect(harness.events.map((event) => event.kind)).toEqual(['decision', 'transition']);
+  });
+
+  it('translates InvalidTransitionError from the spawn writeState into a refused result', async () => {
+    const agent = buildFakeAgent();
+    const harness = buildHarness({
+      readState: vi.fn().mockResolvedValue('approved'),
+      writeState: vi
+        .fn()
+        .mockRejectedValue(new InvalidTransitionError('approved', 'closed', ['implementing'])),
+      policy: vi
+        .fn<(input: PolicyInput) => EngineAction>()
+        .mockReturnValue({
+          kind: 'spawn',
+          agent: { workingDirectory: '/tmp/wt', initialInstructions: 'go' },
+          nextState: 'closed'
+        }),
+      agent
+    });
+
+    const result = await harness.engine.tick({ repo, issueNumber: 24 });
+
+    expect(result.refused?.code).toBe('invalid-transition');
+    expect(agent.sendCalls).toEqual(['go']);
+    expect(harness.events.filter((event) => event.kind === 'transition')).toHaveLength(0);
+  });
+
+  it('lets adapter errors during start propagate (engine is one-shot, no retry)', async () => {
+    const failingAgent: AgentAdapter = {
+      async start() {
+        throw new Error('agent failed to start');
+      },
+      async stop() {},
+      async send() {
+        throw new Error('unreachable');
+      },
+      async status() {
+        return { state: 'idle' };
+      }
+    };
+    const harness = buildHarness({
+      readState: vi.fn().mockResolvedValue('approved'),
+      policy: vi
+        .fn<(input: PolicyInput) => EngineAction>()
+        .mockReturnValue({
+          kind: 'spawn',
+          agent: { workingDirectory: '/tmp/wt', initialInstructions: 'go' },
+          nextState: 'implementing'
+        }),
+      agent: failingAgent
+    });
+
+    await expect(harness.engine.tick({ repo, issueNumber: 24 })).rejects.toThrow(
+      'agent failed to start'
+    );
+    expect(harness.writeState).not.toHaveBeenCalled();
+  });
+});

@@ -157,6 +157,50 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
         return { issueNumber, fromState: current, toState: action.to, action };
       }
 
+      if (action.kind === 'spawn') {
+        if (!deps.agent) {
+          return {
+            issueNumber,
+            fromState: current,
+            toState: null,
+            action,
+            refused: {
+              code: 'no-agent-adapter',
+              reason: 'policy returned a spawn action but no agent adapter is configured'
+            }
+          };
+        }
+
+        await deps.agent.start({
+          workingDirectory: action.agent.workingDirectory,
+          initialInstructions: action.agent.initialInstructions
+        });
+        await deps.agent.send(action.agent.initialInstructions);
+
+        try {
+          await deps.writeState(repo, issueNumber, current, action.nextState);
+        } catch (error) {
+          if (error instanceof InvalidTransitionError) {
+            return {
+              issueNumber,
+              fromState: current,
+              toState: null,
+              action,
+              refused: { code: 'invalid-transition', reason: error.message }
+            };
+          }
+          throw error;
+        }
+        emit({
+          kind: 'transition',
+          at: now(),
+          issueNumber,
+          from: current,
+          to: action.nextState
+        });
+        return { issueNumber, fromState: current, toState: action.nextState, action };
+      }
+
       return {
         issueNumber,
         fromState: current,
