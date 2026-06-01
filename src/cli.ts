@@ -1,6 +1,7 @@
 import { Command, Option } from 'commander';
 
 import { startAction } from './commands/start.js';
+import { registerStateCommands } from './commands/state.js';
 
 export function buildCli(): Command {
   const program = new Command();
@@ -28,6 +29,8 @@ Worktree setup:
   the source checkout. Existing reused worktrees skip this hook.`
     )
     .action(startAction);
+
+  registerStateCommands(program);
 
   return program;
 }

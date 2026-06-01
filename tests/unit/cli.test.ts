@@ -25,4 +25,13 @@ describe('buildCli', () => {
     expect(helpOutput).toContain('scripts/setup-new-worktree.sh');
     expect(helpOutput).toContain('MAIN_REPO_ROOT');
   });
+
+  it('registers the state command group with get and transition subcommands', () => {
+    const program = buildCli();
+    const stateCommand = program.commands.find((command) => command.name() === 'state');
+
+    expect(stateCommand).toBeDefined();
+    const subcommands = stateCommand?.commands.map((command) => command.name()) ?? [];
+    expect(subcommands).toEqual(expect.arrayContaining(['get', 'transition']));
+  });
 });
