@@ -132,6 +132,7 @@ export class RunnerError extends Error {
 - Transitions: `running|starting|error` → `stopping` → `stopped`. From `idle` or `stopped`, resolves immediately as a no-op.
 - Must not throw on a no-op stop. On a failed shutdown of a real runtime, transitions to `error` and rejects with `RunnerError('stop-failed', ...)`.
 - Sets `stoppedAt` and `exitCode` once the runtime terminates.
+- When the prior state was `error`, `stop()` preserves `status.error` so the cause remains observable on the final `stopped` snapshot.
 
 `logs(options?)`
 - Preconditions: none. Always resolves.
