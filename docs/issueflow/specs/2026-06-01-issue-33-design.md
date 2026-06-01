@@ -144,10 +144,10 @@ This is enforced by review for now; a later ticket can add a lint rule once the 
 
 ## Testing
 
-Unit tests live under `tests/unit/agents/`.
+Unit tests live under `tests/unit/` (flat, matching existing repo convention).
 
-- `types.test.ts` — sanity-checks the interface is a structural type (compile-time only, captured via type assertions in the test file).
-- `scripted.test.ts` — drives `ScriptedAgentAdapter` through every state transition and asserts:
+- `agent-adapter-types.test.ts` — sanity-checks the interface is a structural type (compile-time only, captured via type assertions in the test file).
+- `scripted-agent-adapter.test.ts` — drives `ScriptedAgentAdapter` through every state transition and asserts:
   - Fresh adapter reports `idle`.
   - `start` moves to `running` and sets `startedAt`.
   - `send` returns the matching script step's output and updates `lastActivityAt`.

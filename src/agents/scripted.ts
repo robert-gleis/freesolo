@@ -42,7 +42,7 @@ export class ScriptedAgentAdapter implements AgentAdapter {
   }
 
   async stop(): Promise<void> {
-    if (this.state === 'idle') return;
+    if (this.state === 'idle' || this.state === 'stopped') return;
     this.state = 'stopped';
   }
 
