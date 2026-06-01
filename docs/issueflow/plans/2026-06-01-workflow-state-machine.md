@@ -12,8 +12,9 @@
 
 ## File Structure
 
+- Modify: `src/core/types.ts` — export `RepoRef = Pick<RepoContext, 'owner' | 'repo'>` so there is one canonical repo-identifier type.
 - Create: `src/workflow/state-machine.ts` — pure domain: state list, transition table, `canTransition`, `assertTransition`, `InvalidTransitionError`.
-- Create: `src/workflow/state-store.ts` — `gh`-backed I/O: `readState`, `writeState`, `ensureStateLabels`, `MultipleStateLabelsError`, plus an injectable `GhRunner` type.
+- Create: `src/workflow/state-store.ts` — `gh`-backed I/O: `readState`, `writeState`, `ensureStateLabels`, `MultipleStateLabelsError`, plus an injectable `GhRunner` type. Re-exports `RepoRef` from `core/types.ts`.
 - Create: `src/commands/state.ts` — Commander action handlers and the `registerStateCommands(program)` helper used by `cli.ts`.
 - Modify: `src/cli.ts` — register the `state` command group alongside `start`.
 - Create: `tests/unit/state-machine.test.ts` — table-driven coverage of transitions, self-transitions, error shape.
@@ -241,6 +242,7 @@ git commit -m "Add workflow state machine domain module"
 ## Task 2: State Store I/O Module
 
 **Files:**
+- Modify: `src/core/types.ts` (add `RepoRef` alias)
 - Create: `src/workflow/state-store.ts`
 - Test: `tests/unit/state-store.test.ts`
 
@@ -249,10 +251,11 @@ git commit -m "Add workflow state machine domain module"
 Create `tests/unit/state-store.test.ts`:
 
 ```ts
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { InvalidTransitionError } from '../../src/workflow/state-machine.js';
 import {
+  defaultRunner,
   ensureStateLabels,
   MultipleStateLabelsError,
   readState,
@@ -260,6 +263,9 @@ import {
   writeState,
   type GhRunner
 } from '../../src/workflow/state-store.js';
+
+vi.mock('execa', () => ({ execa: vi.fn() }));
+const { execa } = await import('execa');
 
 interface Call {
   args: string[];
@@ -346,41 +352,13 @@ describe('writeState', () => {
     expect(calls).toEqual([]);
   });
 
-  it('swaps labels in a single gh issue edit call on the happy path', async () => {
+  it('creates the target label up-front before swapping', async () => {
     const { runner, calls } = buildRunner(() => ({ stdout: '' }));
 
     await writeState(repo, 42, 'triaged', 'planned', { gh: runner });
 
-    expect(calls).toHaveLength(1);
+    expect(calls).toHaveLength(2);
     expect(calls[0].args).toEqual([
-      'issue',
-      'edit',
-      '42',
-      '--repo',
-      'acme/widgets',
-      '--remove-label',
-      'state:triaged',
-      '--add-label',
-      'state:planned'
-    ]);
-  });
-
-  it('creates the missing target label and retries when gh reports it does not exist', async () => {
-    let firstCallSeen = false;
-    const { runner, calls } = buildRunner((call) => {
-      if (call.args.includes('edit') && !firstCallSeen) {
-        firstCallSeen = true;
-        return { stderr: 'could not add label: "state:planned" not found', exitCode: 1 };
-      }
-      return { stdout: '' };
-    });
-
-    await writeState(repo, 42, 'triaged', 'planned', { gh: runner });
-
-    const commands = calls.map((call) => call.args[0] + ' ' + call.args[1]);
-    expect(commands).toEqual(['issue edit', 'label create', 'issue edit']);
-    const createCall = calls[1];
-    expect(createCall.args).toEqual([
       'label',
       'create',
       'state:planned',
@@ -391,6 +369,17 @@ describe('writeState', () => {
       '--description',
       'IssueFlow workflow state: planned',
       '--force'
+    ]);
+    expect(calls[1].args).toEqual([
+      'issue',
+      'edit',
+      '42',
+      '--repo',
+      'acme/widgets',
+      '--remove-label',
+      'state:triaged',
+      '--add-label',
+      'state:planned'
     ]);
   });
 });
@@ -410,6 +399,31 @@ describe('ensureStateLabels', () => {
     }
   });
 });
+
+describe('defaultRunner', () => {
+  it('maps ENOENT to a clear "GitHub CLI not installed" message', async () => {
+    const enoent: NodeJS.ErrnoException = Object.assign(new Error('spawn gh ENOENT'), {
+      code: 'ENOENT'
+    });
+    vi.mocked(execa).mockRejectedValueOnce(enoent);
+
+    await expect(defaultRunner(['issue', 'view', '1'])).rejects.toThrow(
+      'issueflow requires GitHub CLI access. Run `gh auth status` and retry.'
+    );
+  });
+
+  it('passes through non-zero exit codes without throwing', async () => {
+    vi.mocked(execa).mockResolvedValueOnce({
+      stdout: '',
+      stderr: 'boom',
+      exitCode: 1
+    } as never);
+
+    const result = await defaultRunner(['issue', 'view', '1']);
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toBe('boom');
+  });
+});
 ```
 
 - [ ] **Step 2: Run the failing test**
@@ -420,19 +434,23 @@ Expected: FAIL with module-not-found.
 
 - [ ] **Step 3: Implement the state store**
 
-Create `src/workflow/state-store.ts`:
+First update `src/core/types.ts` to add the canonical `RepoRef` alias so we don't double up on repo-identifier types. Append:
+
+```ts
+export type RepoRef = Pick<RepoContext, 'owner' | 'repo'>;
+```
+
+Then create `src/workflow/state-store.ts`:
 
 ```ts
 import { execa } from 'execa';
 
+import type { RepoRef } from '../core/types.js';
 import { assertTransition, WORKFLOW_STATES, type WorkflowState } from './state-machine.js';
 
 export const STATE_LABEL_PREFIX = 'state:';
 
-export interface RepoRef {
-  owner: string;
-  repo: string;
-}
+export type { RepoRef };
 
 export interface GhResult {
   stdout: string;
@@ -446,13 +464,20 @@ export interface StateStoreDeps {
   gh?: GhRunner;
 }
 
-const defaultRunner: GhRunner = async (args) => {
-  const result = await execa('gh', args, { reject: false });
-  return {
-    stdout: result.stdout ?? '',
-    stderr: result.stderr ?? '',
-    exitCode: result.exitCode ?? 0
-  };
+export const defaultRunner: GhRunner = async (args) => {
+  try {
+    const result = await execa('gh', args, { reject: false });
+    return {
+      stdout: result.stdout ?? '',
+      stderr: result.stderr ?? '',
+      exitCode: result.exitCode ?? 0
+    };
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
+      throw new Error('issueflow requires GitHub CLI access. Run `gh auth status` and retry.');
+    }
+    throw error;
+  }
 };
 
 const STATE_LABEL_COLOR = 'C5DEF5';
@@ -481,9 +506,9 @@ function parseState(label: string): WorkflowState | null {
 
 export class MultipleStateLabelsError extends Error {
   readonly issueNumber: number;
-  readonly labels: WorkflowState[];
+  readonly labels: string[];
 
-  constructor(issueNumber: number, labels: WorkflowState[]) {
+  constructor(issueNumber: number, labels: string[]) {
     super(
       `Issue #${issueNumber} has multiple workflow state labels: ${labels.join(', ')}. Repair manually before retrying.`
     );
@@ -548,14 +573,6 @@ async function createStateLabel(repo: RepoRef, state: WorkflowState, gh: GhRunne
   }
 }
 
-function isMissingLabelError(result: GhResult, state: WorkflowState): boolean {
-  if (result.exitCode === 0) {
-    return false;
-  }
-  const message = (result.stderr + result.stdout).toLowerCase();
-  return message.includes(labelFor(state).toLowerCase()) && message.includes('not found');
-}
-
 export async function writeState(
   repo: RepoRef,
   issueNumber: number,
@@ -570,7 +587,13 @@ export async function writeState(
   }
 
   const gh = deps.gh ?? defaultRunner;
-  const editArgs = [
+
+  // `gh label create --force` is idempotent (creates or updates), so calling it
+  // before every swap is cheap and removes the need to sniff `gh`'s error string
+  // for a "label not found" condition (which varies across gh versions).
+  await createStateLabel(repo, to, gh);
+
+  const result = await gh([
     'issue',
     'edit',
     String(issueNumber),
@@ -580,25 +603,11 @@ export async function writeState(
     labelFor(from),
     '--add-label',
     labelFor(to)
-  ];
+  ]);
 
-  const firstAttempt = await gh(editArgs);
-  if (firstAttempt.exitCode === 0) {
-    return;
-  }
-
-  if (!isMissingLabelError(firstAttempt, to)) {
+  if (result.exitCode !== 0) {
     throw new Error(
-      `Failed to swap state labels on issue #${issueNumber}: ${firstAttempt.stderr.trim() || 'gh exited non-zero'}`
-    );
-  }
-
-  await createStateLabel(repo, to, gh);
-
-  const secondAttempt = await gh(editArgs);
-  if (secondAttempt.exitCode !== 0) {
-    throw new Error(
-      `Failed to apply state label after creating ${labelFor(to)} on issue #${issueNumber}: ${secondAttempt.stderr.trim() || 'gh exited non-zero'}`
+      `Failed to swap state labels on issue #${issueNumber}: ${result.stderr.trim() || 'gh exited non-zero'}`
     );
   }
 }
@@ -620,7 +629,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/workflow/state-store.ts tests/unit/state-store.test.ts
+git add src/core/types.ts src/workflow/state-store.ts tests/unit/state-store.test.ts
 git commit -m "Add gh-backed workflow state store"
 ```
 
@@ -685,6 +694,19 @@ afterEach(() => {
 describe('issueflow state get', () => {
   it('prints the current state when one exists', async () => {
     const { program, io, deps } = buildHarness({
+      readState: vi.fn().mockResolvedValue('implementing')
+    });
+
+    await program.parseAsync(['node', 'issueflow', 'state', 'get', '--issue', '17']);
+
+    expect(deps.readState).toHaveBeenCalledWith({ owner: 'acme', repo: 'widgets' }, 17);
+    expect(io.stdout).toEqual(['implementing\n']);
+    expect(io.exitCode).toBeNull();
+  });
+
+  it('does not require ISSUEFLOW_ENGINE for state get', async () => {
+    const { program, io, deps } = buildHarness({
+      env: {},
       readState: vi.fn().mockResolvedValue('implementing')
     });
 
@@ -828,6 +850,27 @@ describe('issueflow state transition', () => {
 
     expect(io.exitCode).toBe(1);
     expect(io.stderr.join('')).toContain('Invalid workflow transition: triaged → merged');
+  });
+
+  it('exits 4 when readState sees multiple state labels during transition', async () => {
+    const { program, io, deps } = buildHarness({
+      readState: vi.fn().mockRejectedValue(new MultipleStateLabelsError(17, ['triaged', 'planned']))
+    });
+
+    await program.parseAsync([
+      'node',
+      'issueflow',
+      'state',
+      'transition',
+      '--issue',
+      '17',
+      '--to',
+      'planned'
+    ]);
+
+    expect(deps.writeState).not.toHaveBeenCalled();
+    expect(io.exitCode).toBe(4);
+    expect(io.stderr.join('')).toContain('multiple workflow state labels');
   });
 });
 ```
@@ -1168,7 +1211,6 @@ After Task 5, run the full check the verification skill expects:
 
 - `npm test` — every unit test green.
 - `npm run build` — clean TypeScript build.
-- `node ./dist/src/bin.js state get --issue 17` against the live repo (read-only, exit code 2 expected because no labels are seeded yet — this confirms the binary wires correctly).
 
 The acceptance criteria map back to the spec:
 
