@@ -158,4 +158,35 @@ describe('ScriptedAgentAdapter', () => {
       });
     });
   });
+
+  describe('reuse after stop', () => {
+    it('allows start → stop → start again', async () => {
+      const adapter = new ScriptedAgentAdapter({
+        steps: [{ match: 'ping', output: 'pong' }]
+      });
+      await adapter.start({ workingDirectory: '/tmp/work' });
+      await adapter.stop();
+      await adapter.start({ workingDirectory: '/tmp/work' });
+
+      const status = await adapter.status();
+      const response = await adapter.send('ping');
+
+      expect(status.state).toBe('running');
+      expect(response.output).toBe('pong');
+    });
+
+    it('clears lastActivityAt on restart', async () => {
+      const adapter = new ScriptedAgentAdapter({
+        steps: [{ match: 'ping', output: 'pong' }]
+      });
+      await adapter.start({ workingDirectory: '/tmp/work' });
+      await adapter.send('ping');
+      expect((await adapter.status()).lastActivityAt).toBeInstanceOf(Date);
+
+      await adapter.stop();
+      await adapter.start({ workingDirectory: '/tmp/work' });
+
+      expect((await adapter.status()).lastActivityAt).toBeUndefined();
+    });
+  });
 });
