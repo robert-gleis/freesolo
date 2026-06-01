@@ -251,7 +251,7 @@ git commit -m "Add workflow state machine domain module"
 Create `tests/unit/state-store.test.ts`:
 
 ```ts
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InvalidTransitionError } from '../../src/workflow/state-machine.js';
 import {
@@ -266,6 +266,10 @@ import {
 
 vi.mock('execa', () => ({ execa: vi.fn() }));
 const { execa } = await import('execa');
+
+beforeEach(() => {
+  vi.mocked(execa).mockReset();
+});
 
 interface Call {
   args: string[];
@@ -407,21 +411,20 @@ describe('defaultRunner', () => {
     });
     vi.mocked(execa).mockRejectedValueOnce(enoent);
 
-    await expect(defaultRunner(['issue', 'view', '1'])).rejects.toThrow(
-      'issueflow requires GitHub CLI access. Run `gh auth status` and retry.'
-    );
+    await expect(defaultRunner(['issue', 'view', '1'])).rejects.toThrow(/GitHub CLI/);
   });
 
   it('passes through non-zero exit codes without throwing', async () => {
-    vi.mocked(execa).mockResolvedValueOnce({
-      stdout: '',
-      stderr: 'boom',
-      exitCode: 1
-    } as never);
+    vi.mocked(execa).mockRejectedValueOnce(
+      Object.assign(new Error('command failed'), {
+        exitCode: 1,
+        stderr: 'gh: no auth',
+        stdout: ''
+      })
+    );
 
     const result = await defaultRunner(['issue', 'view', '1']);
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr).toBe('boom');
+    expect(result).toEqual({ exitCode: 1, stderr: 'gh: no auth', stdout: '' });
   });
 });
 ```
@@ -466,7 +469,7 @@ export interface StateStoreDeps {
 
 export const defaultRunner: GhRunner = async (args) => {
   try {
-    const result = await execa('gh', args, { reject: false });
+    const result = await execa('gh', args);
     return {
       stdout: result.stdout ?? '',
       stderr: result.stderr ?? '',
@@ -476,7 +479,20 @@ export const defaultRunner: GhRunner = async (args) => {
     if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
       throw new Error('issueflow requires GitHub CLI access. Run `gh auth status` and retry.');
     }
-    throw error;
+
+    // Non-ENOENT execa rejections (non-zero exit, gh stderr, etc.) are surfaced
+    // as a GhResult so consumers (`readState`, `writeState`, `createStateLabel`)
+    // can keep using `result.exitCode !== 0` checks and produce their own messages.
+    const execaError = error as {
+      exitCode?: number;
+      stdout?: string;
+      stderr?: string;
+    };
+    return {
+      stdout: execaError.stdout ?? '',
+      stderr: execaError.stderr ?? '',
+      exitCode: execaError.exitCode ?? 1
+    };
   }
 };
 
@@ -735,6 +751,7 @@ describe('issueflow state get', () => {
 
     await program.parseAsync(['node', 'issueflow', 'state', 'get', '--issue', '17']);
 
+    expect(io.stdout).toEqual([]);
     expect(io.stderr.join('')).toContain('multiple workflow state labels');
     expect(io.exitCode).toBe(4);
   });
@@ -869,6 +886,7 @@ describe('issueflow state transition', () => {
     ]);
 
     expect(deps.writeState).not.toHaveBeenCalled();
+    expect(io.stdout).toEqual([]);
     expect(io.exitCode).toBe(4);
     expect(io.stderr.join('')).toContain('multiple workflow state labels');
   });
