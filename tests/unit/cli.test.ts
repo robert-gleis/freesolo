@@ -26,6 +26,28 @@ describe('buildCli', () => {
     expect(helpOutput).toContain('MAIN_REPO_ROOT');
   });
 
+  it('registers the verify command with the expected options', () => {
+    const program = buildCli();
+    const verify = program.commands.find((command) => command.name() === 'verify');
+
+    expect(verify).toBeDefined();
+    const optionFlags = verify?.options.map((option) => option.long) ?? [];
+    expect(optionFlags).toContain('--issue');
+    expect(optionFlags).toContain('--config');
+    expect(optionFlags).toContain('--print-only');
+    expect(optionFlags).toContain('--bail');
+  });
+
+  it('rejects non-integer --issue values', () => {
+    const program = buildCli();
+    const verify = program.commands.find((command) => command.name() === 'verify');
+    expect(verify).toBeDefined();
+
+    // commander throws CommanderError on InvalidArgumentError when exitOverride is set
+    verify?.exitOverride();
+    expect(() => verify?.parse(['--issue', '1abc'], { from: 'user' })).toThrow(/positive integer/);
+  });
+
   it('registers the state command group with get and transition subcommands', () => {
     const program = buildCli();
     const stateCommand = program.commands.find((command) => command.name() === 'state');
