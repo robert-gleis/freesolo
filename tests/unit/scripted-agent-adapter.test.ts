@@ -110,4 +110,52 @@ describe('ScriptedAgentAdapter', () => {
       expect(after!.getTime()).toBeGreaterThanOrEqual(startedAt!.getTime());
     });
   });
+
+  describe('send() failure semantics', () => {
+    it('returns fallback when no step matches', async () => {
+      const adapter = new ScriptedAgentAdapter({
+        steps: [{ match: 'ping', output: 'pong' }],
+        fallback: 'unknown'
+      });
+      await adapter.start({ workingDirectory: '/tmp/work' });
+
+      const response = await adapter.send('what?');
+
+      expect(response.output).toBe('unknown');
+    });
+
+    it('rejects with send-failed when no step matches and no fallback is set', async () => {
+      const adapter = new ScriptedAgentAdapter({
+        steps: [{ match: 'ping', output: 'pong' }]
+      });
+      await adapter.start({ workingDirectory: '/tmp/work' });
+
+      await expect(adapter.send('nope')).rejects.toMatchObject({
+        name: 'AgentAdapterError',
+        code: 'send-failed'
+      });
+    });
+
+    it('rejects with invalid-state when called before start', async () => {
+      const adapter = new ScriptedAgentAdapter({ steps: [] });
+
+      await expect(adapter.send('ping')).rejects.toMatchObject({
+        name: 'AgentAdapterError',
+        code: 'invalid-state'
+      });
+    });
+
+    it('rejects with invalid-state when called after stop', async () => {
+      const adapter = new ScriptedAgentAdapter({
+        steps: [{ match: 'ping', output: 'pong' }]
+      });
+      await adapter.start({ workingDirectory: '/tmp/work' });
+      await adapter.stop();
+
+      await expect(adapter.send('ping')).rejects.toMatchObject({
+        name: 'AgentAdapterError',
+        code: 'invalid-state'
+      });
+    });
+  });
 });
