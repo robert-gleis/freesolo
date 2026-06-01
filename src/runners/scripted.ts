@@ -34,7 +34,21 @@ export class ScriptedRunner implements Runner {
   }
 
   async spawn(_spec: SpawnSpec): Promise<void> {
-    throw new RunnerError('spawn-failed', 'not implemented yet');
+    if (this.state !== 'idle' && this.state !== 'stopped') {
+      throw new RunnerError(
+        'invalid-state',
+        `Cannot spawn from state "${this.state}"`
+      );
+    }
+
+    this.state = 'starting';
+    this.startedAt = new Date();
+    this.stoppedAt = undefined;
+    this.exitCode = undefined;
+    this.errorMessage = undefined;
+
+    this.state = 'running';
+    this.hasSpawned = true;
   }
 
   async stop(): Promise<void> {

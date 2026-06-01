@@ -28,4 +28,52 @@ describe('ScriptedRunner', () => {
       expect(snapshot.truncated).toBe(false);
     });
   });
+
+  describe('spawn() — happy path', () => {
+    it('transitions idle → running and records startedAt', async () => {
+      const runner = new ScriptedRunner('r1');
+
+      await runner.spawn({ binary: '/bin/true', args: [], cwd: '/tmp' });
+      const status = await runner.status();
+
+      expect(status.state).toBe('running');
+      expect(status.startedAt).toBeInstanceOf(Date);
+      expect(status.exitCode).toBeUndefined();
+    });
+
+    it('exposes scripted stdout/stderr after spawn', async () => {
+      const runner = new ScriptedRunner('r1', { stdout: 'hello\n', stderr: 'oops\n' });
+
+      await runner.spawn({ binary: '/bin/true', args: [], cwd: '/tmp' });
+      const snapshot = await runner.logs();
+
+      expect(snapshot.stdout).toBe('hello\n');
+      expect(snapshot.stderr).toBe('oops\n');
+      expect(snapshot.combined).toBe('[stdout]\nhello\n\n[stderr]\noops\n');
+      expect(snapshot.truncated).toBe(false);
+    });
+
+    it('produces combined logs with only the populated half when stderr is empty', async () => {
+      const runner = new ScriptedRunner('r1', { stdout: 'only out' });
+
+      await runner.spawn({ binary: '/bin/true', args: [], cwd: '/tmp' });
+      const snapshot = await runner.logs();
+
+      expect(snapshot.combined).toBe('[stdout]\nonly out');
+    });
+  });
+
+  describe('spawn() — invalid state', () => {
+    it('rejects with invalid-state when called twice without stop', async () => {
+      const runner = new ScriptedRunner('r1');
+      await runner.spawn({ binary: '/bin/true', args: [], cwd: '/tmp' });
+
+      await expect(
+        runner.spawn({ binary: '/bin/true', args: [], cwd: '/tmp' })
+      ).rejects.toMatchObject({
+        name: 'RunnerError',
+        code: 'invalid-state'
+      });
+    });
+  });
 });
