@@ -206,3 +206,66 @@ describe('createWorkflowEngine tick: transition action', () => {
     expect(harness.events.filter((event) => event.kind === 'decision')).toHaveLength(1);
   });
 });
+
+describe('createWorkflowEngine event subscribers', () => {
+  it('delivers every event to every subscriber', async () => {
+    const seenA: WorkflowEngineEvent[] = [];
+    const seenB: WorkflowEngineEvent[] = [];
+    const engine = createWorkflowEngine({
+      readState: vi.fn().mockResolvedValue('merged'),
+      writeState: vi.fn().mockResolvedValue(undefined),
+      policy: () => ({ kind: 'transition', to: 'closed' }),
+      now: () => fixedNow
+    });
+    engine.on((event) => {
+      seenA.push(event);
+    });
+    engine.on((event) => {
+      seenB.push(event);
+    });
+
+    await engine.tick({ repo, issueNumber: 24 });
+
+    expect(seenA.map((event) => event.kind)).toEqual(['decision', 'transition']);
+    expect(seenB.map((event) => event.kind)).toEqual(['decision', 'transition']);
+  });
+
+  it('continues to deliver events even when a subscriber throws', async () => {
+    const events: WorkflowEngineEvent[] = [];
+    const engine = createWorkflowEngine({
+      readState: vi.fn().mockResolvedValue('merged'),
+      writeState: vi.fn().mockResolvedValue(undefined),
+      policy: () => ({ kind: 'transition', to: 'closed' }),
+      now: () => fixedNow
+    });
+    engine.on(() => {
+      throw new Error('logger boom');
+    });
+    engine.on((event) => {
+      events.push(event);
+    });
+
+    const result = await engine.tick({ repo, issueNumber: 24 });
+
+    expect(result.refused).toBeUndefined();
+    expect(events).toHaveLength(2);
+  });
+
+  it('stops sending events after the subscriber unsubscribes', async () => {
+    const events: WorkflowEngineEvent[] = [];
+    const engine = createWorkflowEngine({
+      readState: vi.fn().mockResolvedValue('merged'),
+      writeState: vi.fn().mockResolvedValue(undefined),
+      policy: () => ({ kind: 'transition', to: 'closed' }),
+      now: () => fixedNow
+    });
+    const unsubscribe = engine.on((event) => {
+      events.push(event);
+    });
+    unsubscribe();
+
+    await engine.tick({ repo, issueNumber: 24 });
+
+    expect(events).toEqual([]);
+  });
+});
