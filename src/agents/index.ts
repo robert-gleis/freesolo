@@ -11,6 +11,14 @@ export { AgentAdapterError } from './types.js';
 export { ScriptedAgentAdapter } from './scripted.js';
 export type { AgentScript, ScriptStep } from './scripted.js';
 
+export { ClaudeCodeAgentAdapter } from './claude-code.js';
+export type {
+  ClaudeCodeAgentAdapterOptions,
+  ClaudeInvokeInput,
+  ClaudeInvoker,
+  ClaudePrintJson
+} from './claude-code.js';
+
 export {
   CursorAgentAdapter,
   createCursorAgentAdapter,
