@@ -30,3 +30,8 @@ export type {
   CursorAgentRunOptions,
   CursorAgentRunResult
 } from './cursor.js';
+
+export type { AgentLogOptions, AgentLogSnapshot } from './log-snapshot.js';
+
+export { PiAgentAdapter, createInMemoryPiTransport } from './pi.js';
+export type { InMemoryPiTransport, PiAgentAdapterOptions, PiTransportFactory } from './pi.js';
