@@ -20,6 +20,18 @@ export type {
 } from './claude-code.js';
 
 export {
+  CodexAgentAdapter,
+  createDefaultInvoker,
+  parseCodexExecJsonl
+} from './codex.js';
+export type {
+  CodexAgentAdapterOptions,
+  CodexInvokeInput,
+  CodexInvokeResult,
+  CodexInvoker
+} from './codex.js';
+
+export {
   CursorAgentAdapter,
   createCursorAgentAdapter,
   createDefaultCursorAgentDeps,
