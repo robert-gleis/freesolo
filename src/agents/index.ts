@@ -18,3 +18,15 @@ export type {
   ClaudeInvoker,
   ClaudePrintJson
 } from './claude-code.js';
+
+export {
+  CursorAgentAdapter,
+  createCursorAgentAdapter,
+  createDefaultCursorAgentDeps,
+  parseCursorAgentJson
+} from './cursor.js';
+export type {
+  CursorAgentDeps,
+  CursorAgentRunOptions,
+  CursorAgentRunResult
+} from './cursor.js';
