@@ -100,4 +100,12 @@ describe('src/runners barrel re-export', () => {
     const runner: RunnerType = new runnersBarrel.ScriptedRunner('r1');
     expect(runner.id).toBe('r1');
   });
+
+  it('exposes TmuxRunner as a value that satisfies Runner', () => {
+    expect(typeof runnersBarrel.TmuxRunner).toBe('function');
+    const runner: RunnerType = new runnersBarrel.TmuxRunner('r1', {
+      runTmux: async () => ({ stdout: '', stderr: '', exitCode: 0 })
+    });
+    expect(runner.id).toBe('r1');
+  });
 });

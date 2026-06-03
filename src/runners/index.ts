@@ -20,3 +20,6 @@ export type {
   SpawnProcess,
   SpawnProcessResult
 } from './local.js';
+
+export { TmuxRunner } from './tmux.js';
+export type { TmuxRunnerDeps } from './tmux.js';
