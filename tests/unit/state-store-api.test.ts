@@ -62,6 +62,33 @@ describe('openStateStore', () => {
     store.close();
   });
 
+  it("transaction(fn) returns the function's value and commits side effects", async () => {
+    const dbPath = await tempPath();
+    const store = openStateStore({ path: dbPath, migrations: [
+      { version: 1, name: 'init', up: () => {} },
+      createNotes
+    ] });
+
+    const result = store.transaction(() => {
+      store.exec("INSERT INTO notes (body) VALUES ('committed')");
+      return 42;
+    });
+
+    expect(result).toBe(42);
+    const rows = (store.prepare('SELECT body FROM notes').all() as Array<{ body: string }>).map((r) => r.body);
+    expect(rows).toEqual(['committed']);
+    store.close();
+  });
+
+  it('pragma() passes through to the underlying connection', async () => {
+    const dbPath = await tempPath();
+    const store = openStateStore({ path: dbPath });
+
+    expect(store.pragma('journal_mode', { simple: true })).toBe('wal');
+    expect(store.pragma('busy_timeout', { simple: true })).toBe(5000);
+    store.close();
+  });
+
   it('close() is idempotent', async () => {
     const dbPath = await tempPath();
     const store = openStateStore({ path: dbPath });
