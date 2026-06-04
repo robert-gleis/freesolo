@@ -146,3 +146,33 @@ describe('WorktreeManagerError', () => {
     }
   });
 });
+
+import type { AcquireInput, ReleaseInput, WorktreeManager } from '../../src/worktrees/manager.js';
+
+describe('WorktreeManager (structural)', () => {
+  it('accepts a minimal inline implementation', async () => {
+    const record: WorktreeRecord = {
+      id: 'wt-1' as WorktreeId,
+      owner: { kind: 'issue', id: '19' },
+      location: { path: '/tmp/wt-19', branchName: 'issue/19' },
+      issueNumber: 19,
+      createdAt: new Date(0),
+      lastSeenAt: new Date(0)
+    };
+
+    const manager: WorktreeManager = {
+      acquire: async (_input: AcquireInput) => record,
+      release: async (_input: ReleaseInput) => {},
+      get: async () => record,
+      findByOwner: async () => record,
+      list: async () => [record],
+      touch: async () => {},
+      findOrphans: async () => ({ orphans: [], scannedAt: new Date(0) }),
+      reap: async () => {}
+    };
+
+    expect(await manager.acquire({ owner: record.owner, intent: { branchName: 'issue/19' } })).toBe(record);
+    expect(await manager.list()).toHaveLength(1);
+    expect((await manager.findOrphans()).orphans).toEqual([]);
+  });
+});
