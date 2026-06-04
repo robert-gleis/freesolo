@@ -1,0 +1,6 @@
+{
+  "number": 103,
+  "title": "Build the autonomous execution mode",
+  "body": "End-to-end: no human in the loop. Includes auto-approval of team plans, auto-decomposition of large issues, and Event Log audit trail.",
+  "labels": ["epic", "autonomous"]
+}

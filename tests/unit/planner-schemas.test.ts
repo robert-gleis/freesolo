@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { PlannerError } from '../../src/planner/errors.js';
@@ -177,5 +179,34 @@ describe('decompositionPlanSchema', () => {
   it('rejects empty-string label', () => {
     const result = childIssueSchema.safeParse({ ...validChild, labels: [''] });
     expect(result.success).toBe(false);
+  });
+});
+
+const fixturesRoot = path.resolve(process.cwd(), 'tests/fixtures/planner');
+
+function loadJson(rel: string): unknown {
+  return JSON.parse(readFileSync(path.join(fixturesRoot, rel), 'utf8'));
+}
+
+describe('schemas accept golden-input fixtures', () => {
+  it('teamDefinitionSchema accepts small-bugfix.team.json', () => {
+    const result = teamDefinitionSchema.safeParse(
+      loadJson('outputs/small-bugfix.team.json')
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it('teamDefinitionSchema accepts medium-feature.team.json', () => {
+    const result = teamDefinitionSchema.safeParse(
+      loadJson('outputs/medium-feature.team.json')
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it('decompositionPlanSchema accepts large-epic.decomposition.json', () => {
+    const result = decompositionPlanSchema.safeParse(
+      loadJson('outputs/large-epic.decomposition.json')
+    );
+    expect(result.success).toBe(true);
   });
 });
