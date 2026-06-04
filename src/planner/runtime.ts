@@ -3,6 +3,7 @@ import type { z } from 'zod';
 import { PlannerError } from './errors.js';
 import { extractJson } from './extract.js';
 import { buildDecompositionPrompt } from './prompts/decomposition.js';
+import { buildRetryPrompt } from './prompts/retry.js';
 import { buildTeamPrompt } from './prompts/team.js';
 import {
   decompositionPlanSchema,
@@ -21,22 +22,41 @@ import type {
 
 export async function runPlanner(opts: PlannerOptions): Promise<PlannerResult> {
   const { adapter, task, issue } = opts;
+  const maxAttempts = opts.maxAttempts ?? 2;
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1) {
+    throw new PlannerError(
+      'invalid-options',
+      `maxAttempts must be a positive integer, got ${maxAttempts}`
+    );
+  }
+
   const status = await adapter.status();
   if (status.state === 'idle' || status.state === 'stopped') {
     await adapter.start({ workingDirectory: opts.workingDirectory ?? '.' });
   }
-  const prompt = buildPromptForTask(task, issue);
-  const { output } = await adapter.send(prompt);
-  const parsed = extractJson(output);
+
   const schema = schemaForTask(task);
-  const validation = schema.safeParse(parsed);
-  if (!validation.success) {
-    throw new PlannerError('invalid-output', 'planner output failed schema validation', {
-      lastValidationError: validation.error,
-      attempts: 1
-    });
+  let nextPrompt = buildPromptForTask(task, issue);
+  let lastValidationError: import('zod').ZodError | undefined;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const { output } = await adapter.send(nextPrompt);
+    const parsed = extractJson(output); // throws extract-failed, no retry
+    const validation = schema.safeParse(parsed);
+    if (validation.success) {
+      return wrapResult(task, validation.data);
+    }
+    lastValidationError = validation.error;
+    if (attempt < maxAttempts) {
+      nextPrompt = buildRetryPrompt(validation.error);
+    }
   }
-  return wrapResult(task, validation.data);
+
+  throw new PlannerError(
+    'invalid-output',
+    'planner output failed schema validation',
+    { lastValidationError, attempts: maxAttempts }
+  );
 }
 
 function buildPromptForTask(task: PlannerTask, issue: PlannerIssue): string {
