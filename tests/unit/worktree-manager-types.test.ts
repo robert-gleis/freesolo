@@ -147,6 +147,8 @@ describe('WorktreeManagerError', () => {
   });
 });
 
+import * as worktreesBarrel from '../../src/worktrees/index.js';
+import type { WorktreeManager as WorktreeManagerType, WorktreePlacement as WorktreePlacementType } from '../../src/worktrees/index.js';
 import type { AcquireInput, ReleaseInput, WorktreeManager } from '../../src/worktrees/manager.js';
 
 describe('WorktreeManager (structural)', () => {
@@ -174,5 +176,24 @@ describe('WorktreeManager (structural)', () => {
     expect(await manager.acquire({ owner: record.owner, intent: { branchName: 'issue/19' } })).toBe(record);
     expect(await manager.list()).toHaveLength(1);
     expect((await manager.findOrphans()).orphans).toEqual([]);
+  });
+});
+
+describe('src/worktrees barrel re-export', () => {
+  it('exposes WorktreeManagerError, InMemoryWorktreeManager, and InMemoryWorktreePlacement as values', () => {
+    expect(typeof worktreesBarrel.WorktreeManagerError).toBe('function');
+    expect(typeof worktreesBarrel.InMemoryWorktreeManager).toBe('function');
+    expect(typeof worktreesBarrel.InMemoryWorktreePlacement).toBe('function');
+  });
+
+  it('exposes WorktreeManager as a type that InMemoryWorktreeManager satisfies', () => {
+    const placement = new worktreesBarrel.InMemoryWorktreePlacement();
+    const manager: WorktreeManagerType = new worktreesBarrel.InMemoryWorktreeManager({ placement });
+    expect(typeof manager.acquire).toBe('function');
+  });
+
+  it('exposes WorktreePlacement as a type that InMemoryWorktreePlacement satisfies', () => {
+    const placement: WorktreePlacementType = new worktreesBarrel.InMemoryWorktreePlacement();
+    expect(typeof placement.ensure).toBe('function');
   });
 });
