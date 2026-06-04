@@ -46,8 +46,8 @@ New code lives under `src/worktrees/`:
 
 ```
 src/worktrees/
-  types.ts         # WorktreeOwner, WorktreeRecord, WorktreeIntent, WorktreeLocation,
-                   # WorktreeId, WorktreeOrphan, WorktreeOrphanReport,
+  types.ts         # WorktreeOwner, WorktreeOwnerKind, WorktreeRecord, WorktreeIntent, WorktreeLocation,
+                   # WorktreeId, WorktreeOrphan, WorktreeOrphanKind, WorktreeOrphanReport,
                    # WorktreeManagerError, WorktreeManagerErrorCode
   manager.ts       # WorktreeManager interface
   placement.ts     # WorktreePlacement interface + InMemoryWorktreePlacement
@@ -180,7 +180,7 @@ export interface WorktreeManager {
 - **`acquire`**
   - Validates the intent (`invalid-intent` if `owner.kind === 'issue'` and `intent.issueNumber` is missing or mismatched).
   - If a record already exists for `owner`:
-    - **Same intent** (same `branchName`, same `issueNumber`, same `suggestedPath` if both sides specified one) → idempotent, returns the existing record with `lastSeenAt` refreshed. Placement is *not* re-invoked.
+    - **Same intent** (same `branchName`, same `issueNumber`, same `suggestedPath` — strict field-by-field equality, including `undefined` on both sides) → idempotent, returns the existing record with `lastSeenAt` refreshed. Placement is *not* re-invoked.
     - **Different intent** → throws `WorktreeManagerError('owner-already-acquired')`. Caller must release first.
   - Otherwise calls `placement.ensure(intent)` to get a `WorktreeLocation`. Mints a fresh `WorktreeId`, stores `WorktreeRecord` keyed by id and indexed by owner, and returns it. If `placement.ensure()` throws, the error is wrapped as `WorktreeManagerError('placement-failed')` and no record is stored.
 - **`release`**
