@@ -30,33 +30,75 @@ export async function runPlanner(opts: PlannerOptions): Promise<PlannerResult> {
     );
   }
 
-  const status = await adapter.status();
-  if (status.state === 'idle' || status.state === 'stopped') {
-    await adapter.start({ workingDirectory: opts.workingDirectory ?? '.' });
+  const initialStatus = await adapter.status();
+  if (
+    initialStatus.state !== 'idle' &&
+    initialStatus.state !== 'stopped' &&
+    initialStatus.state !== 'running'
+  ) {
+    throw new PlannerError(
+      'adapter-not-ready',
+      `adapter is in state "${initialStatus.state}", expected one of idle, stopped, running`
+    );
   }
+  const shouldStart =
+    initialStatus.state === 'idle' || initialStatus.state === 'stopped';
 
-  const schema = schemaForTask(task);
-  let nextPrompt = buildPromptForTask(task, issue);
-  let lastValidationError: import('zod').ZodError | undefined;
+  let plannerOwnsAdapter = false;
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const { output } = await adapter.send(nextPrompt);
-    const parsed = extractJson(output); // throws extract-failed, no retry
-    const validation = schema.safeParse(parsed);
-    if (validation.success) {
-      return wrapResult(task, validation.data);
+  const stopIfOwned = async (): Promise<void> => {
+    if (plannerOwnsAdapter) {
+      try {
+        await adapter.stop();
+      } catch {
+        // best-effort: planner never re-throws stop failures over the primary outcome
+      }
     }
-    lastValidationError = validation.error;
-    if (attempt < maxAttempts) {
-      nextPrompt = buildRetryPrompt(validation.error);
+  };
+
+  try {
+    if (shouldStart) {
+      // start() lives inside the try so a rejection is wrapped into
+      // PlannerError('adapter-failed', ...). plannerOwnsAdapter is only set
+      // AFTER start resolves so the finally never tries to stop something
+      // that never started.
+      await adapter.start({ workingDirectory: opts.workingDirectory ?? '.' });
+      plannerOwnsAdapter = true;
     }
+
+    const schema = schemaForTask(task);
+    let nextPrompt = buildPromptForTask(task, issue);
+    let lastValidationError: import('zod').ZodError | undefined;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const { output } = await adapter.send(nextPrompt);
+      const parsed = extractJson(output);
+      const validation = schema.safeParse(parsed);
+      if (validation.success) {
+        return wrapResult(task, validation.data);
+      }
+      lastValidationError = validation.error;
+      if (attempt < maxAttempts) {
+        nextPrompt = buildRetryPrompt(validation.error);
+      }
+    }
+
+    throw new PlannerError(
+      'invalid-output',
+      'planner output failed schema validation',
+      { lastValidationError, attempts: maxAttempts }
+    );
+  } catch (err) {
+    // Thin pass: PlannerError flows through untouched. Anything else came
+    // from adapter.start, adapter.send, or extractJson and gets wrapped.
+    if (err instanceof PlannerError) throw err;
+    throw new PlannerError('adapter-failed', errorMessage(err), { cause: err });
+  } finally {
+    // Single point of cleanup for every exit path (success, PlannerError,
+    // wrapped adapter failure). stopIfOwned is a no-op when start never ran
+    // or when the adapter was caller-started.
+    await stopIfOwned();
   }
-
-  throw new PlannerError(
-    'invalid-output',
-    'planner output failed schema validation',
-    { lastValidationError, attempts: maxAttempts }
-  );
 }
 
 function buildPromptForTask(task: PlannerTask, issue: PlannerIssue): string {
@@ -75,4 +117,9 @@ function schemaForTask(task: PlannerTask): z.ZodType<TeamDefinition | Decomposit
 function wrapResult(task: PlannerTask, data: TeamDefinition | DecompositionPlan): PlannerResult {
   if (task === 'team') return { task: 'team', data: data as TeamDefinition };
   return { task: 'decomposition', data: data as DecompositionPlan };
+}
+
+function errorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  return String(err);
 }

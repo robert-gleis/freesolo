@@ -176,3 +176,72 @@ describe('runPlanner retry loop', () => {
     });
   });
 });
+
+describe('runPlanner adapter lifecycle', () => {
+  it('starts an idle adapter and stops it on success', async () => {
+    const adapter = new ScriptedAgentAdapter({
+      steps: [{ match: /.*/, output: JSON.stringify(validTeam) }]
+    });
+    expect((await adapter.status()).state).toBe('idle');
+
+    await runPlanner({ adapter, task: 'team', issue });
+
+    expect((await adapter.status()).state).toBe('stopped');
+  });
+
+  it('starts an idle adapter and stops it on failure', async () => {
+    const adapter = new ScriptedAgentAdapter({
+      steps: [{ match: /.*/, output: 'no json at all' }]
+    });
+
+    await expect(
+      runPlanner({ adapter, task: 'team', issue, maxAttempts: 1 })
+    ).rejects.toMatchObject({ code: 'extract-failed' });
+
+    expect((await adapter.status()).state).toBe('stopped');
+  });
+
+  it('does NOT stop a caller-started adapter on success', async () => {
+    const adapter = new ScriptedAgentAdapter({
+      steps: [{ match: /.*/, output: JSON.stringify(validTeam) }]
+    });
+    await adapter.start({ workingDirectory: '/tmp' });
+
+    await runPlanner({ adapter, task: 'team', issue });
+
+    expect((await adapter.status()).state).toBe('running');
+  });
+
+  it('does NOT stop a caller-started adapter on failure', async () => {
+    const adapter = new ScriptedAgentAdapter({
+      steps: [{ match: /.*/, output: 'no json' }]
+    });
+    await adapter.start({ workingDirectory: '/tmp' });
+
+    await expect(
+      runPlanner({ adapter, task: 'team', issue, maxAttempts: 1 })
+    ).rejects.toMatchObject({ code: 'extract-failed' });
+
+    expect((await adapter.status()).state).toBe('running');
+  });
+
+  it('throws adapter-not-ready and never sends when adapter is in an unusable state', async () => {
+    const adapter = new ScriptedAgentAdapter({ steps: [] });
+    let sendCalls = 0;
+    const originalSend = adapter.send.bind(adapter);
+    adapter.send = async (input: string) => {
+      sendCalls++;
+      return originalSend(input);
+    };
+    // Override status to simulate a transient state we can't trigger naturally.
+    adapter.status = async () => ({ state: 'starting' });
+
+    await expect(
+      runPlanner({ adapter, task: 'team', issue })
+    ).rejects.toMatchObject({
+      name: 'PlannerError',
+      code: 'adapter-not-ready'
+    });
+    expect(sendCalls).toBe(0);
+  });
+});
