@@ -15,6 +15,8 @@ import {
 } from '../core/host-asset.js';
 import { writeIssuePacket, writeSessionState } from '../core/session-state.js';
 import type { HostTool, IssueArtifactPaths, IssueSummary, RepoContext, WorktreeEntry } from '../core/types.js';
+import { openWorktreeMetadata } from '../worktree-metadata/index.js';
+import { StateStoreError } from '../state-store/types.js';
 import {
   buildBranchName,
   ensureWorktrunkAvailable,
@@ -72,6 +74,12 @@ export interface StartPlanDeps {
   checkHostAsset: (spec: HostAssetSpec) => Promise<HostAssetStatus>;
   installHostAsset: (spec: HostAssetSpec) => Promise<void>;
   confirmHostAssetInstall: (message: string) => Promise<boolean>;
+  upsertWorktreeMetadata: (input: {
+    path: string;
+    branch: string;
+    agentOwner: HostTool;
+    issueId: number;
+  }) => Promise<void>;
   now: () => Date;
 }
 
@@ -113,6 +121,19 @@ const defaultDeps: StartPlanDeps = {
       message,
       default: true
     }),
+  upsertWorktreeMetadata: async (input) => {
+    const { store, close } = openWorktreeMetadata();
+    try {
+      store.upsert({
+        path: input.path,
+        branch: input.branch,
+        agentOwner: input.agentOwner,
+        issueId: input.issueId
+      });
+    } finally {
+      close();
+    }
+  },
   now: () => new Date()
 };
 
@@ -330,6 +351,15 @@ export async function createStartPlan(input: { cwd: string; tool: HostTool; prin
     await deps.setupNewWorktree?.(rootDir, worktreePath);
   }
 
+  if (!input.printOnly) {
+    await deps.upsertWorktreeMetadata({
+      path: worktreePath,
+      branch: branchName,
+      agentOwner: input.tool,
+      issueId: issue.number
+    });
+  }
+
   const repoRoot = worktreePath;
   const artifacts = await deps.findIssueArtifacts(repoRoot, issue.number);
 
@@ -458,6 +488,12 @@ export async function startAction(options: StartOptions): Promise<void> {
   } catch (error) {
     if (error instanceof WorktreeSetupError || error instanceof WorktrunkMissingError || error instanceof WorktrunkPathResolutionError) {
       console.error(error.message);
+      process.exitCode = 1;
+      return;
+    }
+
+    if (error instanceof StateStoreError) {
+      console.error(`Failed to persist worktree metadata: ${error.message}`);
       process.exitCode = 1;
       return;
     }
