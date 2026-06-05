@@ -54,7 +54,9 @@ function baseDeps(overrides: Partial<StartPlanDeps> = {}): StartPlanDeps {
     checkHostAsset: async () => 'current' as const,
     installHostAsset: async () => {},
     confirmHostAssetInstall: async () => true,
+    upsertWorktreeMetadata: async () => {},
     now: () => new Date('2026-06-05T00:00:00.000Z'),
+    loadKnowledgeEntries: async () => [],
     ...overrides
   };
 }

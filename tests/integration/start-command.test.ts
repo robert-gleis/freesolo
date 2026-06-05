@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createStartPlan, type StartPlanDeps } from '../../src/commands/start.js';
 import { StateStoreError } from '../../src/state-store/types.js';
 import { WorktrunkMissingError } from '../../src/core/worktree.js';
+import type { KnowledgeEntry } from '../../src/knowledge/loader.js';
 
 function createPromptCancelError(): Error {
   const error = new Error('User force closed the prompt with SIGINT');
@@ -59,6 +60,7 @@ function createDeps(overrides: Partial<StartPlanDeps> = {}): StartPlanDeps {
     confirmHostAssetInstall: async () => true,
     upsertWorktreeMetadata: async () => undefined,
     now: () => new Date('2026-04-24T10:00:00.000Z'),
+    loadKnowledgeEntries: async () => [],
     ...overrides
   };
 }
@@ -609,6 +611,60 @@ describe('createStartPlan', () => {
       message: 'Cancelled.'
     });
     expect(switchCalls).toEqual([]);
+  });
+
+  it('appends knowledge entries to the startup prompt in print-only mode', async () => {
+    const knowledgeEntries: KnowledgeEntry[] = [
+      {
+        filename: 'build.md',
+        title: 'Build',
+        content: 'npm run build'
+      }
+    ];
+
+    const result = await createStartPlan(
+      { cwd: '/repo', tool: 'cursor', printOnly: true },
+      createDeps({
+        loadKnowledgeEntries: async () => knowledgeEntries
+      })
+    );
+
+    expect(result.mode).toBe('print-only');
+    if (result.mode !== 'print-only') {
+      return;
+    }
+
+    const promptArg = result.launchPlan.args.at(-1);
+    expect(promptArg).toContain('Continue the issueflow workflow');
+    expect(promptArg).toContain('## Factory Knowledge Base');
+    expect(promptArg).toContain('npm run build');
+  });
+
+  it('loads knowledge from the resolved worktree when launching', async () => {
+    const loadCalls: string[] = [];
+    const knowledgeEntries: KnowledgeEntry[] = [
+      { filename: 'test.md', title: 'Test', content: 'npm test' }
+    ];
+
+    const result = await createStartPlan(
+      { cwd: '/repo', tool: 'cursor', printOnly: false },
+      createDeps({
+        loadKnowledgeEntries: async (repoRoot) => {
+          loadCalls.push(repoRoot);
+          return knowledgeEntries;
+        }
+      })
+    );
+
+    expect(result.mode).toBe('launch');
+    expect(loadCalls).toEqual(['/wt/issue-12-ship-issueflow-start']);
+    if (result.mode !== 'launch') {
+      return;
+    }
+
+    const promptArg = result.launchPlan.args.at(-1);
+    expect(promptArg).toContain('## Factory Knowledge Base');
+    expect(promptArg).toContain('npm test');
   });
 
   it('upserts worktree metadata before writing session state', async () => {

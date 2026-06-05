@@ -21,7 +21,13 @@ describe('CodexAgentAdapter + workflow engine', () => {
       })
     );
 
-    const engine = createWorkflowEngine({ readState, writeState, policy, agent });
+    const engine = createWorkflowEngine({
+      readState,
+      writeState,
+      policy,
+      agent,
+      loadKnowledgeEntries: async () => []
+    });
     const eventKinds: string[] = [];
     engine.on((event) => {
       eventKinds.push(event.kind);
