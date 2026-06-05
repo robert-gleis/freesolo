@@ -1,6 +1,7 @@
 import { Command, InvalidArgumentError, Option } from 'commander';
 
 import { registerEngineCommands } from './commands/engine.js';
+import { registerPlanCommands } from './commands/plan.js';
 import { registerStateCommands } from './commands/state.js';
 import { startAction } from './commands/start.js';
 import { verifyAction } from './commands/verify.js';
@@ -48,6 +49,7 @@ Worktree setup:
 
   registerStateCommands(program);
   registerEngineCommands(program);
+  registerPlanCommands(program);
 
   return program;
 }
