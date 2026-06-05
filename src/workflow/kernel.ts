@@ -1,4 +1,5 @@
 import type { IssueArtifactPaths } from '../core/types.js';
+import type { AdrRecord } from '../memory/adrs.js';
 
 export interface WorkflowKernelInput {
   issueNumber: number;
@@ -11,6 +12,7 @@ export interface WorkflowKernelInput {
   branchName: string;
   worktreePath: string;
   artifacts: IssueArtifactPaths;
+  adrs?: AdrRecord[];
 }
 
 function formatList(values: string[]): string {
@@ -25,6 +27,19 @@ export function buildReviewLoopInstructions(): string {
 - If the reviewer passes with no findings, mark the gate as pass and continue.
 - If the reviewer reports findings, mark the gate as pass_with_findings, spawn a separate fixer agent with the review artifact as input, apply the fixes, then start the next round with a fresh reviewer agent.
 - Do not proceed after round 5 if findings remain; mark the gate as block and ask the user how to proceed.`.trim();
+}
+
+function formatAdrSection(adrs: AdrRecord[]): string {
+  if (adrs.length === 0) {
+    return '## Architecture Decision Records\n\nNo numbered ADRs found under docs/adr/.';
+  }
+
+  const blocks = adrs.map((adr) => {
+    const padded = String(adr.number).padStart(4, '0');
+    return `### ADR-${padded}: ${adr.slug}\nPath: ${adr.relativePath}\n\n${adr.content.trim()}`;
+  });
+
+  return `## Architecture Decision Records\n\n${blocks.join('\n\n')}`;
 }
 
 export function buildIssuePacket(input: WorkflowKernelInput): string {
@@ -55,7 +70,9 @@ planReview: ${input.artifacts.planReview ?? 'not created yet'}
 implementationReview: ${input.artifacts.implementationReview ?? 'not created yet'}
 
 ## Body
-${input.issueBody}`.trim();
+${input.issueBody}
+
+${formatAdrSection(input.adrs ?? [])}`.trim();
 }
 
 export function buildWorkflowKernel(input: WorkflowKernelInput): string {

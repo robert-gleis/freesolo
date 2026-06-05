@@ -30,6 +30,7 @@ import {
   WorktrunkMissingError,
   WorktrunkPathResolutionError
 } from '../core/worktree.js';
+import { listAdrs as defaultListAdrs } from '../memory/adrs.js';
 import { buildIssuePacket, buildWorkflowKernel } from '../workflow/kernel.js';
 
 export interface StartOptions {
@@ -64,6 +65,7 @@ export interface StartPlanDeps {
   resolveBranchWorktreePath: (repoRoot: string, branchName: string) => Promise<string>;
   setupNewWorktree?: (sourceCheckout: string, worktreePath: string) => Promise<boolean>;
   findIssueArtifacts: (repoRoot: string, issueNumber: number) => Promise<IssueArtifactPaths>;
+  listAdrs: typeof defaultListAdrs;
   writeSessionState: typeof writeSessionState;
   writeIssuePacket: typeof writeIssuePacket;
   chooseIssue: (issues: IssueSummary[]) => Promise<IssueSummary>;
@@ -90,6 +92,7 @@ const defaultDeps: StartPlanDeps = {
       spinnerLabel: 'Running worktree setup'
     }),
   findIssueArtifacts,
+  listAdrs: defaultListAdrs,
   writeSessionState,
   writeIssuePacket,
   chooseIssue: async (issues) =>
@@ -332,6 +335,7 @@ export async function createStartPlan(input: { cwd: string; tool: HostTool; prin
 
   const repoRoot = worktreePath;
   const artifacts = await deps.findIssueArtifacts(repoRoot, issue.number);
+  const adrs = await deps.listAdrs(repoRoot);
 
   const workflowInput = {
     issueNumber: issue.number,
@@ -343,7 +347,8 @@ export async function createStartPlan(input: { cwd: string; tool: HostTool; prin
     repoRoot,
     branchName,
     worktreePath,
-    artifacts
+    artifacts,
+    adrs
   };
   const startupPrompt = buildWorkflowKernel(workflowInput);
 
