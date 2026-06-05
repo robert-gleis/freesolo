@@ -65,6 +65,15 @@ describe('buildCli', () => {
     expect(subcommands).toEqual(expect.arrayContaining(['tick']));
   });
 
+  it('registers the plan command group with generate, show, edit, and approve subcommands', () => {
+    const program = buildCli();
+    const planCommand = program.commands.find((command) => command.name() === 'plan');
+
+    expect(planCommand).toBeDefined();
+    const subcommands = planCommand?.commands.map((command) => command.name()) ?? [];
+    expect(subcommands).toEqual(expect.arrayContaining(['generate', 'show', 'edit', 'approve']));
+  });
+
   it('registers the watch command group with run and once subcommands', () => {
     const program = buildCli();
     const watchCommand = program.commands.find((command) => command.name() === 'watch');
