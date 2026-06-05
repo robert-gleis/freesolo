@@ -4,6 +4,8 @@ import { registerEngineCommands } from './commands/engine.js';
 import { registerPlanCommands } from './commands/plan.js';
 import { registerStateCommands } from './commands/state.js';
 import { startAction } from './commands/start.js';
+import { registerWatchCommands } from './commands/watch.js';
+import { registerWorktreesCommands } from './commands/worktrees.js';
 import { verifyAction } from './commands/verify.js';
 
 export function buildCli(): Command {
@@ -50,6 +52,8 @@ Worktree setup:
   registerStateCommands(program);
   registerEngineCommands(program);
   registerPlanCommands(program);
+  registerWatchCommands(program);
+  registerWorktreesCommands(program);
 
   return program;
 }

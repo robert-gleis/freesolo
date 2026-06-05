@@ -5,13 +5,15 @@ import path from 'node:path';
 import { execa } from 'execa';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import type { TeamDefinition } from '../../src/planner/schemas/team-definition.js';
 import {
   getTeamPlanPath,
   readTeamPlan,
   TeamPlanNotFoundError,
+  TeamPlanValidationError,
+  validateTeamPlanFile,
   writeTeamPlan
 } from '../../src/planner/store.js';
-import type { TeamDefinition } from '../../src/planner/types.js';
 
 const definition: TeamDefinition = {
   roles: [{ name: 'Engineer', host: 'cursor', responsibility: 'Ship feature', count: 1 }]
@@ -47,5 +49,11 @@ describe('team plan store', () => {
     const teamPlanPath = await getTeamPlanPath(worktreePath);
     expect(teamPlanPath).toContain('issueflow');
     expect(teamPlanPath.endsWith('team-plan.json')).toBe(true);
+  });
+
+  it('validateTeamPlanFile rejects empty roles', () => {
+    expect(() => validateTeamPlanFile(JSON.stringify({ roles: [] }))).toThrow(
+      TeamPlanValidationError
+    );
   });
 });

@@ -8,14 +8,14 @@ import { Command } from 'commander';
 
 import { registerPlanCommands, type PlanCommandDeps } from '../../src/commands/plan.js';
 import { IssueIdError } from '../../src/core/issue-id.js';
-import { TeamPlanValidationError } from '../../src/planner/schema.js';
 import {
   getTeamPlanPath,
   readTeamPlan,
   TeamPlanNotFoundError,
+  TeamPlanValidationError,
   writeTeamPlan
 } from '../../src/planner/store.js';
-import type { TeamDefinition } from '../../src/planner/types.js';
+import type { TeamDefinition } from '../../src/planner/schemas/team-definition.js';
 import {
   InvalidStateLabelError,
   MultipleStateLabelsError

@@ -1,0 +1,16 @@
+{
+  "roles": [
+    {
+      "name": "Backend Engineer",
+      "host": "claude",
+      "responsibility": "Implement the Slack notification adapter, including webhook config loading and error handling.",
+      "count": 1
+    },
+    {
+      "name": "Reviewer",
+      "host": "codex",
+      "responsibility": "Review the implementation for security (webhook secret leakage) and correctness.",
+      "count": 1
+    }
+  ]
+}

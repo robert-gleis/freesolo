@@ -1,4 +1,5 @@
-export type HostTool = 'codex' | 'claude' | 'cursor';
+export const HOST_TOOLS = ['codex', 'claude', 'cursor'] as const;
+export type HostTool = (typeof HOST_TOOLS)[number];
 export type ReviewGateStatus = 'pending' | 'pass' | 'pass_with_findings' | 'block';
 
 export interface ReviewLoopState {

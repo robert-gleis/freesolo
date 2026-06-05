@@ -18,7 +18,7 @@ import {
   validateTeamPlanFile,
   writeTeamPlan,
   getTeamPlanPath,
-  type PlannerIssueInput
+  type PlannerIssue
 } from '../planner/index.js';
 import { InvalidTransitionError, type WorkflowState } from '../workflow/state-machine.js';
 import {
@@ -43,8 +43,8 @@ export interface PlanCommandDeps {
     to: WorkflowState
   ) => Promise<void>;
   runTeamPlanner: typeof runTeamPlanner;
-  createPlannerAgent: (issue: PlannerIssueInput) => AgentAdapter;
-  fetchIssue: (repo: RepoRef, issueNumber: number, worktreePath: string) => Promise<PlannerIssueInput>;
+  createPlannerAgent: (issue: PlannerIssue) => AgentAdapter;
+  fetchIssue: (repo: RepoRef, issueNumber: number, worktreePath: string) => Promise<PlannerIssue>;
   readTeamPlan: typeof readTeamPlan;
   writeTeamPlan: typeof writeTeamPlan;
   getTeamPlanPath: typeof getTeamPlanPath;
@@ -68,7 +68,7 @@ async function defaultFetchIssue(
   repo: RepoRef,
   issueNumber: number,
   worktreePath: string
-): Promise<PlannerIssueInput> {
+): Promise<PlannerIssue> {
   try {
     const { stdout } = await execa(
       'gh',
@@ -96,7 +96,7 @@ async function defaultFetchIssue(
   }
 }
 
-function parseIssuePacket(markdown: string, issueNumber: number): PlannerIssueInput {
+function parseIssuePacket(markdown: string, issueNumber: number): PlannerIssue {
   const titleMatch = markdown.match(/^# Issue #\d+: (.+)$/m);
   const bodyMatch = markdown.match(/^## Body\n([\s\S]*)$/m);
   return {

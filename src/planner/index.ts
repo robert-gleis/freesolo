@@ -1,17 +1,40 @@
-export type { AgentHost, TeamDefinition, TeamRole } from './types.js';
+export type {
+  PlannerIssue,
+  PlannerTask,
+  PlannerResult,
+  PlannerOptions
+} from './types.js';
+
 export {
-  parseTeamDefinition,
+  PLANNER_HOSTS,
+  teamRoleSchema,
   teamDefinitionSchema,
-  TeamPlanValidationError,
-  validateTeamPlanFile
-} from './schema.js';
-export { TeamPlannerError } from './errors.js';
-export { extractJsonFromAgentOutput } from './extract.js';
-export { buildPlannerPrompt, type PlannerIssueInput } from './prompt.js';
+  childIssueSchema,
+  decompositionPlanSchema
+} from './schemas/index.js';
+export type {
+  PlannerHost,
+  TeamRole,
+  TeamDefinition,
+  ChildIssue,
+  DecompositionPlan
+} from './schemas/index.js';
+
+export { runPlanner, planTeam, decomposeIssue } from './runtime.js';
+export {
+  buildTeamPrompt,
+  buildDecompositionPrompt
+} from './prompts/index.js';
+export { extractJson } from './extract.js';
+export { PlannerError } from './errors.js';
+export type { PlannerErrorCode, PlannerErrorDetails } from './errors.js';
+
 export {
   getTeamPlanPath,
   readTeamPlan,
   TeamPlanNotFoundError,
+  TeamPlanValidationError,
+  validateTeamPlanFile,
   writeTeamPlan
 } from './store.js';
 export {
@@ -19,4 +42,4 @@ export {
   runTeamPlanner,
   type RunTeamPlannerInput,
   type RunTeamPlannerResult
-} from './runner.js';
+} from './team-plan.js';

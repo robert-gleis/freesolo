@@ -1,0 +1,6 @@
+{
+  "number": 102,
+  "title": "Add Slack notification adapter",
+  "body": "Notify a Slack channel when an issue transitions to pr-ready. Requires the Slack webhook URL to be read from config.",
+  "labels": ["enhancement", "integration"]
+}

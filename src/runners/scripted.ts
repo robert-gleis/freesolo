@@ -1,3 +1,4 @@
+import { buildCombined } from './log-format.js';
 import {
   RunnerError,
   type LogOptions,
@@ -102,11 +103,4 @@ export class ScriptedRunner implements Runner {
     if (this.errorMessage) snapshot.error = this.errorMessage;
     return snapshot;
   }
-}
-
-function buildCombined(stdout: string, stderr: string): string {
-  const parts: string[] = [];
-  if (stdout.length > 0) parts.push(`[stdout]\n${stdout}`);
-  if (stderr.length > 0) parts.push(`[stderr]\n${stderr}`);
-  return parts.join('\n');
 }
