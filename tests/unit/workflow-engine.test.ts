@@ -349,6 +349,39 @@ describe('createWorkflowEngine tick: spawn action', () => {
     expect(harness.events.map((event) => event.kind)).toEqual(['decision', 'transition']);
   });
 
+  it('enriches spawn instructions with knowledge entries before start and send', async () => {
+    const knowledgeEntries = [
+      { filename: 'test.md', title: 'Test', content: 'npm test' }
+    ];
+    const loadKnowledgeEntries = vi.fn(async () => knowledgeEntries);
+    const agent = buildFakeAgent();
+    const harness = buildHarness({
+      agent,
+      readState: vi.fn().mockResolvedValue('approved'),
+      policy: vi
+        .fn<(input: PolicyInput) => EngineAction>()
+        .mockReturnValue({
+          kind: 'spawn',
+          agent: {
+            workingDirectory: '/tmp/wt',
+            initialInstructions: 'continue issueflow'
+          },
+          nextState: 'implementing'
+        }),
+      loadKnowledgeEntries
+    });
+
+    await harness.engine.tick({ repo, issueNumber: 24 });
+
+    expect(loadKnowledgeEntries).toHaveBeenCalledWith('/tmp/wt');
+    expect(agent.startCalls).toHaveLength(1);
+    const enriched = agent.startCalls[0]?.initialInstructions;
+    expect(enriched).toContain('continue issueflow');
+    expect(enriched).toContain('## Factory Knowledge Base');
+    expect(enriched).toContain('npm test');
+    expect(agent.sendCalls).toEqual([enriched]);
+  });
+
   it('translates InvalidTransitionError from the spawn writeState into a refused result', async () => {
     const agent = buildFakeAgent();
     const harness = buildHarness({

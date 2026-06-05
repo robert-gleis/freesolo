@@ -1,4 +1,8 @@
 import type { AgentAdapter } from '../agents/index.js';
+import {
+  appendKnowledgeToPrompt,
+  loadKnowledgeEntries as defaultLoadKnowledgeEntries
+} from '../knowledge/loader.js';
 import type { EngineAction, PolicyInput } from './policy.js';
 import { InvalidTransitionError, type WorkflowState } from './state-machine.js';
 import {
@@ -51,6 +55,7 @@ export interface WorkflowEngineDeps {
   ) => Promise<void>;
   policy: (input: PolicyInput) => EngineAction;
   agent?: AgentAdapter;
+  loadKnowledgeEntries?: typeof defaultLoadKnowledgeEntries;
   now?: () => Date;
 }
 
@@ -171,11 +176,18 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
           };
         }
 
+        const loadKnowledge = deps.loadKnowledgeEntries ?? defaultLoadKnowledgeEntries;
+        const knowledgeEntries = await loadKnowledge(action.agent.workingDirectory);
+        const enrichedInstructions = appendKnowledgeToPrompt(
+          action.agent.initialInstructions,
+          knowledgeEntries
+        );
+
         await deps.agent.start({
           workingDirectory: action.agent.workingDirectory,
-          initialInstructions: action.agent.initialInstructions
+          initialInstructions: enrichedInstructions
         });
-        await deps.agent.send(action.agent.initialInstructions);
+        await deps.agent.send(enrichedInstructions);
 
         try {
           await deps.writeState(repo, issueNumber, current, action.nextState);

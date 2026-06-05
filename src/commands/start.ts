@@ -30,6 +30,10 @@ import {
   WorktrunkMissingError,
   WorktrunkPathResolutionError
 } from '../core/worktree.js';
+import {
+  appendKnowledgeToPrompt,
+  loadKnowledgeEntries as defaultLoadKnowledgeEntries
+} from '../knowledge/loader.js';
 import { buildIssuePacket, buildWorkflowKernel } from '../workflow/kernel.js';
 
 export interface StartOptions {
@@ -73,6 +77,7 @@ export interface StartPlanDeps {
   installHostAsset: (spec: HostAssetSpec) => Promise<void>;
   confirmHostAssetInstall: (message: string) => Promise<boolean>;
   now: () => Date;
+  loadKnowledgeEntries: typeof defaultLoadKnowledgeEntries;
 }
 
 const defaultDeps: StartPlanDeps = {
@@ -113,7 +118,8 @@ const defaultDeps: StartPlanDeps = {
       message,
       default: true
     }),
-  now: () => new Date()
+  now: () => new Date(),
+  loadKnowledgeEntries: defaultLoadKnowledgeEntries
 };
 
 const WORKTRUNK_CHECKOUT_PLACEHOLDER = '<worktrunk-checkout>';
@@ -345,7 +351,9 @@ export async function createStartPlan(input: { cwd: string; tool: HostTool; prin
     worktreePath,
     artifacts
   };
-  const startupPrompt = buildWorkflowKernel(workflowInput);
+  const kernel = buildWorkflowKernel(workflowInput);
+  const knowledgeEntries = await deps.loadKnowledgeEntries(repoRoot);
+  const startupPrompt = appendKnowledgeToPrompt(kernel, knowledgeEntries);
 
   if (!input.printOnly) {
     const timestamp = deps.now().toISOString();
