@@ -113,7 +113,7 @@ describe('openStateStore', () => {
       .prepare('SELECT version FROM schema_migrations ORDER BY version')
       .all() as Array<{ version: number }>).map((row) => row.version);
 
-    expect(versions).toEqual([1, 2]);
+    expect(versions).toEqual([1, 2, 3]);
     store.close();
   });
 
