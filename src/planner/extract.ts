@@ -5,17 +5,13 @@ const FENCE_REGEX = /```(?:json)?\s*([\s\S]*?)\s*```/;
 export function extractJson(output: string): unknown {
   const trimmed = output.trim();
 
-  // Pass 1: direct parse.
   const direct = tryParse(trimmed);
   if (direct.ok) return direct.value;
 
-  // Pass 2: strip a markdown fence (json-tagged or untagged).
   const fenceMatch = trimmed.match(FENCE_REGEX);
   if (fenceMatch) {
     const fenced = tryParse(fenceMatch[1]);
     if (fenced.ok) return fenced.value;
-    // A fence with malformed contents is a hard failure — the LLM tried to
-    // give us JSON in the conventional shape but got it wrong.
     throw new PlannerError(
       'extract-failed',
       'fenced JSON block could not be parsed',
@@ -23,7 +19,6 @@ export function extractJson(output: string): unknown {
     );
   }
 
-  // Pass 3: brace-match the outermost balanced JSON object.
   const braceCandidate = extractBalancedObject(trimmed);
   if (braceCandidate !== null) {
     const parsed = tryParse(braceCandidate);
