@@ -1,0 +1,10 @@
+{
+  "roles": [
+    {
+      "name": "Backend Engineer",
+      "host": "claude",
+      "responsibility": "Reproduce the null-label bug, add a regression test, and patch the parser to treat null as [].",
+      "count": 1
+    }
+  ]
+}

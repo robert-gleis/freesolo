@@ -43,7 +43,6 @@ describe('buildCli', () => {
     const verify = program.commands.find((command) => command.name() === 'verify');
     expect(verify).toBeDefined();
 
-    // commander throws CommanderError on InvalidArgumentError when exitOverride is set
     verify?.exitOverride();
     expect(() => verify?.parse(['--issue', '1abc'], { from: 'user' })).toThrow(/positive integer/);
   });
@@ -64,5 +63,23 @@ describe('buildCli', () => {
     expect(engineCommand).toBeDefined();
     const subcommands = engineCommand?.commands.map((command) => command.name()) ?? [];
     expect(subcommands).toEqual(expect.arrayContaining(['tick']));
+  });
+
+  it('registers the watch command group with run and once subcommands', () => {
+    const program = buildCli();
+    const watchCommand = program.commands.find((command) => command.name() === 'watch');
+
+    expect(watchCommand).toBeDefined();
+    const subcommands = watchCommand?.commands.map((command) => command.name()) ?? [];
+    expect(subcommands).toEqual(expect.arrayContaining(['run', 'once']));
+  });
+
+  it('registers the worktrees command group with list and drift subcommands', () => {
+    const program = buildCli();
+    const worktreesCommand = program.commands.find((command) => command.name() === 'worktrees');
+
+    expect(worktreesCommand).toBeDefined();
+    const subcommands = worktreesCommand?.commands.map((command) => command.name()) ?? [];
+    expect(subcommands).toEqual(expect.arrayContaining(['list', 'drift']));
   });
 });

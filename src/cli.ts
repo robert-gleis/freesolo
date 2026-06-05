@@ -1,8 +1,10 @@
 import { Command, InvalidArgumentError, Option } from 'commander';
 
 import { registerEngineCommands } from './commands/engine.js';
+import { registerWatchCommands } from './commands/watch.js';
 import { registerStateCommands } from './commands/state.js';
 import { startAction } from './commands/start.js';
+import { registerWorktreesCommands } from './commands/worktrees.js';
 import { verifyAction } from './commands/verify.js';
 
 export function buildCli(): Command {
@@ -48,6 +50,8 @@ Worktree setup:
 
   registerStateCommands(program);
   registerEngineCommands(program);
+  registerWatchCommands(program);
+  registerWorktreesCommands(program);
 
   return program;
 }

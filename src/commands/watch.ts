@@ -1,0 +1,207 @@
+import { Command, InvalidArgumentError, Option } from 'commander';
+
+import { defaultConfigPath, loadConfig as defaultLoadConfig } from '../config/load.js';
+import { MIN_INTERVAL_SECONDS, type IssueflowConfig } from '../config/types.js';
+import { parseGitHubRemote, readOriginRemote, resolveRepoRoot } from '../core/git.js';
+import { defaultStateDbPath, openStateDb as defaultOpenStateDb, type StateDb } from '../state/db.js';
+import { pollTriagedIssues } from '../watcher/poll.js';
+import { runWatchCycle as defaultRunWatchCycle, runWatchLoop as defaultRunWatchLoop } from '../watcher/runner.js';
+import {
+  createWorkflowEngine,
+  type TickResult,
+  type WorkflowEngineDeps
+} from '../workflow/engine.js';
+import { defaultPolicy } from '../workflow/policy.js';
+import {
+  defaultRunner,
+  readState as defaultReadState,
+  writeState as defaultWriteState,
+  type RepoRef
+} from '../workflow/state-store.js';
+
+export type WriteChannel = 'stdout' | 'stderr';
+
+export interface WatchCommandDeps {
+  resolveRepoRef: (cwd: string) => Promise<RepoRef>;
+  loadConfig: (configPath?: string) => Promise<IssueflowConfig>;
+  openStateDb: (dbPath?: string) => Promise<StateDb>;
+  runWatchCycle: typeof defaultRunWatchCycle;
+  runWatchLoop: typeof defaultRunWatchLoop;
+  env: NodeJS.ProcessEnv;
+  write: (channel: WriteChannel, message: string) => void;
+  setExitCode: (code: number) => void;
+}
+
+async function defaultResolveRepoRef(cwd: string): Promise<RepoRef> {
+  const repoRoot = await resolveRepoRoot(cwd);
+  const remoteUrl = await readOriginRemote(repoRoot);
+  const parsed = parseGitHubRemote(remoteUrl);
+  if (!parsed) {
+    throw new Error('origin is not a supported GitHub remote');
+  }
+  return { owner: parsed.owner, repo: parsed.repo };
+}
+
+const defaultEngineDeps: WorkflowEngineDeps = {
+  readState: defaultReadState,
+  writeState: defaultWriteState,
+  policy: defaultPolicy
+};
+
+const defaultDeps: WatchCommandDeps = {
+  resolveRepoRef: defaultResolveRepoRef,
+  loadConfig: defaultLoadConfig,
+  openStateDb: defaultOpenStateDb,
+  runWatchCycle: defaultRunWatchCycle,
+  runWatchLoop: defaultRunWatchLoop,
+  env: process.env,
+  write: (channel, message) => {
+    if (channel === 'stdout') {
+      process.stdout.write(message);
+    } else {
+      process.stderr.write(message);
+    }
+  },
+  setExitCode: (code) => {
+    process.exitCode = code;
+  }
+};
+
+function parseIntervalSeconds(value: string): number {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < MIN_INTERVAL_SECONDS) {
+    throw new InvalidArgumentError(`interval must be an integer >= ${MIN_INTERVAL_SECONDS}`);
+  }
+  return parsed;
+}
+
+function withCommanderErrorHandling(
+  _command: Command,
+  deps: WatchCommandDeps,
+  action: () => Promise<void>
+): Promise<void> {
+  return action().catch((error: unknown) => {
+    if (error instanceof Error && error.name === 'CommanderError') {
+      throw error;
+    }
+    const message = error instanceof Error ? error.message : String(error);
+    deps.write('stderr', `${message}\n`);
+    deps.setExitCode(1);
+  });
+}
+
+function applyCycleExitCode(
+  deps: WatchCommandDeps,
+  result: { failed: number; pollError?: string }
+): void {
+  if (result.pollError) {
+    deps.write('stderr', `${result.pollError}\n`);
+  }
+  if (result.failed > 0 || result.pollError) {
+    deps.setExitCode(1);
+  }
+}
+
+async function buildCycleDeps(
+  deps: WatchCommandDeps,
+  db: StateDb,
+  repo: RepoRef,
+  triggerLabel: string,
+  sinceOverride?: string
+) {
+  return {
+    db,
+    repo,
+    triggerLabel,
+    sinceOverride,
+    poll: (since: string) =>
+      pollTriagedIssues({
+        repo,
+        since,
+        triggerLabel,
+        gh: defaultRunner,
+        onWarn: (message) => deps.write('stderr', `${message}\n`)
+      }),
+    tick: (input: { repo: RepoRef; issueNumber: number }): Promise<TickResult> =>
+      createWorkflowEngine(defaultEngineDeps).tick(input)
+  };
+}
+
+export function registerWatchCommands(
+  program: Command,
+  deps: WatchCommandDeps = defaultDeps
+): Command {
+  const watch = program
+    .command('watch')
+    .description('Poll GitHub for triaged issues and drain them through the workflow engine');
+
+  watch
+    .command('run')
+    .description('Poll continuously until SIGINT/SIGTERM (graceful shutdown finishes current cycle)')
+    .addOption(new Option('--interval <seconds>', 'Polling interval override').argParser(parseIntervalSeconds))
+    .addOption(new Option('--trigger-label <label>', 'Trigger label override'))
+    .action(async (options: { interval?: number; triggerLabel?: string }) => {
+      if (deps.env.ISSUEFLOW_ENGINE !== '1') {
+        deps.write(
+          'stderr',
+          'issueflow watch run is engine-only. Set ISSUEFLOW_ENGINE=1 to authorise the call.\n'
+        );
+        deps.setExitCode(3);
+        return;
+      }
+
+      await withCommanderErrorHandling(watch, deps, async () => {
+        const config = await deps.loadConfig(defaultConfigPath());
+        const intervalSeconds = options.interval ?? config.watcher.interval_seconds;
+        const triggerLabel = options.triggerLabel ?? config.watcher.trigger_label;
+        const repo = await deps.resolveRepoRef(process.cwd());
+        const db = await deps.openStateDb(defaultStateDbPath());
+
+        const controller = new AbortController();
+        const onSignal = () => controller.abort();
+        process.once('SIGINT', onSignal);
+        process.once('SIGTERM', onSignal);
+
+        try {
+          const cycleDeps = await buildCycleDeps(deps, db, repo, triggerLabel);
+          await deps.runWatchLoop({
+            ...cycleDeps,
+            intervalMs: intervalSeconds * 1000,
+            signal: controller.signal,
+            onCycleResult: (result) => {
+              if (result.pollError) {
+                deps.write('stderr', `${result.pollError}\n`);
+              }
+            }
+          });
+        } finally {
+          process.removeListener('SIGINT', onSignal);
+          process.removeListener('SIGTERM', onSignal);
+          db.close();
+        }
+      });
+    });
+
+  watch
+    .command('once')
+    .description('Run a single poll + drain cycle')
+    .addOption(new Option('--since <iso8601>', 'Override cursor for this run only'))
+    .action(async (options: { since?: string }) => {
+      await withCommanderErrorHandling(watch, deps, async () => {
+        const config = await deps.loadConfig(defaultConfigPath());
+        const triggerLabel = config.watcher.trigger_label;
+        const repo = await deps.resolveRepoRef(process.cwd());
+        const db = await deps.openStateDb(defaultStateDbPath());
+
+        try {
+          const cycleDeps = await buildCycleDeps(deps, db, repo, triggerLabel, options.since);
+          const result = await deps.runWatchCycle(cycleDeps);
+          applyCycleExitCode(deps, result);
+        } finally {
+          db.close();
+        }
+      });
+    });
+
+  return watch;
+}

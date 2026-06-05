@@ -1,0 +1,6 @@
+{
+  "number": 101,
+  "title": "Fix null pointer in label parser",
+  "body": "When the label list is null instead of an empty array, the parser throws.",
+  "labels": ["bug"]
+}
