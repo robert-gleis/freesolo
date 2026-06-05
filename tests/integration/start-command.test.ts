@@ -42,6 +42,7 @@ function createDeps(overrides: Partial<StartPlanDeps> = {}): StartPlanDeps {
       planReview: null,
       implementationReview: null
     }),
+    listAdrs: async () => [],
     writeSessionState: async () => undefined,
     writeIssuePacket: async () => undefined,
     chooseIssue: async (issues) => issues[0],
@@ -192,6 +193,8 @@ describe('createStartPlan', () => {
     expect(packets[0]).toContain('/wt/issue-12-ship-issueflow-start');
     expect(packets[0]).toContain('/wt/issue-12-ship-issueflow-start/docs/issueflow/specs/2026-04-20-issue-12-design.md');
     expect(packets[0]).toContain('/wt/issue-12-ship-issueflow-start/docs/issueflow/plans/2026-04-21-issue-12-plan.md');
+    expect(packets[0]).toContain('## Architecture Decision Records');
+    expect(packets[0]).toContain('No numbered ADRs found under docs/adr/.');
     expect(states[0]).toMatchObject({
       issueNumber: 12,
       repoRoot: '/wt/issue-12-ship-issueflow-start',

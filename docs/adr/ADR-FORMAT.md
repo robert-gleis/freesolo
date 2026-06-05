@@ -2,6 +2,8 @@
 
 Mirrored from [mattpocock/skills — grill-with-docs/ADR-FORMAT.md](https://github.com/mattpocock/skills/blob/main/skills/engineering/grill-with-docs/ADR-FORMAT.md). Adopted as the IssueFlow standard.
 
+See [README.md](./README.md) for what does **not** belong in ADRs (review findings, agent audit events).
+
 ADRs live in `docs/adr/` and use sequential numbering: `0001-slug.md`, `0002-slug.md`, etc.
 
 ## Template
