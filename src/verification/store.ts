@@ -36,7 +36,8 @@ async function readRunJson(runJsonPath: string): Promise<VerificationRun | null>
     const raw = await fs.readFile(runJsonPath, 'utf8');
     return JSON.parse(raw) as VerificationRun;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === 'ENOENT' || code === 'ENOTDIR') {
       return null;
     }
 

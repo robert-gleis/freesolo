@@ -1,11 +1,17 @@
 import { Command, InvalidArgumentError, Option } from 'commander';
 
+import { registerCandidateCommands } from './commands/candidate.js';
+import { registerDecompositionCommands } from './commands/decomposition.js';
 import { registerEngineCommands } from './commands/engine.js';
+import { registerGateCommands } from './commands/gate.js';
 import { registerPlanCommands } from './commands/plan.js';
+import { registerPrCommands } from './commands/pr.js';
+import { registerReplayCommands } from './commands/replay.js';
+import { registerTeamCommands } from './commands/team.js';
 import { registerStateCommands } from './commands/state.js';
 import { startAction } from './commands/start.js';
+import { registerTimelineCommands } from './commands/timeline.js';
 import { registerWatchCommands } from './commands/watch.js';
-import { registerCandidateCommands } from './commands/candidate.js';
 import { registerWorktreesCommands } from './commands/worktrees.js';
 import { verifyAction } from './commands/verify.js';
 
@@ -52,10 +58,16 @@ Worktree setup:
 
   registerStateCommands(program);
   registerEngineCommands(program);
+  registerGateCommands(program);
+  registerPrCommands(program);
   registerPlanCommands(program);
+  registerDecompositionCommands(program);
+  registerTeamCommands(program);
   registerWatchCommands(program);
   registerWorktreesCommands(program);
   registerCandidateCommands(program);
+  registerTimelineCommands(program);
+  registerReplayCommands(program);
 
   return program;
 }

@@ -1,3 +1,24 @@
+export { buildPullRequestBody, buildPullRequestTitle, extractSummary } from './pr-body.js';
+export {
+  createPullRequest,
+  defaultRunGh
+} from './pr-creator.js';
+export {
+  getPullRequestPath,
+  readPullRequestRecord,
+  writePullRequestRecord
+} from './pr-store.js';
+export {
+  PullRequestError
+} from './pr-types.js';
+export type {
+  CreatePullRequestInput,
+  GhCommandRunner,
+  PullRequestCreatorDeps,
+  PullRequestOutcome,
+  PullRequestRecord,
+  PullRequestErrorCode
+} from './pr-types.js';
 export { buildCandidateBranchName } from './naming.js';
 export {
   clearCandidateBranchRecord,
