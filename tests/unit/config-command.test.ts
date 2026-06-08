@@ -107,6 +107,13 @@ describe('config set', () => {
     expect(io.exitCode).toBe(1);
     expect(io.stderr.join('')).toMatch(/unknown key/i);
   });
+
+  it('sets exit code 1 for interval_seconds with trailing non-numeric characters', async () => {
+    const { program, io } = buildHarness();
+    await program.parseAsync(['config', 'set', 'watcher.interval_seconds', '5abc'], { from: 'user' });
+    expect(io.exitCode).toBe(1);
+    expect(io.stderr.join('')).toMatch(/invalid value/i);
+  });
 });
 
 describe('config show', () => {

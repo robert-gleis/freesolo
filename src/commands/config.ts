@@ -65,7 +65,7 @@ function validateValue(key: ConfigKey, value: string): string | null {
     }
   } else if (key === 'watcher.interval_seconds') {
     const n = Number.parseInt(value, 10);
-    if (!Number.isFinite(n) || n < 5) {
+    if (!/^\d+$/.test(value.trim()) || !Number.isFinite(n) || n < 5) {
       return `invalid value "${value}" for watcher.interval_seconds — must be an integer >= 5`;
     }
   } else if (key === 'watcher.trigger_label') {
