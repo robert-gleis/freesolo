@@ -1,6 +1,8 @@
 import { Command, InvalidArgumentError, Option } from 'commander';
 
 import { registerEngineCommands } from './commands/engine.js';
+import { registerGateCommands } from './commands/gate.js';
+import { registerPrCommands } from './commands/pr.js';
 import { registerStateCommands } from './commands/state.js';
 import { startAction } from './commands/start.js';
 import { verifyAction } from './commands/verify.js';
@@ -48,6 +50,8 @@ Worktree setup:
 
   registerStateCommands(program);
   registerEngineCommands(program);
+  registerGateCommands(program);
+  registerPrCommands(program);
 
   return program;
 }
