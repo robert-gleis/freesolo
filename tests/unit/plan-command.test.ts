@@ -16,6 +16,7 @@ import {
   writeTeamPlan
 } from '../../src/planner/store.js';
 import type { TeamDefinition } from '../../src/planner/schemas/team-definition.js';
+import { maybeAutoApproveTeamPlan as realMaybeAutoApproveTeamPlan } from '../../src/policy/autonomous-approval.js';
 import {
   InvalidStateLabelError,
   MultipleStateLabelsError
@@ -67,6 +68,8 @@ function buildHarness(
     writeTeamPlan,
     getTeamPlanPath,
     openEditor: vi.fn().mockResolvedValue(0),
+    maybeAutoApproveTeamPlan: vi.fn().mockResolvedValue({ status: 'skipped' }),
+    appendEvent: vi.fn(),
     env: { ISSUEFLOW_ENGINE: '1' },
     write: (channel, message) => {
       io[channel].push(message);
@@ -188,6 +191,94 @@ describe('issueflow plan generate', () => {
 
     expect(io.stderr.join('')).toContain('multiple workflow state labels');
     expect(io.exitCode).toBe(4);
+  });
+
+  it('does not print autonomous line when policy skips', async () => {
+    const worktreePath = await makeWorktree();
+    const { program, io } = buildHarness(worktreePath, {
+      readState: vi.fn().mockResolvedValue('triaged'),
+      maybeAutoApproveTeamPlan: vi.fn().mockResolvedValue({ status: 'skipped' })
+    });
+
+    await program.parseAsync(['node', 'issueflow', 'plan', 'generate', '--issue', '34']);
+
+    expect(io.stdout.join('')).toContain('team plan written:');
+    expect(io.stdout.join('')).not.toContain('autonomous');
+  });
+
+  it('prints autonomous approval line when policy approves', async () => {
+    const worktreePath = await makeWorktree();
+    const { program, io, deps } = buildHarness(worktreePath, {
+      readState: vi.fn().mockResolvedValue('triaged'),
+      maybeAutoApproveTeamPlan: vi.fn().mockResolvedValue({
+        status: 'approved',
+        teamPlanPath: '/repo/.git/issueflow/team-plan.json'
+      })
+    });
+
+    await program.parseAsync(['node', 'issueflow', 'plan', 'generate', '--issue', '34']);
+
+    expect(deps.maybeAutoApproveTeamPlan).toHaveBeenCalled();
+    expect(io.stdout.join('')).toContain('planned -> approved (autonomous)');
+  });
+
+  it('exits 1 when auto-approve policy throws', async () => {
+    const worktreePath = await makeWorktree();
+    const { program, io } = buildHarness(worktreePath, {
+      readState: vi.fn().mockResolvedValue('triaged'),
+      maybeAutoApproveTeamPlan: vi.fn().mockRejectedValue(new Error('auto-approve failed'))
+    });
+
+    await program.parseAsync(['node', 'issueflow', 'plan', 'generate', '--issue', '34']);
+
+    expect(io.stderr.join('')).toContain('auto-approve failed');
+    expect(io.exitCode).toBe(1);
+  });
+
+  it('calls writeState twice and appendEvent when autonomous mode is enabled', async () => {
+    const worktreePath = await makeWorktree();
+    await writeTeamPlan(worktreePath, definition);
+    const appendEvent = vi.fn();
+    const writeState = vi.fn().mockResolvedValue(undefined);
+    const teamPlanPath = await getTeamPlanPath(worktreePath);
+
+    const { program, io } = buildHarness(worktreePath, {
+      readState: vi.fn().mockResolvedValue('triaged'),
+      writeState,
+      appendEvent,
+      maybeAutoApproveTeamPlan: (input, nestedDeps) =>
+        realMaybeAutoApproveTeamPlan(input, {
+          resolveAutonomousMode: vi.fn().mockResolvedValue(true),
+          readTeamPlan: (wt) => readTeamPlan(wt),
+          writeState,
+          appendEvent
+        }),
+      runTeamPlanner: vi.fn().mockResolvedValue({ definition, teamPlanPath })
+    });
+
+    await program.parseAsync(['node', 'issueflow', 'plan', 'generate', '--issue', '34']);
+
+    expect(writeState).toHaveBeenCalledTimes(2);
+    expect(writeState).toHaveBeenNthCalledWith(
+      1,
+      { owner: 'acme', repo: 'widgets' },
+      34,
+      'triaged',
+      'planned'
+    );
+    expect(writeState).toHaveBeenNthCalledWith(
+      2,
+      { owner: 'acme', repo: 'widgets' },
+      34,
+      'planned',
+      'approved'
+    );
+    expect(appendEvent).toHaveBeenCalledWith({
+      eventType: 'team.planned',
+      issueId: 34,
+      payload: { teamPlanPath, autonomous: true }
+    });
+    expect(io.stdout.join('')).toContain('planned -> approved (autonomous)');
   });
 });
 
