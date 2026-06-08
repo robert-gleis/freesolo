@@ -233,6 +233,129 @@ describe('createVerifyPlan', () => {
     expect(result.message).toMatch(/git rev-parse failed/);
   });
 
+  it('writes a test report after a completed run', async () => {
+    const calls: string[] = [];
+
+    await createVerifyPlan(
+      { cwd: '/cwd', options: {} },
+      makeDeps({
+        writeTestReport: async (run) => {
+          calls.push(run.runId);
+          return '/repo/.git/issueflow/reports/issue-20/TEST_REPORT.md';
+        }
+      })
+    );
+
+    expect(calls).toEqual(['2026-06-01T10-00-00-000Z']);
+  });
+
+  it('does not write a test report for print-only runs', async () => {
+    const calls: string[] = [];
+
+    await createVerifyPlan(
+      { cwd: '/cwd', options: { printOnly: true } },
+      makeDeps({
+        writeTestReport: async () => {
+          calls.push('write');
+          return null;
+        }
+      })
+    );
+
+    expect(calls).toEqual([]);
+  });
+
+  it('keeps the verify exit code when test report writing fails', async () => {
+    const failingWrite = async () => {
+      throw new Error('disk full');
+    };
+
+    const passResult = await createVerifyPlan({ cwd: '/cwd', options: {} }, makeDeps({ writeTestReport: failingWrite }));
+    expect(passResult.mode).toBe('completed');
+    if (passResult.mode === 'completed') {
+      expect(passResult.exitCode).toBe(0);
+    }
+
+    const failResult = await createVerifyPlan(
+      { cwd: '/cwd', options: {} },
+      makeDeps({
+        writeTestReport: failingWrite,
+        runPipeline: async (input) => ({
+          schemaVersion: 1 as const,
+          runId: input.runId,
+          issueNumber: input.issueNumber,
+          repoRoot: input.repoRoot,
+          configPath: input.configPath,
+          startedAt: '2026-06-01T10:00:00.000Z',
+          finishedAt: '2026-06-01T10:00:01.000Z',
+          status: 'fail',
+          bail: input.bail,
+          checks: []
+        })
+      })
+    );
+    expect(failResult.mode).toBe('completed');
+    if (failResult.mode === 'completed') {
+      expect(failResult.exitCode).toBe(1);
+    }
+
+    const sigintResult = await createVerifyPlan(
+      { cwd: '/cwd', options: {} },
+      makeDeps({
+        writeTestReport: failingWrite,
+        runPipeline: async (input) => ({
+          schemaVersion: 1 as const,
+          runId: input.runId,
+          issueNumber: input.issueNumber,
+          repoRoot: input.repoRoot,
+          configPath: input.configPath,
+          startedAt: '2026-06-01T10:00:00.000Z',
+          finishedAt: '2026-06-01T10:00:01.000Z',
+          status: 'fail',
+          bail: input.bail,
+          checks: [
+            {
+              name: 'lint',
+              command: 'lint-cmd',
+              args: [],
+              cwd: input.repoRoot,
+              status: 'fail',
+              exitCode: null,
+              signal: 'SIGINT',
+              startedAt: '2026-06-01T10:00:00.000Z',
+              finishedAt: '2026-06-01T10:00:01.000Z',
+              durationMs: 1000,
+              logPath: `${input.runDirectory}/lint.log`
+            }
+          ]
+        })
+      })
+    );
+    expect(sigintResult.mode).toBe('completed');
+    if (sigintResult.mode === 'completed') {
+      expect(sigintResult.exitCode).toBe(130);
+    }
+  });
+
+  it('does not write a test report when verify returns error mode', async () => {
+    const calls: string[] = [];
+
+    await createVerifyPlan(
+      { cwd: '/cwd', options: {} },
+      makeDeps({
+        resolveIssueNumber: async () => {
+          throw new IssueIdError('no issue id');
+        },
+        writeTestReport: async () => {
+          calls.push('write');
+          return null;
+        }
+      })
+    );
+
+    expect(calls).toEqual([]);
+  });
+
   it('passes bail through to the pipeline', async () => {
     let captured = false;
 

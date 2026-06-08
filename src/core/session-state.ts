@@ -57,7 +57,9 @@ export const sessionStateSchema = z.object({
     spec: z.string().nullable(),
     plan: z.string().nullable(),
     planReview: z.string().nullable(),
-    implementationReview: z.string().nullable()
+    implementationReview: z.string().nullable(),
+    testReport: z.string().nullable().default(null),
+    reviewReport: z.string().nullable().default(null)
   })
 });
 
@@ -70,7 +72,8 @@ export async function getIssueflowDir(worktreePath: string): Promise<string> {
 
 export async function getIssueflowPath(worktreePath: string, filename: string): Promise<string> {
   const issueflowDir = await getIssueflowDir(worktreePath);
-  return path.join(issueflowDir, filename);
+  const joined = path.join(issueflowDir, filename);
+  return path.isAbsolute(joined) ? joined : path.join(worktreePath, joined);
 }
 
 export async function writeSessionState(worktreePath: string, state: SessionState): Promise<void> {

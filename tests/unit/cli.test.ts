@@ -130,6 +130,15 @@ describe('buildCli', () => {
     expect(subcommands).toEqual(expect.arrayContaining(['start', 'status', 'stop']));
   });
 
+  it('registers the reports command group with a show subcommand', () => {
+    const program = buildCli();
+    const reportsCommand = program.commands.find((command) => command.name() === 'reports');
+
+    expect(reportsCommand).toBeDefined();
+    const subcommands = reportsCommand?.commands.map((command) => command.name()) ?? [];
+    expect(subcommands).toEqual(expect.arrayContaining(['show']));
+  });
+
   it('registers the watch command group with run and once subcommands', () => {
     const program = buildCli();
     const watchCommand = program.commands.find((command) => command.name() === 'watch');

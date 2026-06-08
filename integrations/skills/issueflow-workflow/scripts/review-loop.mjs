@@ -4,6 +4,8 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
+const writeReviewReportScriptPath = path.resolve(import.meta.dirname, 'write-review-report.mjs');
+
 const execFileAsync = promisify(execFile);
 const gates = new Set(['plan', 'implementation']);
 const statuses = new Set(['pass', 'pass_with_findings', 'block']);
@@ -107,6 +109,13 @@ async function recordReview(gate, status, artifact) {
 
   if (status === 'pass') {
     await writeSession(sessionPath, session);
+    try {
+      await execFileAsync('node', [writeReviewReportScriptPath], { cwd: session.repoRoot });
+    } catch (error) {
+      console.warn(
+        `issueflow: failed to write REVIEW_REPORT.md: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
     console.log('Gate passed with no findings. Continue to the next stage.');
     return;
   }

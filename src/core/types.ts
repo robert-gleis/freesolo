@@ -36,6 +36,8 @@ export interface IssueArtifactPaths {
   plan: string | null;
   planReview: string | null;
   implementationReview: string | null;
+  testReport: string | null;
+  reviewReport: string | null;
 }
 
 export interface ExistingWorkspaceMatch {

@@ -7,6 +7,7 @@ import { registerGateCommands } from './commands/gate.js';
 import { registerPlanCommands } from './commands/plan.js';
 import { registerPrCommands } from './commands/pr.js';
 import { registerReplayCommands } from './commands/replay.js';
+import { registerReportsCommands } from './commands/reports.js';
 import { registerTeamCommands } from './commands/team.js';
 import { registerStateCommands } from './commands/state.js';
 import { startAction } from './commands/start.js';
@@ -66,6 +67,7 @@ Worktree setup:
   registerWatchCommands(program);
   registerWorktreesCommands(program);
   registerCandidateCommands(program);
+  registerReportsCommands(program);
   registerTimelineCommands(program);
   registerReplayCommands(program);
 
