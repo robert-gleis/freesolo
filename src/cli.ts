@@ -5,6 +5,7 @@ import { registerPlanCommands } from './commands/plan.js';
 import { registerStateCommands } from './commands/state.js';
 import { startAction } from './commands/start.js';
 import { registerWatchCommands } from './commands/watch.js';
+import { registerCandidateCommands } from './commands/candidate.js';
 import { registerWorktreesCommands } from './commands/worktrees.js';
 import { verifyAction } from './commands/verify.js';
 
@@ -54,6 +55,7 @@ Worktree setup:
   registerPlanCommands(program);
   registerWatchCommands(program);
   registerWorktreesCommands(program);
+  registerCandidateCommands(program);
 
   return program;
 }

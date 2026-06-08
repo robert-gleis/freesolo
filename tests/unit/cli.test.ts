@@ -91,4 +91,13 @@ describe('buildCli', () => {
     const subcommands = worktreesCommand?.commands.map((command) => command.name()) ?? [];
     expect(subcommands).toEqual(expect.arrayContaining(['list', 'drift']));
   });
+
+  it('registers the candidate command group with create and show subcommands', () => {
+    const program = buildCli();
+    const candidateCommand = program.commands.find((command) => command.name() === 'candidate');
+
+    expect(candidateCommand).toBeDefined();
+    const subcommands = candidateCommand?.commands.map((command) => command.name()) ?? [];
+    expect(subcommands).toEqual(expect.arrayContaining(['create', 'show']));
+  });
 });
