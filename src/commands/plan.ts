@@ -6,6 +6,8 @@ import { Command, InvalidArgumentError, Option } from 'commander';
 import { execa } from 'execa';
 
 import type { AgentAdapter } from '../agents/index.js';
+import type { AppendEventInput } from '../event-log/types.js';
+import { openEventLog } from '../event-log/index.js';
 import { parseGitHubRemote, readOriginRemote, resolveRepoRoot } from '../core/git.js';
 import { IssueIdError, resolveIssueNumber } from '../core/issue-id.js';
 import { getIssueflowPath } from '../core/session-state.js';
@@ -20,6 +22,7 @@ import {
   getTeamPlanPath,
   type PlannerIssue
 } from '../planner/index.js';
+import { maybeAutoApproveTeamPlan } from '../policy/autonomous-approval.js';
 import { InvalidTransitionError, type WorkflowState } from '../workflow/state-machine.js';
 import {
   InvalidStateLabelError,
@@ -49,6 +52,8 @@ export interface PlanCommandDeps {
   writeTeamPlan: typeof writeTeamPlan;
   getTeamPlanPath: typeof getTeamPlanPath;
   openEditor: (filePath: string, env: NodeJS.ProcessEnv) => Promise<number>;
+  maybeAutoApproveTeamPlan: typeof maybeAutoApproveTeamPlan;
+  appendEvent: (input: AppendEventInput) => void;
   env: NodeJS.ProcessEnv;
   write: (channel: WriteChannel, message: string) => void;
   setExitCode: (code: number) => void;
@@ -132,6 +137,10 @@ const defaultDeps: PlanCommandDeps = {
   writeTeamPlan,
   getTeamPlanPath,
   openEditor: defaultOpenEditor,
+  maybeAutoApproveTeamPlan,
+  appendEvent: (input) => {
+    openEventLog().append(input);
+  },
   env: process.env,
   write: (channel, message) => {
     if (channel === 'stdout') {
@@ -238,6 +247,23 @@ export function registerPlanCommands(program: Command, deps: PlanCommandDeps = d
         const result = await deps.runTeamPlanner({ worktreePath, issue, agent });
         await deps.writeState(repo, issueNumber, 'triaged', 'planned');
         deps.write('stdout', `team plan written: ${result.teamPlanPath}\n`);
+        const approval = await deps.maybeAutoApproveTeamPlan(
+          {
+            repoRoot: worktreePath,
+            worktreePath,
+            repo,
+            issueNumber,
+            teamPlanPath: result.teamPlanPath
+          },
+          {
+            readTeamPlan: deps.readTeamPlan,
+            writeState: deps.writeState,
+            appendEvent: deps.appendEvent
+          }
+        );
+        if (approval.status === 'approved') {
+          deps.write('stdout', 'planned -> approved (autonomous)\n');
+        }
       });
     });
 
