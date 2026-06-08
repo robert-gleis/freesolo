@@ -104,4 +104,16 @@ describe('setConfigKey — nested keys', () => {
     expect(content).toContain('watcher:');
     expect(content).toContain('interval_seconds: 30');
   });
+
+  it('injects a missing subkey into an existing watcher block', async () => {
+    const dir = await makeTempDir();
+    const filePath = path.join(dir, 'config.yaml');
+    await fs.writeFile(filePath, 'watcher:\n  trigger_label: "state:triaged"\n');
+    await setConfigKey(filePath, 'watcher.interval_seconds', '120');
+    const content = await fs.readFile(filePath, 'utf8');
+    // must not create a second watcher: block
+    expect(content.match(/^watcher:/gm)?.length).toBe(1);
+    expect(content).toContain('interval_seconds: 120');
+    expect(content).toContain('trigger_label:');
+  });
 });

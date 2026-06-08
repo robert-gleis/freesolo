@@ -24,12 +24,16 @@ export async function initConfigFile(filePath: string): Promise<void> {
   try {
     await fs.access(filePath);
     exists = true;
-  } catch {
-    // ENOENT — file doesn't exist, proceed
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
   }
   if (exists) throw new Error(`Config file already exists: ${filePath}`);
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, CONFIG_TEMPLATE, 'utf8');
+}
+
+function escapeReplacement(s: string): string {
+  return s.replace(/\$/g, '$$$$');
 }
 
 function applyKeyToContent(content: string, key: string, value: string): string {
@@ -38,7 +42,7 @@ function applyKeyToContent(content: string, key: string, value: string): string 
   if (parts.length === 1) {
     const flatKey = parts[0];
     const pattern = new RegExp(`^${flatKey}:.*$`, 'm');
-    const replacement = `${flatKey}: ${value}`;
+    const replacement = `${flatKey}: ${escapeReplacement(value)}`;
     if (pattern.test(content)) {
       return content.replace(pattern, replacement);
     }
@@ -48,13 +52,19 @@ function applyKeyToContent(content: string, key: string, value: string): string 
 
   const [, subKey] = parts;
   const nestedPattern = new RegExp(`^(\\s+)${subKey}:.*$`, 'm');
-  const replacement = `  ${subKey}: ${value}`;
+  const replacement = `  ${subKey}: ${escapeReplacement(value)}`;
   if (nestedPattern.test(content)) {
     return content.replace(nestedPattern, replacement);
   }
 
+  // Check if a watcher: block already exists (even if partial)
+  const parentBlockPattern = /^watcher:\s*$/m;
+  if (parentBlockPattern.test(content)) {
+    return content.replace(parentBlockPattern, `watcher:\n  ${subKey}: ${escapeReplacement(value)}`);
+  }
+
   const suffix = content.length > 0 && !content.endsWith('\n') ? '\n' : '';
-  return `${content}${suffix}watcher:\n  ${subKey}: ${value}\n`;
+  return `${content}${suffix}watcher:\n  ${subKey}: ${escapeReplacement(value)}\n`;
 }
 
 export async function setConfigKey(filePath: string, key: string, value: string): Promise<void> {
