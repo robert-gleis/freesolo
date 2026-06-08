@@ -5,6 +5,7 @@ export interface WatcherConfig {
 
 export interface IssueflowConfig {
   watcher: WatcherConfig;
+  autonomous_mode: boolean;
 }
 
 export const DEFAULT_WATCHER_CONFIG: WatcherConfig = {
@@ -13,7 +14,8 @@ export const DEFAULT_WATCHER_CONFIG: WatcherConfig = {
 };
 
 export const DEFAULT_CONFIG: IssueflowConfig = {
-  watcher: DEFAULT_WATCHER_CONFIG
+  watcher: DEFAULT_WATCHER_CONFIG,
+  autonomous_mode: false
 };
 
 export const MIN_INTERVAL_SECONDS = 5;

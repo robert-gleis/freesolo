@@ -44,6 +44,22 @@ function parseWatcherBlock(lines: string[]): Partial<WatcherConfig> {
   return result;
 }
 
+export function parseAutonomousModeFromContent(
+  content: string,
+  configPath: string
+): boolean | undefined {
+  for (const raw of content.split('\n')) {
+    const line = raw.trimEnd();
+    const match = line.match(/^autonomous_mode:\s*(.+)$/);
+    if (!match) continue;
+    const value = match[1].replace(/^["']|["']$/g, '').trim();
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    throw new Error(`${configPath}: autonomous_mode must be true or false`);
+  }
+  return undefined;
+}
+
 function validateWatcher(configPath: string, watcher: WatcherConfig): void {
   if (!Number.isFinite(watcher.interval_seconds) || watcher.interval_seconds < MIN_INTERVAL_SECONDS) {
     throw new Error(`${configPath}: watcher.interval_seconds must be >= ${MIN_INTERVAL_SECONDS}`);
@@ -70,5 +86,7 @@ export async function loadConfig(configPath = defaultConfigPath()): Promise<Issu
     ...watcherPartial
   };
   validateWatcher(configPath, watcher);
-  return { watcher };
+  const autonomous_mode =
+    parseAutonomousModeFromContent(content, configPath) ?? DEFAULT_CONFIG.autonomous_mode;
+  return { watcher, autonomous_mode };
 }

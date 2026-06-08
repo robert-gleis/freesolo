@@ -43,4 +43,25 @@ describe('loadConfig', () => {
 `);
     await expect(loadConfig(file)).rejects.toThrow(/interval_seconds/);
   });
+
+  it('defaults autonomous_mode to false', async () => {
+    const config = await loadConfig('/nonexistent/config.yaml');
+    expect(config.autonomous_mode).toBe(false);
+  });
+
+  it('parses autonomous_mode from global config', async () => {
+    const file = await writeTempConfig(`autonomous_mode: true
+watcher:
+  interval_seconds: 60
+  trigger_label: "state:triaged"
+`);
+    const config = await loadConfig(file);
+    expect(config.autonomous_mode).toBe(true);
+  });
+
+  it('throws on invalid autonomous_mode value', async () => {
+    const file = await writeTempConfig(`autonomous_mode: maybe
+`);
+    await expect(loadConfig(file)).rejects.toThrow(/autonomous_mode/);
+  });
 });
