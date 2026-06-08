@@ -32,11 +32,13 @@ import {
   WorktrunkMissingError,
   WorktrunkPathResolutionError
 } from '../core/worktree.js';
+import type { AppendEventInput } from '../event-log/types.js';
 import {
   appendKnowledgeToPrompt,
   loadKnowledgeEntries as defaultLoadKnowledgeEntries
 } from '../knowledge/loader.js';
 import { listAdrs as defaultListAdrs } from '../memory/adrs.js';
+import { buildDefaultImplementerRole, prepareAgentSpawn } from '../team/index.js';
 import { buildIssuePacket, buildWorkflowKernel } from '../workflow/kernel.js';
 
 export interface StartOptions {
@@ -88,6 +90,7 @@ export interface StartPlanDeps {
   }) => Promise<void>;
   now: () => Date;
   loadKnowledgeEntries: typeof defaultLoadKnowledgeEntries;
+  appendEvent?: (input: AppendEventInput) => void;
 }
 
 const defaultDeps: StartPlanDeps = {
@@ -387,8 +390,21 @@ export async function createStartPlan(input: { cwd: string; tool: HostTool; prin
     adrs
   };
   const kernel = buildWorkflowKernel(workflowInput);
+  const spawn = prepareAgentSpawn({
+    issueNumber: issue.number,
+    role: buildDefaultImplementerRole(input.tool),
+    workingDirectory: worktreePath,
+    baseInstructions: kernel
+  });
+  console.error(spawn.logLine);
+  deps.appendEvent?.({
+    eventType: 'agent.created',
+    agentId: spawn.agentId,
+    issueId: issue.number,
+    payload: spawn.eventPayload
+  });
   const knowledgeEntries = await deps.loadKnowledgeEntries(repoRoot);
-  const startupPrompt = appendKnowledgeToPrompt(kernel, knowledgeEntries);
+  const startupPrompt = appendKnowledgeToPrompt(spawn.instructions, knowledgeEntries);
 
   if (!input.printOnly) {
     const timestamp = deps.now().toISOString();
