@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
+import { execa } from 'execa';
+
 import type { IssueArtifactPaths } from './types.js';
 
 type ReviewArtifactKind = 'plan' | 'implementation';
@@ -62,18 +64,54 @@ async function findLatestReviewArtifact(repoRoot: string, issueNumber: number, k
   return legacyReview ? path.join(absoluteDir, legacyReview) : null;
 }
 
+async function gitIssueflowPath(repoRoot: string, ...segments: string[]): Promise<string> {
+  const joined = ['issueflow', ...segments].join('/');
+  const { stdout } = await execa('git', ['rev-parse', '--git-path', joined], { cwd: repoRoot });
+  const resolved = stdout.trim();
+  return path.isAbsolute(resolved) ? resolved : path.join(repoRoot, resolved);
+}
+
+async function findReportArtifact(
+  repoRoot: string,
+  issueNumber: number,
+  filename: string
+): Promise<string | null> {
+  let reportPath: string;
+
+  try {
+    reportPath = await gitIssueflowPath(repoRoot, 'reports', `issue-${issueNumber}`, filename);
+  } catch {
+    return null;
+  }
+
+  try {
+    await fs.access(reportPath);
+    return reportPath;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
 export async function findIssueArtifacts(repoRoot: string, issueNumber: number): Promise<IssueArtifactPaths> {
-  const [spec, plan, planReview, implementationReview] = await Promise.all([
+  const [spec, plan, planReview, implementationReview, testReport, reviewReport] = await Promise.all([
     findLatestArtifact(repoRoot, ['docs', 'issueflow', 'specs'], issueNumber, '-design.md'),
     findLatestArtifact(repoRoot, ['docs', 'issueflow', 'plans'], issueNumber, '-plan.md'),
     findLatestReviewArtifact(repoRoot, issueNumber, 'plan'),
-    findLatestReviewArtifact(repoRoot, issueNumber, 'implementation')
+    findLatestReviewArtifact(repoRoot, issueNumber, 'implementation'),
+    findReportArtifact(repoRoot, issueNumber, 'TEST_REPORT.md'),
+    findReportArtifact(repoRoot, issueNumber, 'REVIEW_REPORT.md')
   ]);
 
   return {
     spec,
     plan,
     planReview,
-    implementationReview
+    implementationReview,
+    testReport,
+    reviewReport
   };
 }

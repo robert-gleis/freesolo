@@ -2,6 +2,8 @@ import path from 'node:path';
 
 import { resolveRepoRoot } from '../core/git.js';
 import { IssueIdError, resolveIssueNumber } from '../core/issue-id.js';
+import { updateSessionReportArtifact } from '../reports/session-artifacts.js';
+import { writeTestReportToDisk } from '../reports/store.js';
 import { DEFAULT_CONFIG_FILENAME, VerificationConfigError, loadVerificationConfig } from '../verification/config.js';
 import { defaultRunPipelineDeps, runVerificationPipeline } from '../verification/runner.js';
 import { getRunDirectory } from '../verification/store.js';
@@ -31,6 +33,7 @@ export interface VerifyPlanDeps {
   }) => Promise<VerificationRun>;
   now: () => Date;
   newRunId: () => string;
+  writeTestReport?: (run: VerificationRun) => Promise<string | null>;
 }
 
 export type VerifyPlanResult =
@@ -63,7 +66,19 @@ export const defaultVerifyPlanDeps: VerifyPlanDeps = {
   getRunDirectory,
   runPipeline: (input) => runVerificationPipeline(input, defaultRunPipelineDeps),
   now: () => new Date(),
-  newRunId: () => defaultRunId(new Date())
+  newRunId: () => defaultRunId(new Date()),
+  writeTestReport: async (run) => {
+    try {
+      const reportPath = await writeTestReportToDisk(run);
+      await updateSessionReportArtifact(run.repoRoot, 'testReport', reportPath);
+      return reportPath;
+    } catch (error) {
+      console.error(
+        `issueflow: failed to write TEST_REPORT.md: ${error instanceof Error ? error.message : String(error)}`
+      );
+      return null;
+    }
+  }
 };
 
 function resolveConfigPath(repoRoot: string, configOption: string | undefined): string {
@@ -162,6 +177,16 @@ export async function createVerifyPlan(
     bail,
     abortSignal: input.abortSignal
   });
+
+  if (deps.writeTestReport) {
+    try {
+      await deps.writeTestReport(run);
+    } catch (error) {
+      console.error(
+        `issueflow: failed to write TEST_REPORT.md: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
 
   return {
     mode: 'completed',

@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
+import { execa } from 'execa';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { findIssueArtifacts } from '../../src/core/artifacts.js';
@@ -36,8 +37,30 @@ describe('findIssueArtifacts', () => {
       spec: specPath,
       plan: planPath,
       planReview: null,
-      implementationReview: implementationReviewPath
+      implementationReview: implementationReviewPath,
+      testReport: null,
+      reviewReport: null
     });
+  });
+
+  it('discovers report artifacts from the issueflow reports directory', async () => {
+    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-artifacts-'));
+    tempDirs.push(repoRoot);
+
+    await execa('git', ['init'], { cwd: repoRoot });
+
+    const reportsDir = path.join(repoRoot, '.git', 'issueflow', 'reports', 'issue-12');
+    await fs.mkdir(reportsDir, { recursive: true });
+
+    const testReportPath = path.join(reportsDir, 'TEST_REPORT.md');
+    const reviewReportPath = path.join(reportsDir, 'REVIEW_REPORT.md');
+    await fs.writeFile(testReportPath, '# test report');
+    await fs.writeFile(reviewReportPath, '# review report');
+
+    const artifacts = await findIssueArtifacts(repoRoot, 12);
+
+    expect(artifacts.testReport).toBe(testReportPath);
+    expect(artifacts.reviewReport).toBe(reviewReportPath);
   });
 
   it('prefers the latest numbered plan review artifact', async () => {

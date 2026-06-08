@@ -68,6 +68,8 @@ spec: ${input.artifacts.spec ?? 'not created yet'}
 plan: ${input.artifacts.plan ?? 'not created yet'}
 planReview: ${input.artifacts.planReview ?? 'not created yet'}
 implementationReview: ${input.artifacts.implementationReview ?? 'not created yet'}
+testReport: ${input.artifacts.testReport ?? 'not created yet'}
+reviewReport: ${input.artifacts.reviewReport ?? 'not created yet'}
 
 ## Body
 ${input.issueBody}
