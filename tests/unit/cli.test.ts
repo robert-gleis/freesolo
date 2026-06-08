@@ -142,4 +142,27 @@ describe('buildCli', () => {
     const subcommands = candidateCommand?.commands.map((command) => command.name()) ?? [];
     expect(subcommands).toEqual(expect.arrayContaining(['create', 'show']));
   });
+
+  it('registers the timeline command group with show subcommand and flags', () => {
+    const program = buildCli();
+    const timelineCommand = program.commands.find((command) => command.name() === 'timeline');
+
+    expect(timelineCommand).toBeDefined();
+    const subcommands = timelineCommand?.commands.map((command) => command.name()) ?? [];
+    expect(subcommands).toEqual(expect.arrayContaining(['show']));
+
+    const showCommand = timelineCommand?.commands.find((command) => command.name() === 'show');
+    const optionFlags = showCommand?.options.map((option) => option.long) ?? [];
+    expect(optionFlags).toEqual(expect.arrayContaining(['--issue', '--json', '--limit']));
+  });
+
+  it('rejects non-integer timeline --issue values', () => {
+    const program = buildCli();
+    const timelineCommand = program.commands.find((command) => command.name() === 'timeline');
+    const showCommand = timelineCommand?.commands.find((command) => command.name() === 'show');
+    expect(showCommand).toBeDefined();
+
+    showCommand?.exitOverride();
+    expect(() => showCommand?.parse(['--issue', '31abc'], { from: 'user' })).toThrow(/positive integer/);
+  });
 });

@@ -25,8 +25,34 @@ describe('event-log types', () => {
       'team.created',
       'team.member.blocked',
       'team.tearing-down',
-      'team.torn-down'
+      'team.torn-down',
+      'workflow.transition',
+      'workflow.refused',
+      'review.gate.completed',
+      'pr.created'
     ]);
+  });
+
+  it('includes team lifecycle event types', () => {
+    expect(EVENT_TYPES).toEqual(
+      expect.arrayContaining([
+        'team.created',
+        'team.member.blocked',
+        'team.tearing-down',
+        'team.torn-down'
+      ])
+    );
+  });
+
+  it('includes workflow timeline event types', () => {
+    expect(EVENT_TYPES).toEqual(
+      expect.arrayContaining([
+        'workflow.transition',
+        'workflow.refused',
+        'review.gate.completed',
+        'pr.created'
+      ])
+    );
   });
 
   it('pins CURRENT_EVENT_SCHEMA_VERSION to 1', () => {

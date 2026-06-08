@@ -8,6 +8,7 @@ import { registerPrCommands } from './commands/pr.js';
 import { registerTeamCommands } from './commands/team.js';
 import { registerStateCommands } from './commands/state.js';
 import { startAction } from './commands/start.js';
+import { registerTimelineCommands } from './commands/timeline.js';
 import { registerWatchCommands } from './commands/watch.js';
 import { registerWorktreesCommands } from './commands/worktrees.js';
 import { verifyAction } from './commands/verify.js';
@@ -62,6 +63,7 @@ Worktree setup:
   registerWatchCommands(program);
   registerWorktreesCommands(program);
   registerCandidateCommands(program);
+  registerTimelineCommands(program);
 
   return program;
 }
