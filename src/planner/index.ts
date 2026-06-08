@@ -43,3 +43,23 @@ export {
   type RunTeamPlannerInput,
   type RunTeamPlannerResult
 } from './team-plan.js';
+export {
+  assertParentIssueMatches,
+  DecompositionAlreadyAppliedError,
+  DecompositionNotFoundError,
+  DecompositionValidationError,
+  getDecompositionAppliedPath,
+  getDecompositionPath,
+  readDecomposition,
+  readDecompositionApplied,
+  validateDecompositionFile,
+  writeDecomposition,
+  writeDecompositionApplied,
+  type DecompositionAppliedRecord
+} from './decomposition-store.js';
+export {
+  createDefaultDecompositionAgent,
+  runIssueDecomposer,
+  type RunIssueDecomposerInput,
+  type RunIssueDecomposerResult
+} from './decomposition-runner.js';
