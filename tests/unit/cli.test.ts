@@ -81,17 +81,18 @@ describe('buildCli', () => {
     expect(issueOpt?.mandatory).toBeFalsy();
   });
 
-  it('registers the pr command group with a create subcommand having --print-only and optional --issue', () => {
+  it('registers the pr command group with create and show subcommands', () => {
     const program = buildCli();
     const prCommand = program.commands.find((command) => command.name() === 'pr');
 
     expect(prCommand).toBeDefined();
     const subcommands = prCommand?.commands.map((command) => command.name()) ?? [];
-    expect(subcommands).toContain('create');
+    expect(subcommands).toEqual(expect.arrayContaining(['create', 'show']));
 
     const createCmd = prCommand?.commands.find((command) => command.name() === 'create');
     const optionFlags = createCmd?.options.map((option) => option.long) ?? [];
     expect(optionFlags).toContain('--print-only');
+    expect(optionFlags).toContain('--dry-run');
     expect(optionFlags).toContain('--issue');
 
     const issueOpt = createCmd?.options.find((option) => option.long === '--issue');
