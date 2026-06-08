@@ -65,6 +65,39 @@ describe('buildCli', () => {
     expect(subcommands).toEqual(expect.arrayContaining(['tick']));
   });
 
+  it('registers the gate command group with an evaluate subcommand and optional --issue', () => {
+    const program = buildCli();
+    const gateCommand = program.commands.find((command) => command.name() === 'gate');
+
+    expect(gateCommand).toBeDefined();
+    const subcommands = gateCommand?.commands.map((command) => command.name()) ?? [];
+    expect(subcommands).toContain('evaluate');
+
+    const evaluateCmd = gateCommand?.commands.find((command) => command.name() === 'evaluate');
+    const optionFlags = evaluateCmd?.options.map((option) => option.long) ?? [];
+    expect(optionFlags).toContain('--issue');
+
+    const issueOpt = evaluateCmd?.options.find((option) => option.long === '--issue');
+    expect(issueOpt?.mandatory).toBeFalsy();
+  });
+
+  it('registers the pr command group with a create subcommand having --print-only and optional --issue', () => {
+    const program = buildCli();
+    const prCommand = program.commands.find((command) => command.name() === 'pr');
+
+    expect(prCommand).toBeDefined();
+    const subcommands = prCommand?.commands.map((command) => command.name()) ?? [];
+    expect(subcommands).toContain('create');
+
+    const createCmd = prCommand?.commands.find((command) => command.name() === 'create');
+    const optionFlags = createCmd?.options.map((option) => option.long) ?? [];
+    expect(optionFlags).toContain('--print-only');
+    expect(optionFlags).toContain('--issue');
+
+    const issueOpt = createCmd?.options.find((option) => option.long === '--issue');
+    expect(issueOpt?.mandatory).toBeFalsy();
+  });
+
   it('registers the plan command group with generate, show, edit, and approve subcommands', () => {
     const program = buildCli();
     const planCommand = program.commands.find((command) => command.name() === 'plan');
@@ -72,6 +105,15 @@ describe('buildCli', () => {
     expect(planCommand).toBeDefined();
     const subcommands = planCommand?.commands.map((command) => command.name()) ?? [];
     expect(subcommands).toEqual(expect.arrayContaining(['generate', 'show', 'edit', 'approve']));
+  });
+
+  it('registers the team command group with start, status, and stop subcommands', () => {
+    const program = buildCli();
+    const teamCommand = program.commands.find((command) => command.name() === 'team');
+
+    expect(teamCommand).toBeDefined();
+    const subcommands = teamCommand?.commands.map((command) => command.name()) ?? [];
+    expect(subcommands).toEqual(expect.arrayContaining(['start', 'status', 'stop']));
   });
 
   it('registers the watch command group with run and once subcommands', () => {

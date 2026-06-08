@@ -12,7 +12,7 @@ import {
 } from '../../src/event-log/types.js';
 
 describe('event-log types', () => {
-  it('exports the eight canonical event types from issue #23', () => {
+  it('exports the canonical event types including team lifecycle events', () => {
     expect([...EVENT_TYPES]).toEqual([
       'agent.created',
       'agent.stopped',
@@ -22,11 +22,26 @@ describe('event-log types', () => {
       'team.planned',
       'plan.approved',
       'decomposition.applied',
+      'team.created',
+      'team.member.blocked',
+      'team.tearing-down',
+      'team.torn-down',
       'workflow.transition',
       'workflow.refused',
       'review.gate.completed',
       'pr.created'
     ]);
+  });
+
+  it('includes team lifecycle event types', () => {
+    expect(EVENT_TYPES).toEqual(
+      expect.arrayContaining([
+        'team.created',
+        'team.member.blocked',
+        'team.tearing-down',
+        'team.torn-down'
+      ])
+    );
   });
 
   it('includes workflow timeline event types', () => {
