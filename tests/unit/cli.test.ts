@@ -65,6 +65,40 @@ describe('buildCli', () => {
     expect(subcommands).toEqual(expect.arrayContaining(['tick']));
   });
 
+  it('registers the gate command group with an evaluate subcommand and optional --issue', () => {
+    const program = buildCli();
+    const gateCommand = program.commands.find((command) => command.name() === 'gate');
+
+    expect(gateCommand).toBeDefined();
+    const subcommands = gateCommand?.commands.map((command) => command.name()) ?? [];
+    expect(subcommands).toContain('evaluate');
+
+    const evaluateCmd = gateCommand?.commands.find((command) => command.name() === 'evaluate');
+    const optionFlags = evaluateCmd?.options.map((option) => option.long) ?? [];
+    expect(optionFlags).toContain('--issue');
+
+    const issueOpt = evaluateCmd?.options.find((option) => option.long === '--issue');
+    expect(issueOpt?.mandatory).toBeFalsy();
+  });
+
+  it('registers the pr command group with create and show subcommands', () => {
+    const program = buildCli();
+    const prCommand = program.commands.find((command) => command.name() === 'pr');
+
+    expect(prCommand).toBeDefined();
+    const subcommands = prCommand?.commands.map((command) => command.name()) ?? [];
+    expect(subcommands).toEqual(expect.arrayContaining(['create', 'show']));
+
+    const createCmd = prCommand?.commands.find((command) => command.name() === 'create');
+    const optionFlags = createCmd?.options.map((option) => option.long) ?? [];
+    expect(optionFlags).toContain('--print-only');
+    expect(optionFlags).toContain('--dry-run');
+    expect(optionFlags).toContain('--issue');
+
+    const issueOpt = createCmd?.options.find((option) => option.long === '--issue');
+    expect(issueOpt?.mandatory).toBeFalsy();
+  });
+
   it('registers the plan command group with generate, show, edit, and approve subcommands', () => {
     const program = buildCli();
     const planCommand = program.commands.find((command) => command.name() === 'plan');
@@ -72,6 +106,28 @@ describe('buildCli', () => {
     expect(planCommand).toBeDefined();
     const subcommands = planCommand?.commands.map((command) => command.name()) ?? [];
     expect(subcommands).toEqual(expect.arrayContaining(['generate', 'show', 'edit', 'approve']));
+  });
+
+  it('registers the decomposition command group with generate, show, edit, and approve subcommands', () => {
+    const program = buildCli();
+    const decompositionCommand = program.commands.find(
+      (command) => command.name() === 'decomposition'
+    );
+
+    expect(decompositionCommand).toBeDefined();
+    const subcommands = decompositionCommand?.commands.map((command) => command.name()) ?? [];
+    expect(subcommands).toEqual(
+      expect.arrayContaining(['generate', 'show', 'edit', 'approve'])
+    );
+  });
+
+  it('registers the team command group with start, status, and stop subcommands', () => {
+    const program = buildCli();
+    const teamCommand = program.commands.find((command) => command.name() === 'team');
+
+    expect(teamCommand).toBeDefined();
+    const subcommands = teamCommand?.commands.map((command) => command.name()) ?? [];
+    expect(subcommands).toEqual(expect.arrayContaining(['start', 'status', 'stop']));
   });
 
   it('registers the reports command group with a show subcommand', () => {
@@ -108,5 +164,37 @@ describe('buildCli', () => {
     expect(candidateCommand).toBeDefined();
     const subcommands = candidateCommand?.commands.map((command) => command.name()) ?? [];
     expect(subcommands).toEqual(expect.arrayContaining(['create', 'show']));
+  });
+
+  it('registers the timeline command group with show subcommand and flags', () => {
+    const program = buildCli();
+    const timelineCommand = program.commands.find((command) => command.name() === 'timeline');
+
+    expect(timelineCommand).toBeDefined();
+    const subcommands = timelineCommand?.commands.map((command) => command.name()) ?? [];
+    expect(subcommands).toEqual(expect.arrayContaining(['show']));
+
+    const showCommand = timelineCommand?.commands.find((command) => command.name() === 'show');
+    const optionFlags = showCommand?.options.map((option) => option.long) ?? [];
+    expect(optionFlags).toEqual(expect.arrayContaining(['--issue', '--json', '--limit']));
+  });
+
+  it('rejects non-integer timeline --issue values', () => {
+    const program = buildCli();
+    const timelineCommand = program.commands.find((command) => command.name() === 'timeline');
+    const showCommand = timelineCommand?.commands.find((command) => command.name() === 'show');
+    expect(showCommand).toBeDefined();
+
+    showCommand?.exitOverride();
+    expect(() => showCommand?.parse(['--issue', '31abc'], { from: 'user' })).toThrow(/positive integer/);
+  });
+
+  it('registers the replay command group with show subcommand', () => {
+    const program = buildCli();
+    const replayCommand = program.commands.find((command) => command.name() === 'replay');
+
+    expect(replayCommand).toBeDefined();
+    const subcommands = replayCommand?.commands.map((command) => command.name()) ?? [];
+    expect(subcommands).toEqual(expect.arrayContaining(['show']));
   });
 });

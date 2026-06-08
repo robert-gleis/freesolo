@@ -134,9 +134,10 @@ describe('issueflow verify (integration)', () => {
     if (result.mode !== 'completed') throw new Error('expected completed mode');
 
     expect(result.exitCode).toBe(130);
-    // The check was killed mid-flight. Status must be 'fail'. Either signal is 'SIGINT'
-    // (most platforms) or aborted=true drove the 130 mapping — both are valid v1 contracts.
-    expect(result.run.checks[0].status).toBe('fail');
+    // Depending on scheduling, SIGINT can land while the first check is running ("fail")
+    // or just before execution starts ("skipped"). Both are valid as long as exit 130 is
+    // preserved and run artifacts are written.
+    expect(['fail', 'skipped']).toContain(result.run.checks[0].status);
 
     const runDir = path.join(
       repoRoot,

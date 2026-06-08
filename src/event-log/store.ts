@@ -131,9 +131,10 @@ export function openEventLog(options: OpenEventLogOptions = {}): EventLog {
       }
       const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
       const limit = Math.max(1, Math.min(query.limit ?? 100, 1000));
+      const order = query.order === 'asc' ? 'ASC' : 'DESC';
       try {
         const rows = store
-          .prepare(`SELECT * FROM events ${where} ORDER BY id DESC LIMIT ?`)
+          .prepare(`SELECT * FROM events ${where} ORDER BY id ${order} LIMIT ?`)
           .all(...params, limit) as Parameters<typeof mapRow>[0][];
         return rows.map((row) => mapRow(row));
       } catch (error) {
