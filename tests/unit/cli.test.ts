@@ -107,6 +107,15 @@ describe('buildCli', () => {
     expect(subcommands).toEqual(expect.arrayContaining(['generate', 'show', 'edit', 'approve']));
   });
 
+  it('registers the team command group with start, status, and stop subcommands', () => {
+    const program = buildCli();
+    const teamCommand = program.commands.find((command) => command.name() === 'team');
+
+    expect(teamCommand).toBeDefined();
+    const subcommands = teamCommand?.commands.map((command) => command.name()) ?? [];
+    expect(subcommands).toEqual(expect.arrayContaining(['start', 'status', 'stop']));
+  });
+
   it('registers the watch command group with run and once subcommands', () => {
     const program = buildCli();
     const watchCommand = program.commands.find((command) => command.name() === 'watch');
