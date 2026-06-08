@@ -10,8 +10,30 @@ import {
   type WatcherConfig
 } from './types.js';
 
+export type ConfigOrigin = 'default' | 'global' | 'repo';
+
+export interface ConfigWithOrigins {
+  config: IssueflowConfig;
+  origins: {
+    state_backend: ConfigOrigin;
+    autonomous_mode: ConfigOrigin;
+    'watcher.interval_seconds': ConfigOrigin;
+    'watcher.trigger_label': ConfigOrigin;
+  };
+}
+
+export interface RawConfig {
+  state_backend?: StateBackend;
+  autonomous_mode?: boolean;
+  watcher?: Partial<WatcherConfig>;
+}
+
 export function defaultConfigPath(): string {
   return process.env.ISSUEFLOW_CONFIG ?? path.join(os.homedir(), '.issueflow', 'config.yaml');
+}
+
+export function repoConfigPath(repoRoot: string): string {
+  return path.join(repoRoot, '.issueflow', 'config.yaml');
 }
 
 function parseWatcherBlock(lines: string[]): Partial<WatcherConfig> {
@@ -85,26 +107,98 @@ function validateWatcher(configPath: string, watcher: WatcherConfig): void {
   }
 }
 
-export async function loadConfig(configPath = defaultConfigPath()): Promise<IssueflowConfig> {
-  let content: string;
+async function readFileOrNull(filePath: string): Promise<string | null> {
   try {
-    content = await fs.readFile(configPath, 'utf8');
+    return await fs.readFile(filePath, 'utf8');
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return structuredClone(DEFAULT_CONFIG);
-    }
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
     throw error;
   }
+}
 
-  const watcherPartial = parseWatcherBlock(content.split('\n'));
+function parseRawConfig(content: string, configPath: string): RawConfig {
+  const lines = content.split('\n');
+  const watcherPartial = parseWatcherBlock(lines);
+  return {
+    state_backend: parseStateBackendFromContent(content, configPath),
+    autonomous_mode: parseAutonomousModeFromContent(content, configPath),
+    watcher: Object.keys(watcherPartial).length > 0 ? watcherPartial : undefined
+  };
+}
+
+export async function loadConfig(
+  globalPath = defaultConfigPath(),
+  repoRoot?: string
+): Promise<IssueflowConfig> {
+  const globalContent = await readFileOrNull(globalPath);
+  const globalRaw = globalContent ? parseRawConfig(globalContent, globalPath) : {};
+
+  let repoRaw: RawConfig = {};
+  if (repoRoot) {
+    const repoPath = repoConfigPath(repoRoot);
+    const repoContent = await readFileOrNull(repoPath);
+    if (repoContent) repoRaw = parseRawConfig(repoContent, repoPath);
+  }
+
   const watcher: WatcherConfig = {
     ...DEFAULT_CONFIG.watcher,
-    ...watcherPartial
+    ...globalRaw.watcher,
+    ...repoRaw.watcher
   };
+  const configPath = repoRoot ? repoConfigPath(repoRoot) : globalPath;
   validateWatcher(configPath, watcher);
-  const autonomous_mode =
-    parseAutonomousModeFromContent(content, configPath) ?? DEFAULT_CONFIG.autonomous_mode;
-  const state_backend =
-    parseStateBackendFromContent(content, configPath) ?? DEFAULT_CONFIG.state_backend;
-  return { watcher, autonomous_mode, state_backend };
+
+  return {
+    watcher,
+    autonomous_mode: repoRaw.autonomous_mode ?? globalRaw.autonomous_mode ?? DEFAULT_CONFIG.autonomous_mode,
+    state_backend: repoRaw.state_backend ?? globalRaw.state_backend ?? DEFAULT_CONFIG.state_backend
+  };
+}
+
+export async function loadConfigWithOrigins(
+  globalPath = defaultConfigPath(),
+  repoRoot?: string
+): Promise<ConfigWithOrigins> {
+  const globalContent = await readFileOrNull(globalPath);
+  const globalRaw = globalContent ? parseRawConfig(globalContent, globalPath) : {};
+
+  let repoRaw: RawConfig = {};
+  if (repoRoot) {
+    const repoPath = repoConfigPath(repoRoot);
+    const repoContent = await readFileOrNull(repoPath);
+    if (repoContent) repoRaw = parseRawConfig(repoContent, repoPath);
+  }
+
+  const watcher: WatcherConfig = {
+    ...DEFAULT_CONFIG.watcher,
+    ...globalRaw.watcher,
+    ...repoRaw.watcher
+  };
+  const configPath = repoRoot ? repoConfigPath(repoRoot) : globalPath;
+  validateWatcher(configPath, watcher);
+
+  const config: IssueflowConfig = {
+    watcher,
+    autonomous_mode: repoRaw.autonomous_mode ?? globalRaw.autonomous_mode ?? DEFAULT_CONFIG.autonomous_mode,
+    state_backend: repoRaw.state_backend ?? globalRaw.state_backend ?? DEFAULT_CONFIG.state_backend
+  };
+
+  function origin<T>(
+    repoVal: T | undefined,
+    globalVal: T | undefined
+  ): ConfigOrigin {
+    if (repoVal !== undefined) return 'repo';
+    if (globalVal !== undefined) return 'global';
+    return 'default';
+  }
+
+  return {
+    config,
+    origins: {
+      state_backend: origin(repoRaw.state_backend, globalRaw.state_backend),
+      autonomous_mode: origin(repoRaw.autonomous_mode, globalRaw.autonomous_mode),
+      'watcher.interval_seconds': origin(repoRaw.watcher?.interval_seconds, globalRaw.watcher?.interval_seconds),
+      'watcher.trigger_label': origin(repoRaw.watcher?.trigger_label, globalRaw.watcher?.trigger_label)
+    }
+  };
 }
