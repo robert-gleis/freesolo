@@ -1,6 +1,7 @@
 import { Command, InvalidArgumentError, Option } from 'commander';
 
 import { registerCandidateCommands } from './commands/candidate.js';
+import { registerConfigCommands } from './commands/config.js';
 import { registerDecompositionCommands } from './commands/decomposition.js';
 import { registerEngineCommands } from './commands/engine.js';
 import { registerGateCommands } from './commands/gate.js';
@@ -72,6 +73,7 @@ Worktree setup:
   registerReportsCommands(program);
   registerTimelineCommands(program);
   registerReplayCommands(program);
+  registerConfigCommands(program);
 
   return program;
 }
