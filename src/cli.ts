@@ -1,6 +1,7 @@
 import { Command, InvalidArgumentError, Option } from 'commander';
 
 import { registerCandidateCommands } from './commands/candidate.js';
+import { registerDecompositionCommands } from './commands/decomposition.js';
 import { registerEngineCommands } from './commands/engine.js';
 import { registerGateCommands } from './commands/gate.js';
 import { registerPlanCommands } from './commands/plan.js';
@@ -60,6 +61,7 @@ Worktree setup:
   registerGateCommands(program);
   registerPrCommands(program);
   registerPlanCommands(program);
+  registerDecompositionCommands(program);
   registerTeamCommands(program);
   registerWatchCommands(program);
   registerWorktreesCommands(program);
