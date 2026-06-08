@@ -1,3 +1,4 @@
+import type { AgentRoleAssignment } from '../team/types.js';
 import type { WorkflowState } from './state-machine.js';
 import type { RepoRef } from './state-store.js';
 
@@ -8,6 +9,8 @@ export interface PolicyInput {
 }
 
 export interface AgentTaskRequest {
+  agentId?: string;
+  role?: AgentRoleAssignment;
   workingDirectory: string;
   initialInstructions: string;
 }

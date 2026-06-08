@@ -38,9 +38,10 @@ describe('ClaudeCodeAgentAdapter + workflow engine', () => {
     expect(invoker).toHaveBeenCalledTimes(1);
     expect(invoker).toHaveBeenCalledWith({
       cwd: process.cwd(),
-      prompt: 'implement feature',
+      prompt: expect.stringContaining('implement feature'),
       sessionId: undefined
     });
+    expect(invoker.mock.calls[0]?.[0]?.prompt).toContain('## Your Role');
     expect((await agent.status()).state).toBe('running');
     expect(eventKinds).toEqual(['decision', 'transition']);
   });

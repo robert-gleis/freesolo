@@ -1,8 +1,14 @@
 import type { AgentAdapter } from '../agents/index.js';
+import type { AppendEventInput } from '../event-log/types.js';
 import {
   appendKnowledgeToPrompt,
   loadKnowledgeEntries as defaultLoadKnowledgeEntries
 } from '../knowledge/loader.js';
+import {
+  buildDefaultImplementerRole,
+  prepareAgentSpawn,
+  type PlannerHost
+} from '../team/index.js';
 import type { EngineAction, PolicyInput } from './policy.js';
 import { InvalidTransitionError, type WorkflowState } from './state-machine.js';
 import {
@@ -56,6 +62,9 @@ export interface WorkflowEngineDeps {
   policy: (input: PolicyInput) => EngineAction;
   agent?: AgentAdapter;
   loadKnowledgeEntries?: typeof defaultLoadKnowledgeEntries;
+  logSpawn?: (line: string) => void;
+  appendEvent?: (input: AppendEventInput) => void;
+  defaultSpawnHost?: PlannerHost;
   now?: () => Date;
 }
 
@@ -176,12 +185,27 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
           };
         }
 
+        const defaultHost = deps.defaultSpawnHost ?? 'cursor';
+        const role = action.agent.role ?? buildDefaultImplementerRole(defaultHost);
+        const spawn = prepareAgentSpawn({
+          agentId: action.agent.agentId,
+          issueNumber,
+          role,
+          workingDirectory: action.agent.workingDirectory,
+          baseInstructions: action.agent.initialInstructions
+        });
+
+        deps.logSpawn?.(spawn.logLine);
+        deps.appendEvent?.({
+          eventType: 'agent.created',
+          agentId: spawn.agentId,
+          issueId: issueNumber,
+          payload: spawn.eventPayload
+        });
+
         const loadKnowledge = deps.loadKnowledgeEntries ?? defaultLoadKnowledgeEntries;
         const knowledgeEntries = await loadKnowledge(action.agent.workingDirectory);
-        const enrichedInstructions = appendKnowledgeToPrompt(
-          action.agent.initialInstructions,
-          knowledgeEntries
-        );
+        const enrichedInstructions = appendKnowledgeToPrompt(spawn.instructions, knowledgeEntries);
 
         await deps.agent.start({
           workingDirectory: action.agent.workingDirectory,

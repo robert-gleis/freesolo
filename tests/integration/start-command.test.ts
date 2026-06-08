@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createStartPlan, type StartPlanDeps } from '../../src/commands/start.js';
 import { StateStoreError } from '../../src/state-store/types.js';
 import { WorktrunkMissingError } from '../../src/core/worktree.js';
+import type { AppendEventInput } from '../../src/event-log/types.js';
 import type { KnowledgeEntry } from '../../src/knowledge/loader.js';
 
 function createPromptCancelError(): Error {
@@ -613,6 +614,38 @@ describe('createStartPlan', () => {
     expect(switchCalls).toEqual([]);
   });
 
+  it('prepends role framing to the startup prompt in print-only mode', async () => {
+    const result = await createStartPlan(
+      { cwd: '/repo', tool: 'cursor', printOnly: true },
+      createDeps()
+    );
+
+    expect(result.mode).toBe('print-only');
+    if (result.mode !== 'print-only') {
+      return;
+    }
+
+    const promptArg = result.launchPlan.args.at(-1);
+    expect(promptArg).toContain('## Your Role');
+    expect(promptArg).toContain('Implementer');
+    expect(promptArg).toContain('Continue the issueflow workflow');
+  });
+
+  it('appends agent.created when appendEvent dep is provided', async () => {
+    const appended: AppendEventInput[] = [];
+    await createStartPlan(
+      { cwd: '/repo', tool: 'cursor', printOnly: true },
+      createDeps({ appendEvent: (input) => appended.push(input) })
+    );
+
+    expect(appended[0]).toMatchObject({
+      eventType: 'agent.created',
+      agentId: 'agent-12-implementer-1',
+      issueId: 12,
+      payload: expect.objectContaining({ roleName: 'Implementer' })
+    });
+  });
+
   it('appends knowledge entries to the startup prompt in print-only mode', async () => {
     const knowledgeEntries: KnowledgeEntry[] = [
       {
@@ -635,9 +668,11 @@ describe('createStartPlan', () => {
     }
 
     const promptArg = result.launchPlan.args.at(-1);
+    expect(promptArg).toContain('## Your Role');
     expect(promptArg).toContain('Continue the issueflow workflow');
     expect(promptArg).toContain('## Factory Knowledge Base');
     expect(promptArg).toContain('npm run build');
+    expect(promptArg!.indexOf('## Your Role')).toBeLessThan(promptArg!.indexOf('## Factory Knowledge Base'));
   });
 
   it('loads knowledge from the resolved worktree when launching', async () => {

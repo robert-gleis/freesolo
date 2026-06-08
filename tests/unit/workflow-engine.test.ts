@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AgentAdapter, AgentResponse, AgentStatus } from '../../src/agents/index.js';
+import type { AppendEventInput } from '../../src/event-log/types.js';
 import { InvalidTransitionError } from '../../src/workflow/state-machine.js';
 import {
   InvalidStateLabelError,
@@ -340,10 +341,13 @@ describe('createWorkflowEngine tick: spawn action', () => {
 
     const result = await harness.engine.tick({ repo, issueNumber: 24 });
 
-    expect(agent.startCalls).toEqual([
-      { workingDirectory: '/tmp/wt', initialInstructions: 'continue issueflow' }
-    ]);
-    expect(agent.sendCalls).toEqual(['continue issueflow']);
+    expect(agent.startCalls).toHaveLength(1);
+    expect(agent.startCalls[0]?.workingDirectory).toBe('/tmp/wt');
+    expect(agent.startCalls[0]?.initialInstructions).toContain('## Your Role');
+    expect(agent.startCalls[0]?.initialInstructions).toContain('continue issueflow');
+    expect(agent.sendCalls).toHaveLength(1);
+    expect(agent.sendCalls[0]).toContain('## Your Role');
+    expect(agent.sendCalls[0]).toContain('continue issueflow');
     expect(harness.writeState).toHaveBeenCalledWith(repo, 24, 'approved', 'implementing');
     expect(result.toState).toBe('implementing');
     expect(harness.events.map((event) => event.kind)).toEqual(['decision', 'transition']);
@@ -376,10 +380,84 @@ describe('createWorkflowEngine tick: spawn action', () => {
     expect(loadKnowledgeEntries).toHaveBeenCalledWith('/tmp/wt');
     expect(agent.startCalls).toHaveLength(1);
     const enriched = agent.startCalls[0]?.initialInstructions;
+    expect(enriched).toContain('## Your Role');
     expect(enriched).toContain('continue issueflow');
     expect(enriched).toContain('## Factory Knowledge Base');
     expect(enriched).toContain('npm test');
     expect(agent.sendCalls).toEqual([enriched]);
+  });
+
+  it('applies default role prompt, logs spawn, and calls appendEvent when configured', async () => {
+    const logLines: string[] = [];
+    const appended: AppendEventInput[] = [];
+    const agent = buildFakeAgent();
+    const harness = buildHarness({
+      agent,
+      readState: vi.fn().mockResolvedValue('approved'),
+      policy: vi
+        .fn<(input: PolicyInput) => EngineAction>()
+        .mockReturnValue({
+          kind: 'spawn',
+          agent: { workingDirectory: '/tmp/wt', initialInstructions: 'continue issueflow' },
+          nextState: 'implementing'
+        }),
+      logSpawn: (line) => logLines.push(line),
+      appendEvent: (input) => appended.push(input)
+    });
+
+    await harness.engine.tick({ repo, issueNumber: 42 });
+
+    const enriched = agent.startCalls[0]?.initialInstructions;
+    expect(enriched).toContain('## Your Role');
+    expect(enriched).toContain('Implementer');
+    expect(logLines[0]).toContain('agent=agent-42-implementer-1');
+    expect(appended[0]).toMatchObject({
+      eventType: 'agent.created',
+      agentId: 'agent-42-implementer-1',
+      issueId: 42,
+      payload: expect.objectContaining({ roleName: 'Implementer' })
+    });
+  });
+
+  it('uses explicit role and agentId from the spawn action when provided', async () => {
+    const logLines: string[] = [];
+    const appended: AppendEventInput[] = [];
+    const agent = buildFakeAgent();
+    const harness = buildHarness({
+      agent,
+      readState: vi.fn().mockResolvedValue('approved'),
+      policy: vi
+        .fn<(input: PolicyInput) => EngineAction>()
+        .mockReturnValue({
+          kind: 'spawn',
+          agent: {
+            agentId: 'custom-agent-id',
+            role: {
+              roleName: 'Reviewer',
+              responsibility: 'Review PR',
+              host: 'claude',
+              instanceIndex: 1,
+              instanceCount: 1
+            },
+            workingDirectory: '/tmp/wt',
+            initialInstructions: 'review now'
+          },
+          nextState: 'implementing'
+        }),
+      logSpawn: (line) => logLines.push(line),
+      appendEvent: (input) => appended.push(input)
+    });
+
+    await harness.engine.tick({ repo, issueNumber: 42 });
+
+    expect(agent.startCalls[0]?.initialInstructions).toContain('Reviewer');
+    expect(agent.startCalls[0]?.initialInstructions).toContain('review now');
+    expect(logLines[0]).toContain('agent=custom-agent-id');
+    expect(appended[0]).toMatchObject({
+      eventType: 'agent.created',
+      agentId: 'custom-agent-id',
+      payload: expect.objectContaining({ roleName: 'Reviewer', host: 'claude' })
+    });
   });
 
   it('translates InvalidTransitionError from the spawn writeState into a refused result', async () => {
@@ -402,7 +480,8 @@ describe('createWorkflowEngine tick: spawn action', () => {
     const result = await harness.engine.tick({ repo, issueNumber: 24 });
 
     expect(result.refused?.code).toBe('invalid-transition');
-    expect(agent.sendCalls).toEqual(['go']);
+    expect(agent.sendCalls[0]).toContain('## Your Role');
+    expect(agent.sendCalls[0]).toContain('go');
     expect(harness.events.filter((event) => event.kind === 'transition')).toHaveLength(0);
   });
 
