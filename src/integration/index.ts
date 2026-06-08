@@ -19,6 +19,37 @@ export type {
   PullRequestRecord,
   PullRequestErrorCode
 } from './pr-types.js';
+export { buildMergeReadinessComment } from './merge-comment.js';
+export {
+  evaluateAndPersistMergeReadiness,
+  evaluateMergeReadinessLive,
+  executeMerge,
+  gatherMergeReadinessInput,
+  defaultRunGh as defaultMergeRunGh
+} from './merge-executor.js';
+export { evaluateMergeReadiness } from './merge-readiness.js';
+export { defaultMergePolicy, loadMergePolicy, mergePolicySchema } from './merge-policy.js';
+export {
+  getMergeReadinessPath,
+  readMergeLabelStatus,
+  readMergeReadinessRecord,
+  writeMergeLabelVerdict,
+  writeMergeReadinessRecord,
+  MultipleMergeLabelVerdictsError,
+  MERGE_LABEL_PREFIX
+} from './merge-store.js';
+export {
+  MergeReadinessError
+} from './merge-types.js';
+export type {
+  MergeGateCheck,
+  MergeLabelStatus,
+  MergePolicyConfig,
+  MergeReadinessEvaluation,
+  MergeReadinessInput,
+  MergeReadinessOutcome,
+  MergeReadinessRecord
+} from './merge-types.js';
 export { buildCandidateBranchName } from './naming.js';
 export {
   clearCandidateBranchRecord,

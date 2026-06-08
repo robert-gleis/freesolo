@@ -189,6 +189,19 @@ describe('buildCli', () => {
     expect(() => showCommand?.parse(['--issue', '31abc'], { from: 'user' })).toThrow(/positive integer/);
   });
 
+  it('registers the merge command group with evaluate and show subcommands', () => {
+    const program = buildCli();
+    const mergeCommand = program.commands.find((command) => command.name() === 'merge');
+
+    expect(mergeCommand).toBeDefined();
+    const subcommands = mergeCommand?.commands.map((command) => command.name()) ?? [];
+    expect(subcommands).toEqual(expect.arrayContaining(['evaluate', 'show']));
+
+    const optionFlags = mergeCommand?.options.map((option) => option.long) ?? [];
+    expect(optionFlags).toContain('--merge-method');
+    expect(optionFlags).toContain('--issue');
+  });
+
   it('registers the replay command group with show subcommand', () => {
     const program = buildCli();
     const replayCommand = program.commands.find((command) => command.name() === 'replay');
