@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createStartPlan, type StartPlanDeps } from '../../src/commands/start.js';
+import { StateStoreError } from '../../src/state-store/types.js';
 import { WorktrunkMissingError } from '../../src/core/worktree.js';
+import type { KnowledgeEntry } from '../../src/knowledge/loader.js';
 
 function createPromptCancelError(): Error {
   const error = new Error('User force closed the prompt with SIGINT');
@@ -41,6 +43,7 @@ function createDeps(overrides: Partial<StartPlanDeps> = {}): StartPlanDeps {
       planReview: null,
       implementationReview: null
     }),
+    listAdrs: async () => [],
     writeSessionState: async () => undefined,
     writeIssuePacket: async () => undefined,
     chooseIssue: async (issues) => issues[0],
@@ -55,7 +58,9 @@ function createDeps(overrides: Partial<StartPlanDeps> = {}): StartPlanDeps {
     checkHostAsset: async () => 'current',
     installHostAsset: async () => undefined,
     confirmHostAssetInstall: async () => true,
+    upsertWorktreeMetadata: async () => undefined,
     now: () => new Date('2026-04-24T10:00:00.000Z'),
+    loadKnowledgeEntries: async () => [],
     ...overrides
   };
 }
@@ -190,6 +195,8 @@ describe('createStartPlan', () => {
     expect(packets[0]).toContain('/wt/issue-12-ship-issueflow-start');
     expect(packets[0]).toContain('/wt/issue-12-ship-issueflow-start/docs/issueflow/specs/2026-04-20-issue-12-design.md');
     expect(packets[0]).toContain('/wt/issue-12-ship-issueflow-start/docs/issueflow/plans/2026-04-21-issue-12-plan.md');
+    expect(packets[0]).toContain('## Architecture Decision Records');
+    expect(packets[0]).toContain('No numbered ADRs found under docs/adr/.');
     expect(states[0]).toMatchObject({
       issueNumber: 12,
       repoRoot: '/wt/issue-12-ship-issueflow-start',
@@ -604,5 +611,127 @@ describe('createStartPlan', () => {
       message: 'Cancelled.'
     });
     expect(switchCalls).toEqual([]);
+  });
+
+  it('appends knowledge entries to the startup prompt in print-only mode', async () => {
+    const knowledgeEntries: KnowledgeEntry[] = [
+      {
+        filename: 'build.md',
+        title: 'Build',
+        content: 'npm run build'
+      }
+    ];
+
+    const result = await createStartPlan(
+      { cwd: '/repo', tool: 'cursor', printOnly: true },
+      createDeps({
+        loadKnowledgeEntries: async () => knowledgeEntries
+      })
+    );
+
+    expect(result.mode).toBe('print-only');
+    if (result.mode !== 'print-only') {
+      return;
+    }
+
+    const promptArg = result.launchPlan.args.at(-1);
+    expect(promptArg).toContain('Continue the issueflow workflow');
+    expect(promptArg).toContain('## Factory Knowledge Base');
+    expect(promptArg).toContain('npm run build');
+  });
+
+  it('loads knowledge from the resolved worktree when launching', async () => {
+    const loadCalls: string[] = [];
+    const knowledgeEntries: KnowledgeEntry[] = [
+      { filename: 'test.md', title: 'Test', content: 'npm test' }
+    ];
+
+    const result = await createStartPlan(
+      { cwd: '/repo', tool: 'cursor', printOnly: false },
+      createDeps({
+        loadKnowledgeEntries: async (repoRoot) => {
+          loadCalls.push(repoRoot);
+          return knowledgeEntries;
+        }
+      })
+    );
+
+    expect(result.mode).toBe('launch');
+    expect(loadCalls).toEqual(['/wt/issue-12-ship-issueflow-start']);
+    if (result.mode !== 'launch') {
+      return;
+    }
+
+    const promptArg = result.launchPlan.args.at(-1);
+    expect(promptArg).toContain('## Factory Knowledge Base');
+    expect(promptArg).toContain('npm test');
+  });
+
+  it('upserts worktree metadata before writing session state', async () => {
+    const callOrder: string[] = [];
+    const upsertWorktreeMetadata = vi.fn(async () => {
+      callOrder.push('upsert');
+    });
+
+    await createStartPlan(
+      {
+        cwd: '/repo',
+        tool: 'cursor',
+        printOnly: false
+      },
+      createDeps({
+        upsertWorktreeMetadata,
+        writeSessionState: vi.fn(async () => {
+          callOrder.push('session');
+        })
+      })
+    );
+
+    expect(upsertWorktreeMetadata).toHaveBeenCalledWith({
+      path: '/wt/issue-12-ship-issueflow-start',
+      branch: 'issue/12-ship-issueflow-start',
+      agentOwner: 'cursor',
+      issueId: 12
+    });
+    expect(callOrder.indexOf('upsert')).toBeLessThan(callOrder.indexOf('session'));
+  });
+
+  it('does not upsert worktree metadata in print-only mode', async () => {
+    const upsertWorktreeMetadata = vi.fn(async () => undefined);
+
+    await createStartPlan(
+      {
+        cwd: '/repo',
+        tool: 'cursor',
+        printOnly: true
+      },
+      createDeps({ upsertWorktreeMetadata })
+    );
+
+    expect(upsertWorktreeMetadata).not.toHaveBeenCalled();
+  });
+
+  it('aborts start plan when metadata upsert fails', async () => {
+    const deps = createDeps({
+      upsertWorktreeMetadata: vi.fn(async () => {
+        throw new StateStoreError('open-failed', 'disk full');
+      }),
+      writeSessionState: vi.fn(),
+      writeIssuePacket: vi.fn()
+    });
+
+    await expect(
+      createStartPlan(
+        {
+          cwd: '/repo',
+          tool: 'cursor',
+          printOnly: false
+        },
+        deps
+      )
+    ).rejects.toThrow(StateStoreError);
+
+    expect(deps.writeSessionState).not.toHaveBeenCalled();
+    expect(deps.writeIssuePacket).not.toHaveBeenCalled();
   });
 });

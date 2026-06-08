@@ -1,0 +1,20 @@
+{
+  "parent_issue": 103,
+  "children": [
+    {
+      "title": "Autonomous mode: auto-approve team plans",
+      "body": "## Parent\n\n#103\n\nAdd a policy that flips planned -> approved without human input when autonomous_mode is true.",
+      "labels": ["state:triaged", "autonomous"]
+    },
+    {
+      "title": "Autonomous mode: auto-decompose large issues",
+      "body": "## Parent\n\n#103\n\nWhen an incoming issue exceeds a token threshold, run the decomposition planner automatically.",
+      "labels": ["state:triaged", "autonomous"]
+    },
+    {
+      "title": "Autonomous mode: Event Log audit entries",
+      "body": "## Parent\n\n#103\n\nRecord every autonomous decision as a team.planned or issue.decomposed event in the Event Log.",
+      "labels": ["state:triaged", "autonomous", "observability"]
+    }
+  ]
+}

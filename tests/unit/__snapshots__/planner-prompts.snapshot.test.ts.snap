@@ -1,0 +1,63 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`planner prompts snapshots > buildDecompositionPrompt snapshot 1`] = `
+"You are a planner agent for the IssueFlow factory.
+
+Your job is to decompose the GitHub issue below into smaller, independently-executable child issues.
+
+Respond with a single JSON object matching the schema below. Do not include explanations, prose, or markdown — JSON only.
+
+Schema:
+{
+  "parent_issue": integer > 0,
+  "children": [
+    {
+      "title": string,
+      "body":  string,            // include "## Parent\\n\\n#<parent_issue>" so the link is recorded
+      "labels": string[]          // may be empty
+    }
+  ]
+}
+"children" must contain at least one entry.
+
+Issue #7: Snapshot fixture
+Labels: enhancement
+
+Body:
+Lorem ipsum dolor sit amet."
+`;
+
+exports[`planner prompts snapshots > buildRetryPrompt has stable preamble and footer; validation block is structural > retry-footer 1`] = `"Respond again with a single JSON object that matches the schema exactly. No explanations, no markdown."`;
+
+exports[`planner prompts snapshots > buildRetryPrompt has stable preamble and footer; validation block is structural > retry-preamble 1`] = `
+"The previous response did not match the required schema.
+
+"
+`;
+
+exports[`planner prompts snapshots > buildTeamPrompt snapshot 1`] = `
+"You are a planner agent for the IssueFlow factory.
+
+Your job is to analyse the GitHub issue below and propose a team of agents to ship it.
+
+Respond with a single JSON object matching the schema below. Do not include explanations, prose, or markdown — JSON only.
+
+Schema:
+{
+  "roles": [
+    {
+      "name": string,           // human-readable role title, e.g. "Backend Engineer"
+      "host": "pi" | "claude" | "codex" | "cursor",
+      "responsibility": string, // one-sentence description of what this role does
+      "count": integer >= 1     // how many agents of this role to spawn
+    }
+  ]
+}
+"roles" must contain at least one entry.
+
+Issue #7: Snapshot fixture
+Labels: enhancement
+
+Body:
+Lorem ipsum dolor sit amet."
+`;

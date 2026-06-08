@@ -15,6 +15,8 @@ import {
 } from '../core/host-asset.js';
 import { writeIssuePacket, writeSessionState } from '../core/session-state.js';
 import type { HostTool, IssueArtifactPaths, IssueSummary, RepoContext, WorktreeEntry } from '../core/types.js';
+import { openWorktreeMetadata } from '../worktree-metadata/index.js';
+import { StateStoreError } from '../state-store/types.js';
 import {
   buildBranchName,
   ensureWorktrunkAvailable,
@@ -30,6 +32,11 @@ import {
   WorktrunkMissingError,
   WorktrunkPathResolutionError
 } from '../core/worktree.js';
+import {
+  appendKnowledgeToPrompt,
+  loadKnowledgeEntries as defaultLoadKnowledgeEntries
+} from '../knowledge/loader.js';
+import { listAdrs as defaultListAdrs } from '../memory/adrs.js';
 import { buildIssuePacket, buildWorkflowKernel } from '../workflow/kernel.js';
 
 export interface StartOptions {
@@ -64,6 +71,7 @@ export interface StartPlanDeps {
   resolveBranchWorktreePath: (repoRoot: string, branchName: string) => Promise<string>;
   setupNewWorktree?: (sourceCheckout: string, worktreePath: string) => Promise<boolean>;
   findIssueArtifacts: (repoRoot: string, issueNumber: number) => Promise<IssueArtifactPaths>;
+  listAdrs: typeof defaultListAdrs;
   writeSessionState: typeof writeSessionState;
   writeIssuePacket: typeof writeIssuePacket;
   chooseIssue: (issues: IssueSummary[]) => Promise<IssueSummary>;
@@ -72,7 +80,14 @@ export interface StartPlanDeps {
   checkHostAsset: (spec: HostAssetSpec) => Promise<HostAssetStatus>;
   installHostAsset: (spec: HostAssetSpec) => Promise<void>;
   confirmHostAssetInstall: (message: string) => Promise<boolean>;
+  upsertWorktreeMetadata: (input: {
+    path: string;
+    branch: string;
+    agentOwner: HostTool;
+    issueId: number;
+  }) => Promise<void>;
   now: () => Date;
+  loadKnowledgeEntries: typeof defaultLoadKnowledgeEntries;
 }
 
 const defaultDeps: StartPlanDeps = {
@@ -90,6 +105,7 @@ const defaultDeps: StartPlanDeps = {
       spinnerLabel: 'Running worktree setup'
     }),
   findIssueArtifacts,
+  listAdrs: defaultListAdrs,
   writeSessionState,
   writeIssuePacket,
   chooseIssue: async (issues) =>
@@ -113,7 +129,21 @@ const defaultDeps: StartPlanDeps = {
       message,
       default: true
     }),
-  now: () => new Date()
+  upsertWorktreeMetadata: async (input) => {
+    const { store, close } = openWorktreeMetadata();
+    try {
+      store.upsert({
+        path: input.path,
+        branch: input.branch,
+        agentOwner: input.agentOwner,
+        issueId: input.issueId
+      });
+    } finally {
+      close();
+    }
+  },
+  now: () => new Date(),
+  loadKnowledgeEntries: defaultLoadKnowledgeEntries
 };
 
 const WORKTRUNK_CHECKOUT_PLACEHOLDER = '<worktrunk-checkout>';
@@ -330,8 +360,18 @@ export async function createStartPlan(input: { cwd: string; tool: HostTool; prin
     await deps.setupNewWorktree?.(rootDir, worktreePath);
   }
 
+  if (!input.printOnly) {
+    await deps.upsertWorktreeMetadata({
+      path: worktreePath,
+      branch: branchName,
+      agentOwner: input.tool,
+      issueId: issue.number
+    });
+  }
+
   const repoRoot = worktreePath;
   const artifacts = await deps.findIssueArtifacts(repoRoot, issue.number);
+  const adrs = await deps.listAdrs(repoRoot);
 
   const workflowInput = {
     issueNumber: issue.number,
@@ -343,9 +383,12 @@ export async function createStartPlan(input: { cwd: string; tool: HostTool; prin
     repoRoot,
     branchName,
     worktreePath,
-    artifacts
+    artifacts,
+    adrs
   };
-  const startupPrompt = buildWorkflowKernel(workflowInput);
+  const kernel = buildWorkflowKernel(workflowInput);
+  const knowledgeEntries = await deps.loadKnowledgeEntries(repoRoot);
+  const startupPrompt = appendKnowledgeToPrompt(kernel, knowledgeEntries);
 
   if (!input.printOnly) {
     const timestamp = deps.now().toISOString();
@@ -458,6 +501,12 @@ export async function startAction(options: StartOptions): Promise<void> {
   } catch (error) {
     if (error instanceof WorktreeSetupError || error instanceof WorktrunkMissingError || error instanceof WorktrunkPathResolutionError) {
       console.error(error.message);
+      process.exitCode = 1;
+      return;
+    }
+
+    if (error instanceof StateStoreError) {
+      console.error(`Failed to persist worktree metadata: ${error.message}`);
       process.exitCode = 1;
       return;
     }

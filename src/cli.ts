@@ -1,10 +1,14 @@
 import { Command, InvalidArgumentError, Option } from 'commander';
 
+import { registerCandidateCommands } from './commands/candidate.js';
 import { registerEngineCommands } from './commands/engine.js';
 import { registerGateCommands } from './commands/gate.js';
+import { registerPlanCommands } from './commands/plan.js';
 import { registerPrCommands } from './commands/pr.js';
 import { registerStateCommands } from './commands/state.js';
 import { startAction } from './commands/start.js';
+import { registerWatchCommands } from './commands/watch.js';
+import { registerWorktreesCommands } from './commands/worktrees.js';
 import { verifyAction } from './commands/verify.js';
 
 export function buildCli(): Command {
@@ -52,6 +56,10 @@ Worktree setup:
   registerEngineCommands(program);
   registerGateCommands(program);
   registerPrCommands(program);
+  registerPlanCommands(program);
+  registerWatchCommands(program);
+  registerWorktreesCommands(program);
+  registerCandidateCommands(program);
 
   return program;
 }
