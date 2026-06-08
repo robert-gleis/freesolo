@@ -100,4 +100,13 @@ describe('buildCli', () => {
     const subcommands = candidateCommand?.commands.map((command) => command.name()) ?? [];
     expect(subcommands).toEqual(expect.arrayContaining(['create', 'show']));
   });
+
+  it('registers the replay command group with show subcommand', () => {
+    const program = buildCli();
+    const replayCommand = program.commands.find((command) => command.name() === 'replay');
+
+    expect(replayCommand).toBeDefined();
+    const subcommands = replayCommand?.commands.map((command) => command.name()) ?? [];
+    expect(subcommands).toEqual(expect.arrayContaining(['show']));
+  });
 });

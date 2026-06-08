@@ -12,7 +12,7 @@ import {
 } from '../../src/event-log/types.js';
 
 describe('event-log types', () => {
-  it('exports the eight canonical event types from issue #23', () => {
+  it('exports canonical event types including replay extensions', () => {
     expect([...EVENT_TYPES]).toEqual([
       'agent.created',
       'agent.stopped',
@@ -21,7 +21,10 @@ describe('event-log types', () => {
       'verification.passed',
       'team.planned',
       'plan.approved',
-      'decomposition.applied'
+      'decomposition.applied',
+      'workflow.decision',
+      'workflow.transition',
+      'agent.log.captured'
     ]);
   });
 

@@ -79,4 +79,18 @@ describe('EventLog.list', () => {
 
     log.close();
   });
+
+  it('lists events in ascending id order when order is asc', async () => {
+    const log = openEventLog({
+      path: await tempDb(),
+      now: () => new Date('2026-06-05T00:00:00.000Z')
+    });
+
+    log.append({ eventType: 'agent.created', agentId: 'a' });
+    log.append({ eventType: 'agent.stopped', agentId: 'a' });
+    const ids = log.list({ order: 'asc' }).map((r) => r.id);
+    expect(ids[0]).toBeLessThan(ids[1]!);
+
+    log.close();
+  });
 });

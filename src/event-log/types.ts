@@ -6,7 +6,10 @@ export const EVENT_TYPES = [
   'verification.passed',
   'team.planned',
   'plan.approved',
-  'decomposition.applied'
+  'decomposition.applied',
+  'workflow.decision',
+  'workflow.transition',
+  'agent.log.captured'
 ] as const;
 
 export type EventType = (typeof EVENT_TYPES)[number];
@@ -39,6 +42,7 @@ export interface EventQuery {
   issueId?: number;
   workflowId?: string;
   limit?: number;
+  order?: 'asc' | 'desc';
 }
 
 export type EventLogErrorCode =
