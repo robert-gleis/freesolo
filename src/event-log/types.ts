@@ -7,9 +7,16 @@ export const EVENT_TYPES = [
   'team.planned',
   'plan.approved',
   'decomposition.applied',
+  'team.created',
+  'team.member.blocked',
+  'team.tearing-down',
+  'team.torn-down',
   'workflow.decision',
   'workflow.transition',
-  'agent.log.captured'
+  'workflow.refused',
+  'agent.log.captured',
+  'review.gate.completed',
+  'pr.created'
 ] as const;
 
 export type EventType = (typeof EVENT_TYPES)[number];

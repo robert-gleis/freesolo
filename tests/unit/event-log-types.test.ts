@@ -12,7 +12,7 @@ import {
 } from '../../src/event-log/types.js';
 
 describe('event-log types', () => {
-  it('exports canonical event types including replay extensions', () => {
+  it('exports canonical event types including team lifecycle, timeline, and replay extensions', () => {
     expect([...EVENT_TYPES]).toEqual([
       'agent.created',
       'agent.stopped',
@@ -22,10 +22,45 @@ describe('event-log types', () => {
       'team.planned',
       'plan.approved',
       'decomposition.applied',
+      'team.created',
+      'team.member.blocked',
+      'team.tearing-down',
+      'team.torn-down',
       'workflow.decision',
       'workflow.transition',
-      'agent.log.captured'
+      'workflow.refused',
+      'agent.log.captured',
+      'review.gate.completed',
+      'pr.created'
     ]);
+  });
+
+  it('includes team lifecycle event types', () => {
+    expect(EVENT_TYPES).toEqual(
+      expect.arrayContaining([
+        'team.created',
+        'team.member.blocked',
+        'team.tearing-down',
+        'team.torn-down'
+      ])
+    );
+  });
+
+  it('includes workflow timeline event types', () => {
+    expect(EVENT_TYPES).toEqual(
+      expect.arrayContaining([
+        'workflow.transition',
+        'workflow.refused',
+        'review.gate.completed',
+        'pr.created'
+      ])
+    );
+  });
+
+  it('includes session replay event types', () => {
+    expect(EVENT_TYPES).toEqual(
+      expect.arrayContaining(['workflow.decision', 'agent.log.captured'])
+    );
   });
 
   it('pins CURRENT_EVENT_SCHEMA_VERSION to 1', () => {
