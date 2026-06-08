@@ -126,10 +126,16 @@ function parseRawConfig(content: string, configPath: string): RawConfig {
   };
 }
 
-export async function loadConfig(
-  globalPath = defaultConfigPath(),
+interface RawLayers {
+  globalRaw: RawConfig;
+  repoRaw: RawConfig;
+  globalContent: string | null;
+}
+
+async function loadRawLayers(
+  globalPath: string,
   repoRoot?: string
-): Promise<IssueflowConfig> {
+): Promise<RawLayers> {
   const globalContent = await readFileOrNull(globalPath);
   const globalRaw = globalContent ? parseRawConfig(globalContent, globalPath) : {};
 
@@ -140,12 +146,24 @@ export async function loadConfig(
     if (repoContent) repoRaw = parseRawConfig(repoContent, repoPath);
   }
 
+  return { globalRaw, repoRaw, globalContent };
+}
+
+export async function loadConfig(
+  globalPath = defaultConfigPath(),
+  repoRoot?: string
+): Promise<IssueflowConfig> {
+  const { globalRaw, repoRaw, globalContent } = await loadRawLayers(globalPath, repoRoot);
+
   const watcher: WatcherConfig = {
     ...DEFAULT_CONFIG.watcher,
     ...globalRaw.watcher,
     ...repoRaw.watcher
   };
-  const configPath = repoRoot ? repoConfigPath(repoRoot) : globalPath;
+  const configPath =
+    repoRaw.watcher !== undefined ? repoConfigPath(repoRoot!)
+    : globalContent !== null      ? globalPath
+    : globalPath;
   validateWatcher(configPath, watcher);
 
   return {
@@ -159,22 +177,17 @@ export async function loadConfigWithOrigins(
   globalPath = defaultConfigPath(),
   repoRoot?: string
 ): Promise<ConfigWithOrigins> {
-  const globalContent = await readFileOrNull(globalPath);
-  const globalRaw = globalContent ? parseRawConfig(globalContent, globalPath) : {};
-
-  let repoRaw: RawConfig = {};
-  if (repoRoot) {
-    const repoPath = repoConfigPath(repoRoot);
-    const repoContent = await readFileOrNull(repoPath);
-    if (repoContent) repoRaw = parseRawConfig(repoContent, repoPath);
-  }
+  const { globalRaw, repoRaw, globalContent } = await loadRawLayers(globalPath, repoRoot);
 
   const watcher: WatcherConfig = {
     ...DEFAULT_CONFIG.watcher,
     ...globalRaw.watcher,
     ...repoRaw.watcher
   };
-  const configPath = repoRoot ? repoConfigPath(repoRoot) : globalPath;
+  const configPath =
+    repoRaw.watcher !== undefined ? repoConfigPath(repoRoot!)
+    : globalContent !== null      ? globalPath
+    : globalPath;
   validateWatcher(configPath, watcher);
 
   const config: IssueflowConfig = {
