@@ -69,7 +69,7 @@ issueflow start --tool claude --print-only   # preview without launching
 
 ```bash
 issueflow state get --issue 17
-# prints current state, or "null" with exit code 2 when no state:* label
+# prints current state, or "null" with exit code 2 when no workflow state exists
 
 ISSUEFLOW_ENGINE=1 issueflow state transition --issue 17 --to planned
 ```
