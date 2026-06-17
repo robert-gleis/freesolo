@@ -1,9 +1,4 @@
 export const MIGRATION_001_SQL = `
-CREATE TABLE IF NOT EXISTS schema_migrations (
-  version INTEGER PRIMARY KEY,
-  applied_at TEXT NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS watcher_cursor (
   repo_owner TEXT NOT NULL,
   repo_name TEXT NOT NULL,

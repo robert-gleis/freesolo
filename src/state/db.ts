@@ -17,20 +17,22 @@ const MIGRATIONS = [
   { version: 2, sql: MIGRATION_002_SQL }
 ] as const;
 
+const WATCHER_MIGRATIONS_TABLE = 'watcher_schema_migrations';
+
 function runMigrations(db: StateDb): void {
-  db.exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
+  db.exec(`CREATE TABLE IF NOT EXISTS ${WATCHER_MIGRATIONS_TABLE} (
     version INTEGER PRIMARY KEY,
     applied_at TEXT NOT NULL
   );`);
 
   for (const migration of MIGRATIONS) {
     const applied = db
-      .prepare('SELECT version FROM schema_migrations WHERE version = ?')
+      .prepare(`SELECT version FROM ${WATCHER_MIGRATIONS_TABLE} WHERE version = ?`)
       .get(migration.version);
     if (applied) continue;
 
     db.exec(migration.sql);
-    db.prepare('INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)').run(
+    db.prepare(`INSERT INTO ${WATCHER_MIGRATIONS_TABLE} (version, applied_at) VALUES (?, ?)`).run(
       migration.version,
       new Date().toISOString()
     );
