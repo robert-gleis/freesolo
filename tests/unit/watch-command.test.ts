@@ -120,6 +120,21 @@ describe('watch exit codes', () => {
 });
 
 describe('watch run CLI overrides', () => {
+  it('passes default watcher intake config to runWatchLoop', async () => {
+    const { program, deps } = buildHarness();
+
+    await program.parseAsync(['node', 'issueflow', 'watch', 'run']);
+
+    expect(deps.runWatchLoop).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: 'assigned-to-me',
+        intakeMode: 'confirm',
+        initialState: 'triaged',
+        triggerLabel: 'triaged'
+      })
+    );
+  });
+
   it('passes confirm intake callback to the watch loop', async () => {
     const { program, deps } = buildHarness();
 
@@ -151,6 +166,113 @@ describe('watch run CLI overrides', () => {
         intervalMs: 120_000,
         source: 'label',
         triggerLabel: 'state:planned'
+      })
+    );
+  });
+
+  it('passes source and intake mode CLI overrides', async () => {
+    const { program, deps } = buildHarness();
+
+    await program.parseAsync([
+      'node',
+      'issueflow',
+      'watch',
+      'run',
+      '--source',
+      'label',
+      '--trigger-label',
+      'ready',
+      '--intake-mode',
+      'auto'
+    ]);
+
+    expect(deps.runWatchLoop).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: 'label',
+        intakeMode: 'auto',
+        triggerLabel: 'ready'
+      })
+    );
+  });
+
+  it('treats --trigger-label as label source when source is omitted', async () => {
+    const { program, deps } = buildHarness();
+
+    await program.parseAsync([
+      'node',
+      'issueflow',
+      'watch',
+      'run',
+      '--trigger-label',
+      'state:triaged'
+    ]);
+
+    expect(deps.runWatchLoop).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: 'label',
+        triggerLabel: 'state:triaged'
+      })
+    );
+  });
+});
+
+describe('watch once CLI overrides', () => {
+  it('passes default watcher intake config to runWatchCycle', async () => {
+    const { program, deps } = buildHarness();
+
+    await program.parseAsync(['node', 'issueflow', 'watch', 'once']);
+
+    expect(deps.runWatchCycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: 'assigned-to-me',
+        intakeMode: 'confirm',
+        initialState: 'triaged',
+        triggerLabel: 'triaged'
+      })
+    );
+  });
+
+  it('passes source and intake mode CLI overrides', async () => {
+    const { program, deps } = buildHarness();
+
+    await program.parseAsync([
+      'node',
+      'issueflow',
+      'watch',
+      'once',
+      '--source',
+      'label',
+      '--trigger-label',
+      'ready',
+      '--intake-mode',
+      'auto'
+    ]);
+
+    expect(deps.runWatchCycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: 'label',
+        intakeMode: 'auto',
+        triggerLabel: 'ready'
+      })
+    );
+  });
+
+  it('treats --trigger-label as label source when source is omitted', async () => {
+    const { program, deps } = buildHarness();
+
+    await program.parseAsync([
+      'node',
+      'issueflow',
+      'watch',
+      'once',
+      '--trigger-label',
+      'state:triaged'
+    ]);
+
+    expect(deps.runWatchCycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: 'label',
+        triggerLabel: 'state:triaged'
       })
     );
   });

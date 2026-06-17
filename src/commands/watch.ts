@@ -2,7 +2,13 @@ import { confirm } from '@inquirer/prompts';
 import { Command, InvalidArgumentError, Option } from 'commander';
 
 import { defaultConfigPath, loadConfig as defaultLoadConfig } from '../config/load.js';
-import { MIN_INTERVAL_SECONDS, type IssueflowConfig, type WatcherConfig } from '../config/types.js';
+import {
+  MIN_INTERVAL_SECONDS,
+  type IssueflowConfig,
+  type WatcherConfig,
+  type WatcherIntakeMode,
+  type WatcherSource
+} from '../config/types.js';
 import { parseGitHubRemote, readOriginRemote, resolveRepoRoot } from '../core/git.js';
 import { defaultStateDbPath, openStateDb as defaultOpenStateDb, type StateDb } from '../state/db.js';
 import { pollIssues } from '../watcher/poll.js';
@@ -84,6 +90,36 @@ function parseIntervalSeconds(value: string): number {
   return parsed;
 }
 
+function parseSource(value: string): WatcherSource {
+  if (value !== 'assigned-to-me' && value !== 'label') {
+    throw new InvalidArgumentError('source must be "assigned-to-me" or "label"');
+  }
+  return value;
+}
+
+function parseIntakeMode(value: string): WatcherIntakeMode {
+  if (value !== 'confirm' && value !== 'auto') {
+    throw new InvalidArgumentError('intake mode must be "confirm" or "auto"');
+  }
+  return value;
+}
+
+interface WatcherOverrideOptions {
+  source?: WatcherSource;
+  intakeMode?: WatcherIntakeMode;
+  triggerLabel?: string;
+}
+
+function resolveWatcherConfig(config: IssueflowConfig, options: WatcherOverrideOptions): WatcherConfig {
+  return {
+    ...config.watcher,
+    source: options.source ?? (options.triggerLabel ? 'label' : config.watcher.source),
+    intake_mode: options.intakeMode ?? config.watcher.intake_mode,
+    initial_state: config.watcher.initial_state,
+    trigger_label: options.triggerLabel ?? config.watcher.trigger_label
+  };
+}
+
 function withCommanderErrorHandling(
   _command: Command,
   deps: WatchCommandDeps,
@@ -156,8 +192,10 @@ export function registerWatchCommands(
     .command('run')
     .description('Poll continuously until SIGINT/SIGTERM (graceful shutdown finishes current cycle)')
     .addOption(new Option('--interval <seconds>', 'Polling interval override').argParser(parseIntervalSeconds))
+    .addOption(new Option('--source <source>', 'Issue source override').argParser(parseSource))
+    .addOption(new Option('--intake-mode <mode>', 'Intake mode override').argParser(parseIntakeMode))
     .addOption(new Option('--trigger-label <label>', 'Trigger label override'))
-    .action(async (options: { interval?: number; triggerLabel?: string }) => {
+    .action(async (options: WatcherOverrideOptions & { interval?: number }) => {
       if (deps.env.ISSUEFLOW_ENGINE !== '1') {
         deps.write(
           'stderr',
@@ -170,12 +208,7 @@ export function registerWatchCommands(
       await withCommanderErrorHandling(watch, deps, async () => {
         const config = await deps.loadConfig(defaultConfigPath());
         const intervalSeconds = options.interval ?? config.watcher.interval_seconds;
-        const triggerLabel = options.triggerLabel ?? config.watcher.trigger_label;
-        const watcher = {
-          ...config.watcher,
-          source: options.triggerLabel ? 'label' as const : config.watcher.source,
-          trigger_label: triggerLabel
-        };
+        const watcher = resolveWatcherConfig(config, options);
         const repo = await deps.resolveRepoRef(process.cwd());
         const db = await deps.openStateDb(defaultStateDbPath());
 
@@ -208,14 +241,18 @@ export function registerWatchCommands(
     .command('once')
     .description('Run a single poll + drain cycle')
     .addOption(new Option('--since <iso8601>', 'Override cursor for this run only'))
-    .action(async (options: { since?: string }) => {
+    .addOption(new Option('--source <source>', 'Issue source override').argParser(parseSource))
+    .addOption(new Option('--intake-mode <mode>', 'Intake mode override').argParser(parseIntakeMode))
+    .addOption(new Option('--trigger-label <label>', 'Trigger label override'))
+    .action(async (options: WatcherOverrideOptions & { since?: string }) => {
       await withCommanderErrorHandling(watch, deps, async () => {
         const config = await deps.loadConfig(defaultConfigPath());
+        const watcher = resolveWatcherConfig(config, options);
         const repo = await deps.resolveRepoRef(process.cwd());
         const db = await deps.openStateDb(defaultStateDbPath());
 
         try {
-          const cycleDeps = await buildCycleDeps(deps, db, repo, config.watcher, options.since);
+          const cycleDeps = await buildCycleDeps(deps, db, repo, watcher, options.since);
           const result = await deps.runWatchCycle(cycleDeps);
           applyCycleExitCode(deps, result);
         } finally {
