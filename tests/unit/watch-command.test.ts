@@ -28,7 +28,15 @@ function buildHarness(overrides: Partial<WatchCommandDeps> = {}): Harness {
   const deps: WatchCommandDeps = {
     resolveRepoRef: vi.fn().mockResolvedValue({ owner: 'acme', repo: 'widgets' }),
     loadConfig: vi.fn().mockResolvedValue({
-      watcher: { interval_seconds: 60, trigger_label: 'state:triaged' }
+      state_backend: 'local',
+      autonomous_mode: false,
+      watcher: {
+        interval_seconds: 60,
+        source: 'assigned-to-me',
+        intake_mode: 'confirm',
+        initial_state: 'triaged',
+        trigger_label: 'triaged'
+      }
     }),
     openStateDb: vi.fn().mockResolvedValue({ close: vi.fn() } as unknown as StateDb),
     runWatchCycle: vi.fn().mockResolvedValue(cycleResult()),
@@ -128,6 +136,7 @@ describe('watch run CLI overrides', () => {
     expect(deps.runWatchLoop).toHaveBeenCalledWith(
       expect.objectContaining({
         intervalMs: 120_000,
+        source: 'label',
         triggerLabel: 'state:planned'
       })
     );

@@ -165,7 +165,11 @@ export function registerWatchCommands(
         const config = await deps.loadConfig(defaultConfigPath());
         const intervalSeconds = options.interval ?? config.watcher.interval_seconds;
         const triggerLabel = options.triggerLabel ?? config.watcher.trigger_label;
-        const watcher = { ...config.watcher, trigger_label: triggerLabel };
+        const watcher = {
+          ...config.watcher,
+          source: options.triggerLabel ? 'label' as const : config.watcher.source,
+          trigger_label: triggerLabel
+        };
         const repo = await deps.resolveRepoRef(process.cwd());
         const db = await deps.openStateDb(defaultStateDbPath());
 
