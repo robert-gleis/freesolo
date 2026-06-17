@@ -41,6 +41,7 @@ function buildHarness(overrides: Partial<WatchCommandDeps> = {}): Harness {
     openStateDb: vi.fn().mockResolvedValue({ close: vi.fn() } as unknown as StateDb),
     runWatchCycle: vi.fn().mockResolvedValue(cycleResult()),
     runWatchLoop: vi.fn().mockResolvedValue(undefined),
+    confirmIntake: vi.fn().mockResolvedValue(true),
     env: { ISSUEFLOW_ENGINE: '1' },
     write: (channel, message) => {
       io[channel].push(message);
@@ -119,6 +120,18 @@ describe('watch exit codes', () => {
 });
 
 describe('watch run CLI overrides', () => {
+  it('passes confirm intake callback to the watch loop', async () => {
+    const { program, deps } = buildHarness();
+
+    await program.parseAsync(['node', 'issueflow', 'watch', 'run']);
+
+    expect(deps.runWatchLoop).toHaveBeenCalledWith(
+      expect.objectContaining({
+        confirmIntake: deps.confirmIntake
+      })
+    );
+  });
+
   it('passes --interval and --trigger-label over config values', async () => {
     const { program, deps } = buildHarness();
 

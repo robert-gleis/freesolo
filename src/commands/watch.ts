@@ -1,3 +1,4 @@
+import { confirm } from '@inquirer/prompts';
 import { Command, InvalidArgumentError, Option } from 'commander';
 
 import { defaultConfigPath, loadConfig as defaultLoadConfig } from '../config/load.js';
@@ -22,6 +23,7 @@ import {
   writeState as defaultWriteState
 } from '../workflow/configurable-state.js';
 import type { WorkflowState } from '../workflow/state-machine.js';
+import type { WatchIssue } from '../watcher/poll.js';
 
 export type WriteChannel = 'stdout' | 'stderr';
 
@@ -31,6 +33,7 @@ export interface WatchCommandDeps {
   openStateDb: (dbPath?: string) => Promise<StateDb>;
   runWatchCycle: typeof defaultRunWatchCycle;
   runWatchLoop: typeof defaultRunWatchLoop;
+  confirmIntake: (issue: WatchIssue) => Promise<boolean>;
   env: NodeJS.ProcessEnv;
   write: (channel: WriteChannel, message: string) => void;
   setExitCode: (code: number) => void;
@@ -58,6 +61,8 @@ const defaultDeps: WatchCommandDeps = {
   openStateDb: defaultOpenStateDb,
   runWatchCycle: defaultRunWatchCycle,
   runWatchLoop: defaultRunWatchLoop,
+  confirmIntake: (issue) =>
+    confirm({ message: `Start issue #${issue.number} "${issue.title}"?`, default: false }),
   env: process.env,
   write: (channel, message) => {
     if (channel === 'stdout') {
@@ -130,6 +135,7 @@ async function buildCycleDeps(
         gh: defaultRunner,
         onWarn: (message) => deps.write('stderr', `${message}\n`)
       }),
+    confirmIntake: deps.confirmIntake,
     readState: defaultReadState,
     initializeState: (input: { repo: RepoRef; issueNumber: number; initialState: WorkflowState }) =>
       defaultInitializeState(input.repo, input.issueNumber, input.initialState),
