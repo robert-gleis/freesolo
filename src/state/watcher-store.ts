@@ -15,13 +15,6 @@ export interface WatcherQueueRow {
   last_error: string | null;
 }
 
-export interface WatcherIgnoredRow {
-  repo_owner: string;
-  repo_name: string;
-  issue_number: number;
-  decided_at: string;
-}
-
 export function getCursor(db: StateDb, repo: RepoRef): string | null {
   const row = db
     .prepare('SELECT last_seen_updated_at FROM watcher_cursor WHERE repo_owner = ? AND repo_name = ?')

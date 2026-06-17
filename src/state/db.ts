@@ -4,7 +4,7 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
 import { MIGRATION_001_SQL } from './migrations/001-watcher.js';
-import { MIGRATION_002_SQL } from './migrations/002-watcher-intake.js';
+import { MIGRATION_002_SQL } from './migrations/002-watcher-ignored.js';
 
 export type StateDb = DatabaseSync;
 
