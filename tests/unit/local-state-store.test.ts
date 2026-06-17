@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { InvalidTransitionError } from '../../src/workflow/state-machine.js';
-import { readState, writeState } from '../../src/workflow/local-state-store.js';
+import { initializeState, readState, writeState } from '../../src/workflow/local-state-store.js';
 
 const repo = { owner: 'acme', repo: 'widgets' };
 
@@ -36,6 +36,26 @@ describe('readState', () => {
     await fs.mkdir(path.dirname(filePath), { recursive: true });
     await fs.writeFile(filePath, 'bogus-state', 'utf8');
     await expect(readState(repo, testIssueNumber)).rejects.toThrow(/unrecognised state/);
+  });
+});
+
+describe('initializeState', () => {
+  it('creates the first local state', async () => {
+    await initializeState(repo, testIssueNumber, 'triaged');
+    expect(await readState(repo, testIssueNumber)).toBe('triaged');
+  });
+
+  it('fails when local state already exists', async () => {
+    await initializeState(repo, testIssueNumber, 'triaged');
+    await expect(initializeState(repo, testIssueNumber, 'planned')).rejects.toThrow(
+      /already has local workflow state/
+    );
+  });
+
+  it('rejects closed as an initial state', async () => {
+    await expect(initializeState(repo, testIssueNumber, 'closed')).rejects.toThrow(
+      /cannot be initialized to terminal state/
+    );
   });
 });
 

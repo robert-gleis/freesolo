@@ -30,6 +30,31 @@ export async function readState(repo: RepoRef, issueNumber: number): Promise<Wor
   return content as WorkflowState;
 }
 
+export async function initializeState(
+  repo: RepoRef,
+  issueNumber: number,
+  initialState: WorkflowState
+): Promise<void> {
+  if (initialState === 'closed') {
+    throw new Error(`Issue #${issueNumber} cannot be initialized to terminal state "closed"`);
+  }
+
+  if (!(WORKFLOW_STATES as readonly string[]).includes(initialState)) {
+    throw new Error(
+      `Issue #${issueNumber} cannot be initialized to unrecognised state "${initialState}"`
+    );
+  }
+
+  const existing = await readState(repo, issueNumber);
+  if (existing !== null) {
+    throw new Error(`Issue #${issueNumber} already has local workflow state "${existing}"`);
+  }
+
+  const filePath = stateFilePath(repo, issueNumber);
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  await fs.writeFile(filePath, initialState, 'utf8');
+}
+
 export async function writeState(
   repo: RepoRef,
   issueNumber: number,
