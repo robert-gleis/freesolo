@@ -8,7 +8,10 @@ import { openStateDb, type StateDb } from '../../src/state/db.js';
 import {
   enqueueIssue,
   getCursor,
+  getIntakeDecision,
   listPending,
+  markIntakeAccepted,
+  markIntakeIgnored,
   markDone,
   markFailed,
   markProcessing,
@@ -82,5 +85,27 @@ describe('watcher-store', () => {
     const recovered = recoverStaleProcessing(db, repo, 5 * 60_000);
     expect(recovered).toBe(1);
     expect(listPending(db, repo)).toHaveLength(1);
+  });
+});
+
+describe('watcher intake decisions', () => {
+  it('returns null when no intake decision exists', () => {
+    expect(getIntakeDecision(db, repo, 42)).toBeNull();
+  });
+
+  it('records accepted decisions', () => {
+    markIntakeAccepted(db, repo, 42, '2026-06-01T12:00:00.000Z');
+    expect(getIntakeDecision(db, repo, 42)).toMatchObject({
+      decision: 'accepted',
+      issue_updated_at: '2026-06-01T12:00:00.000Z'
+    });
+  });
+
+  it('records ignored decisions', () => {
+    markIntakeIgnored(db, repo, 43, '2026-06-01T13:00:00.000Z');
+    expect(getIntakeDecision(db, repo, 43)).toMatchObject({
+      decision: 'ignored',
+      issue_updated_at: '2026-06-01T13:00:00.000Z'
+    });
   });
 });

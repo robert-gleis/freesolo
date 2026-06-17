@@ -2,6 +2,7 @@ import type { StateDb } from './db.js';
 import type { RepoRef } from '../workflow/state-store.js';
 
 export type QueueStatus = 'pending' | 'processing' | 'done' | 'failed';
+export type IntakeDecisionValue = 'accepted' | 'ignored';
 
 export interface WatcherQueueRow {
   id: number;
@@ -13,6 +14,15 @@ export interface WatcherQueueRow {
   enqueued_at: string;
   processed_at: string | null;
   last_error: string | null;
+}
+
+export interface WatcherIntakeRow {
+  repo_owner: string;
+  repo_name: string;
+  issue_number: number;
+  decision: IntakeDecisionValue;
+  decided_at: string;
+  issue_updated_at: string;
 }
 
 export function getCursor(db: StateDb, repo: RepoRef): string | null {
@@ -82,4 +92,56 @@ export function recoverStaleProcessing(db: StateDb, repo: RepoRef, staleAfterMs:
     )
     .run(repo.owner, repo.repo, cutoff);
   return Number(result.changes);
+}
+
+export function getIntakeDecision(
+  db: StateDb,
+  repo: RepoRef,
+  issueNumber: number
+): WatcherIntakeRow | null {
+  const row = db
+    .prepare(
+      `SELECT repo_owner, repo_name, issue_number, decision, decided_at, issue_updated_at
+       FROM watcher_intake
+       WHERE repo_owner = ? AND repo_name = ? AND issue_number = ?`
+    )
+    .get(repo.owner, repo.repo, issueNumber) as WatcherIntakeRow | undefined;
+  return row ?? null;
+}
+
+function markIntakeDecision(
+  db: StateDb,
+  repo: RepoRef,
+  issueNumber: number,
+  issueUpdatedAt: string,
+  decision: IntakeDecisionValue
+): void {
+  db.prepare(
+    `INSERT INTO watcher_intake
+       (repo_owner, repo_name, issue_number, decision, decided_at, issue_updated_at)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(repo_owner, repo_name, issue_number)
+     DO UPDATE SET
+       decision = excluded.decision,
+       decided_at = excluded.decided_at,
+       issue_updated_at = excluded.issue_updated_at`
+  ).run(repo.owner, repo.repo, issueNumber, decision, new Date().toISOString(), issueUpdatedAt);
+}
+
+export function markIntakeAccepted(
+  db: StateDb,
+  repo: RepoRef,
+  issueNumber: number,
+  issueUpdatedAt: string
+): void {
+  markIntakeDecision(db, repo, issueNumber, issueUpdatedAt, 'accepted');
+}
+
+export function markIntakeIgnored(
+  db: StateDb,
+  repo: RepoRef,
+  issueNumber: number,
+  issueUpdatedAt: string
+): void {
+  markIntakeDecision(db, repo, issueNumber, issueUpdatedAt, 'ignored');
 }

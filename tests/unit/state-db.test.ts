@@ -37,13 +37,31 @@ describe('openStateDb', () => {
     db.close();
   });
 
+  it('creates watcher intake table on first open', async () => {
+    const db = await openStateDb(tempDbPath());
+    const tables = db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+      .all()
+      .map((row) => (row as { name: string }).name);
+
+    expect(tables).toContain('watcher_intake');
+    db.close();
+  });
+
+  it('records migration version 2', async () => {
+    const db = await openStateDb(tempDbPath());
+    const version = db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get() as { v: number };
+    expect(version.v).toBe(2);
+    db.close();
+  });
+
   it('is idempotent on second open', async () => {
     const dbPath = tempDbPath();
     const db1 = await openStateDb(dbPath);
     db1.close();
     const db2 = await openStateDb(dbPath);
     const version = db2.prepare('SELECT MAX(version) AS v FROM schema_migrations').get() as { v: number };
-    expect(version.v).toBe(1);
+    expect(version.v).toBe(2);
     db2.close();
   });
 
