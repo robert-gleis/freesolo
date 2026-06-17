@@ -1,10 +1,10 @@
 import { Command, InvalidArgumentError, Option } from 'commander';
 
 import { defaultConfigPath, loadConfig as defaultLoadConfig } from '../config/load.js';
-import { MIN_INTERVAL_SECONDS, type IssueflowConfig } from '../config/types.js';
+import { MIN_INTERVAL_SECONDS, type IssueflowConfig, type WatcherConfig } from '../config/types.js';
 import { parseGitHubRemote, readOriginRemote, resolveRepoRoot } from '../core/git.js';
 import { defaultStateDbPath, openStateDb as defaultOpenStateDb, type StateDb } from '../state/db.js';
-import { pollTriagedIssues } from '../watcher/poll.js';
+import { pollIssues } from '../watcher/poll.js';
 import { runWatchCycle as defaultRunWatchCycle, runWatchLoop as defaultRunWatchLoop } from '../watcher/runner.js';
 import {
   createWorkflowEngine,
@@ -17,9 +17,11 @@ import {
   type RepoRef
 } from '../workflow/state-store.js';
 import {
+  initializeState as defaultInitializeState,
   readState as defaultReadState,
   writeState as defaultWriteState
 } from '../workflow/configurable-state.js';
+import type { WorkflowState } from '../workflow/state-machine.js';
 
 export type WriteChannel = 'stdout' | 'stderr';
 
@@ -108,22 +110,29 @@ async function buildCycleDeps(
   deps: WatchCommandDeps,
   db: StateDb,
   repo: RepoRef,
-  triggerLabel: string,
+  watcher: WatcherConfig,
   sinceOverride?: string
 ) {
   return {
     db,
     repo,
-    triggerLabel,
+    source: watcher.source,
+    intakeMode: watcher.intake_mode,
+    initialState: watcher.initial_state,
+    triggerLabel: watcher.trigger_label,
     sinceOverride,
     poll: (since: string) =>
-      pollTriagedIssues({
+      pollIssues({
         repo,
+        source: watcher.source,
         since,
-        triggerLabel,
+        triggerLabel: watcher.trigger_label,
         gh: defaultRunner,
         onWarn: (message) => deps.write('stderr', `${message}\n`)
       }),
+    readState: defaultReadState,
+    initializeState: (input: { repo: RepoRef; issueNumber: number; initialState: WorkflowState }) =>
+      defaultInitializeState(input.repo, input.issueNumber, input.initialState),
     tick: (input: { repo: RepoRef; issueNumber: number }): Promise<TickResult> =>
       createWorkflowEngine(defaultEngineDeps).tick(input)
   };
@@ -156,6 +165,7 @@ export function registerWatchCommands(
         const config = await deps.loadConfig(defaultConfigPath());
         const intervalSeconds = options.interval ?? config.watcher.interval_seconds;
         const triggerLabel = options.triggerLabel ?? config.watcher.trigger_label;
+        const watcher = { ...config.watcher, trigger_label: triggerLabel };
         const repo = await deps.resolveRepoRef(process.cwd());
         const db = await deps.openStateDb(defaultStateDbPath());
 
@@ -165,7 +175,7 @@ export function registerWatchCommands(
         process.once('SIGTERM', onSignal);
 
         try {
-          const cycleDeps = await buildCycleDeps(deps, db, repo, triggerLabel);
+          const cycleDeps = await buildCycleDeps(deps, db, repo, watcher);
           await deps.runWatchLoop({
             ...cycleDeps,
             intervalMs: intervalSeconds * 1000,
@@ -191,12 +201,11 @@ export function registerWatchCommands(
     .action(async (options: { since?: string }) => {
       await withCommanderErrorHandling(watch, deps, async () => {
         const config = await deps.loadConfig(defaultConfigPath());
-        const triggerLabel = config.watcher.trigger_label;
         const repo = await deps.resolveRepoRef(process.cwd());
         const db = await deps.openStateDb(defaultStateDbPath());
 
         try {
-          const cycleDeps = await buildCycleDeps(deps, db, repo, triggerLabel, options.since);
+          const cycleDeps = await buildCycleDeps(deps, db, repo, config.watcher, options.since);
           const result = await deps.runWatchCycle(cycleDeps);
           applyCycleExitCode(deps, result);
         } finally {

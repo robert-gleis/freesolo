@@ -10,6 +10,13 @@ import { runWatchCycle, runWatchLoop } from '../../src/watcher/runner.js';
 import type { TickResult } from '../../src/workflow/engine.js';
 
 const repo = { owner: 'acme', repo: 'widgets' };
+const assignedIssue = {
+  number: 42,
+  title: 'Docker Runner',
+  updatedAt: '2026-06-02T10:00:00Z',
+  labels: ['enhancement'],
+  assignees: ['octocat']
+};
 let db: StateDb;
 const tempDbs: string[] = [];
 
@@ -40,9 +47,14 @@ describe('runWatchCycle', () => {
     const result = await runWatchCycle({
       db,
       repo,
+      source: 'label',
+      intakeMode: 'auto',
+      initialState: 'triaged',
       sinceOverride: '2026-06-01T00:00:00Z',
       triggerLabel: 'state:triaged',
       poll,
+      readState: async () => 'triaged',
+      initializeState: async () => {},
       tick: async ({ issueNumber }) => {
         const tickResult: TickResult = {
           issueNumber,
@@ -70,8 +82,13 @@ describe('runWatchCycle', () => {
     await runWatchCycle({
       db,
       repo,
+      source: 'label',
+      intakeMode: 'auto',
+      initialState: 'triaged',
       triggerLabel: 'state:triaged',
       poll,
+      readState: async () => 'triaged',
+      initializeState: async () => {},
       tick: async () => {
         throw new Error('should not tick');
       },
@@ -85,9 +102,14 @@ describe('runWatchCycle', () => {
     const result = await runWatchCycle({
       db,
       repo,
+      source: 'label',
+      intakeMode: 'auto',
+      initialState: 'triaged',
       sinceOverride: '2026-06-01T00:00:00Z',
       triggerLabel: 'state:triaged',
       poll: async () => ({ issues: [], rateLimited: true }),
+      readState: async () => 'triaged',
+      initializeState: async () => {},
       tick: async () => {
         throw new Error('should not tick');
       },
@@ -102,9 +124,14 @@ describe('runWatchCycle', () => {
     const result = await runWatchCycle({
       db,
       repo,
+      source: 'label',
+      intakeMode: 'auto',
+      initialState: 'triaged',
       sinceOverride: '2026-06-01T00:00:00Z',
       triggerLabel: 'state:triaged',
       poll: async () => ({ issues: [], rateLimited: false, error: 'HTTP 401: Bad credentials' }),
+      readState: async () => 'triaged',
+      initializeState: async () => {},
       tick: async () => {
         throw new Error('should not tick');
       },
@@ -120,12 +147,17 @@ describe('runWatchCycle', () => {
     const result = await runWatchCycle({
       db,
       repo,
+      source: 'label',
+      intakeMode: 'auto',
+      initialState: 'triaged',
       sinceOverride: '2026-06-01T00:00:00Z',
       triggerLabel: 'state:triaged',
       poll: async () => ({
         issues: [{ number: 99, updatedAt: '2026-06-02T10:00:00Z' }],
         rateLimited: false
       }),
+      readState: async () => 'triaged',
+      initializeState: async () => {},
       tick: async ({ issueNumber }) => ({
         issueNumber,
         fromState: null,
@@ -140,6 +172,100 @@ describe('runWatchCycle', () => {
     expect(result.processed).toBe(1);
     expect(listPending(db, repo)).toHaveLength(0);
   });
+
+  it('confirms unseen assigned issue and initializes local state before ticking', async () => {
+    const prompts: string[] = [];
+    const initialized: Array<{ issueNumber: number; state: string }> = [];
+    const ticks: number[] = [];
+
+    const result = await runWatchCycle({
+      db,
+      repo,
+      source: 'assigned-to-me',
+      intakeMode: 'confirm',
+      initialState: 'triaged',
+      triggerLabel: 'triaged',
+      poll: async () => ({ issues: [assignedIssue], rateLimited: false }),
+      confirmIntake: async (issue) => {
+        prompts.push(issue.title);
+        return true;
+      },
+      readState: async () => null,
+      initializeState: async ({ issueNumber, initialState }) => {
+        initialized.push({ issueNumber, state: initialState });
+      },
+      tick: async ({ issueNumber }) => {
+        ticks.push(issueNumber);
+        return {
+          issueNumber,
+          fromState: 'triaged',
+          toState: 'triaged',
+          action: { kind: 'wait', reason: 'agent owns work' }
+        };
+      },
+      now: () => new Date('2026-06-02T12:00:00Z')
+    });
+
+    expect(prompts).toEqual(['Docker Runner']);
+    expect(initialized).toEqual([{ issueNumber: 42, state: 'triaged' }]);
+    expect(ticks).toEqual([42]);
+    expect(result.enqueued).toBe(1);
+    expect(result.processed).toBe(1);
+  });
+
+  it('records ignored decision when confirm returns false', async () => {
+    const result = await runWatchCycle({
+      db,
+      repo,
+      source: 'assigned-to-me',
+      intakeMode: 'confirm',
+      initialState: 'triaged',
+      triggerLabel: 'triaged',
+      poll: async () => ({ issues: [assignedIssue], rateLimited: false }),
+      confirmIntake: async () => false,
+      readState: async () => null,
+      initializeState: async () => {
+        throw new Error('should not initialize');
+      },
+      tick: async () => {
+        throw new Error('should not tick');
+      },
+      now: () => new Date('2026-06-02T12:00:00Z')
+    });
+
+    expect(result.enqueued).toBe(0);
+    expect(result.processed).toBe(0);
+  });
+
+  it('auto intake accepts without prompting', async () => {
+    const initialized: number[] = [];
+
+    await runWatchCycle({
+      db,
+      repo,
+      source: 'assigned-to-me',
+      intakeMode: 'auto',
+      initialState: 'triaged',
+      triggerLabel: 'triaged',
+      poll: async () => ({ issues: [assignedIssue], rateLimited: false }),
+      confirmIntake: async () => {
+        throw new Error('should not prompt');
+      },
+      readState: async () => null,
+      initializeState: async ({ issueNumber }) => {
+        initialized.push(issueNumber);
+      },
+      tick: async ({ issueNumber }) => ({
+        issueNumber,
+        fromState: 'triaged',
+        toState: 'triaged',
+        action: { kind: 'wait', reason: 'agent owns work' }
+      }),
+      now: () => new Date('2026-06-02T12:00:00Z')
+    });
+
+    expect(initialized).toEqual([42]);
+  });
 });
 
 describe('runWatchLoop', () => {
@@ -150,6 +276,9 @@ describe('runWatchLoop', () => {
     const loopPromise = runWatchLoop({
       db,
       repo,
+      source: 'label',
+      intakeMode: 'auto',
+      initialState: 'triaged',
       triggerLabel: 'state:triaged',
       intervalMs: 60_000,
       poll: async () => {
@@ -162,6 +291,8 @@ describe('runWatchLoop', () => {
       tick: async () => {
         throw new Error('should not tick');
       },
+      readState: async () => 'triaged',
+      initializeState: async () => {},
       sleep: async () => {},
       signal: controller.signal,
       now: () => new Date('2026-06-02T12:00:00Z')
@@ -179,6 +310,9 @@ describe('runWatchLoop', () => {
     const loopPromise = runWatchLoop({
       db,
       repo,
+      source: 'label',
+      intakeMode: 'auto',
+      initialState: 'triaged',
       triggerLabel: 'state:triaged',
       intervalMs: 30_000,
       poll: async () => {
@@ -191,6 +325,8 @@ describe('runWatchLoop', () => {
       tick: async () => {
         throw new Error('should not tick');
       },
+      readState: async () => 'triaged',
+      initializeState: async () => {},
       sleep: async (ms) => {
         sleeps.push(ms);
       },

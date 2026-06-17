@@ -2,23 +2,34 @@ import type { StateDb } from '../state/db.js';
 import {
   enqueueIssue,
   getCursor,
+  getIntakeDecision,
   listPending,
+  markIntakeAccepted,
+  markIntakeIgnored,
   markDone,
   markFailed,
   markProcessing,
   recoverStaleProcessing,
   setCursor
 } from '../state/watcher-store.js';
+import type { WatcherIntakeMode, WatcherSource } from '../config/types.js';
+import type { WorkflowState } from '../workflow/state-machine.js';
 import type { RepoRef } from '../workflow/state-store.js';
-import type { PollResult } from './poll.js';
+import type { WatchIssue, PollResult } from './poll.js';
 import type { TickResult } from '../workflow/engine.js';
 
 export interface WatchCycleDeps {
   db: StateDb;
   repo: RepoRef;
+  source: WatcherSource;
+  intakeMode: WatcherIntakeMode;
+  initialState: WorkflowState;
   triggerLabel: string;
   sinceOverride?: string;
   poll: (since: string) => Promise<PollResult>;
+  confirmIntake?: (issue: WatchIssue) => Promise<boolean>;
+  readState: (repo: RepoRef, issueNumber: number) => Promise<WorkflowState | null>;
+  initializeState: (input: { repo: RepoRef; issueNumber: number; initialState: WorkflowState }) => Promise<void>;
   tick: (input: { repo: RepoRef; issueNumber: number }) => Promise<TickResult>;
   now?: () => Date;
 }
@@ -35,6 +46,50 @@ const STALE_PROCESSING_MS = 5 * 60_000;
 
 function maxIso(left: string, right: string): string {
   return left >= right ? left : right;
+}
+
+async function shouldEnqueueIssue(deps: WatchCycleDeps, issue: WatchIssue): Promise<boolean> {
+  const decision = getIntakeDecision(deps.db, deps.repo, issue.number);
+  if (decision?.decision === 'ignored') {
+    return false;
+  }
+  if (decision?.decision === 'accepted') {
+    return true;
+  }
+
+  const state = await deps.readState(deps.repo, issue.number);
+  if (state !== null) {
+    markIntakeAccepted(deps.db, deps.repo, issue.number, issue.updatedAt);
+    return true;
+  }
+
+  if (deps.intakeMode === 'auto') {
+    await deps.initializeState({
+      repo: deps.repo,
+      issueNumber: issue.number,
+      initialState: deps.initialState
+    });
+    markIntakeAccepted(deps.db, deps.repo, issue.number, issue.updatedAt);
+    return true;
+  }
+
+  if (!deps.confirmIntake) {
+    throw new Error('watcher intake confirmation requires an interactive prompt');
+  }
+
+  const confirmed = await deps.confirmIntake(issue);
+  if (!confirmed) {
+    markIntakeIgnored(deps.db, deps.repo, issue.number, issue.updatedAt);
+    return false;
+  }
+
+  await deps.initializeState({
+    repo: deps.repo,
+    issueNumber: issue.number,
+    initialState: deps.initialState
+  });
+  markIntakeAccepted(deps.db, deps.repo, issue.number, issue.updatedAt);
+  return true;
 }
 
 export async function runWatchCycle(deps: WatchCycleDeps): Promise<WatchCycleResult> {
@@ -55,7 +110,7 @@ export async function runWatchCycle(deps: WatchCycleDeps): Promise<WatchCycleRes
 
   let enqueued = 0;
   for (const issue of pollResult.issues) {
-    if (enqueueIssue(deps.db, deps.repo, issue.number, issue.updatedAt)) {
+    if ((await shouldEnqueueIssue(deps, issue)) && enqueueIssue(deps.db, deps.repo, issue.number, issue.updatedAt)) {
       enqueued += 1;
     }
   }
