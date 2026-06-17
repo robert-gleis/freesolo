@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { buildIssueSearchQuery, isRateLimitError, pollIssues, pollTriagedIssues } from '../../src/watcher/poll.js';
+import { buildIssueSearchQuery, isRateLimitError, pollIssues } from '../../src/watcher/poll.js';
 import type { GhRunner } from '../../src/workflow/state-store.js';
 
 const repo = { owner: 'acme', repo: 'widgets' };
@@ -32,7 +32,7 @@ describe('isRateLimitError', () => {
   });
 });
 
-describe('pollTriagedIssues', () => {
+describe('pollIssues with label source', () => {
   it('returns issues with trigger label', async () => {
     const gh = buildRunner(() => ({
       stdout: JSON.stringify([
@@ -47,8 +47,9 @@ describe('pollTriagedIssues', () => {
       ])
     }));
 
-    const result = await pollTriagedIssues({
+    const result = await pollIssues({
       repo,
+      source: 'label',
       since: '2026-06-01T00:00:00Z',
       triggerLabel: 'state:triaged',
       gh
@@ -69,8 +70,9 @@ describe('pollTriagedIssues', () => {
 
   it('sets rateLimited on gh failure', async () => {
     const gh = buildRunner(() => ({ exitCode: 1, stderr: 'HTTP 429: rate limit' }));
-    const result = await pollTriagedIssues({
+    const result = await pollIssues({
       repo,
+      source: 'label',
       since: '2026-06-01T00:00:00Z',
       triggerLabel: 'state:triaged',
       gh
@@ -82,8 +84,9 @@ describe('pollTriagedIssues', () => {
 
   it('returns error on non-rate-limit gh failure', async () => {
     const gh = buildRunner(() => ({ exitCode: 1, stderr: 'HTTP 401: Bad credentials' }));
-    const result = await pollTriagedIssues({
+    const result = await pollIssues({
       repo,
+      source: 'label',
       since: '2026-06-01T00:00:00Z',
       triggerLabel: 'state:triaged',
       gh
@@ -95,8 +98,9 @@ describe('pollTriagedIssues', () => {
 
   it('returns error on malformed gh stdout', async () => {
     const gh = buildRunner(() => ({ stdout: 'not json' }));
-    const result = await pollTriagedIssues({
+    const result = await pollIssues({
       repo,
+      source: 'label',
       since: '2026-06-01T00:00:00Z',
       triggerLabel: 'state:triaged',
       gh
@@ -114,8 +118,9 @@ describe('pollTriagedIssues', () => {
     const gh = buildRunner(() => ({ stdout: JSON.stringify(issues) }));
     const onWarn = vi.fn();
 
-    await pollTriagedIssues({
+    await pollIssues({
       repo,
+      source: 'label',
       since: '2026-06-01T00:00:00Z',
       triggerLabel: 'state:triaged',
       gh,

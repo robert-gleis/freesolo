@@ -113,11 +113,11 @@ interface WatcherOverrideOptions {
 }
 
 function resolveWatcherConfig(config: IssueflowConfig, options: WatcherOverrideOptions): WatcherConfig {
+  // Passing --trigger-label without an explicit --source implies the 'label' source.
   return {
     ...config.watcher,
     source: options.source ?? (options.triggerLabel ? 'label' : config.watcher.source),
     intake_mode: options.intakeMode ?? config.watcher.intake_mode,
-    initial_state: config.watcher.initial_state,
     trigger_label: options.triggerLabel ?? config.watcher.trigger_label
   };
 }

@@ -125,7 +125,3 @@ export async function pollIssues(input: PollInput): Promise<PollResult> {
 
   return { issues, rateLimited: false };
 }
-
-export async function pollTriagedIssues(input: Omit<PollInput, 'source'>): Promise<PollResult> {
-  return pollIssues({ ...input, source: 'label' });
-}
