@@ -5,7 +5,12 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { openStateDb, type StateDb } from '../../src/state/db.js';
-import { getCursor, listPending, markIntakeAccepted } from '../../src/state/watcher-store.js';
+import {
+  getCursor,
+  listPending,
+  markIntakeAccepted,
+  markIntakeIgnored
+} from '../../src/state/watcher-store.js';
 import { runWatchCycle, runWatchLoop } from '../../src/watcher/runner.js';
 import type { TickResult } from '../../src/workflow/engine.js';
 
@@ -289,6 +294,58 @@ describe('runWatchCycle', () => {
         now: () => new Date('2026-06-02T12:00:00Z')
       })
     ).rejects.toThrow(/accepted by watcher intake but has no local workflow state/);
+  });
+
+  it('skips previously ignored intake decisions without prompting', async () => {
+    markIntakeIgnored(db, repo, assignedIssue.number, assignedIssue.updatedAt);
+
+    const result = await runWatchCycle({
+      db,
+      repo,
+      source: 'assigned-to-me',
+      intakeMode: 'confirm',
+      initialState: 'triaged',
+      triggerLabel: 'triaged',
+      poll: async () => ({ issues: [assignedIssue], rateLimited: false }),
+      confirmIntake: async () => {
+        throw new Error('should not prompt');
+      },
+      readState: async () => {
+        throw new Error('should not read state');
+      },
+      initializeState: async () => {
+        throw new Error('should not initialize');
+      },
+      tick: async () => {
+        throw new Error('should not tick');
+      },
+      now: () => new Date('2026-06-02T12:00:00Z')
+    });
+
+    expect(result.enqueued).toBe(0);
+    expect(result.processed).toBe(0);
+  });
+
+  it('fails clearly when confirm intake has no prompt callback', async () => {
+    await expect(
+      runWatchCycle({
+        db,
+        repo,
+        source: 'assigned-to-me',
+        intakeMode: 'confirm',
+        initialState: 'triaged',
+        triggerLabel: 'triaged',
+        poll: async () => ({ issues: [assignedIssue], rateLimited: false }),
+        readState: async () => null,
+        initializeState: async () => {
+          throw new Error('should not initialize');
+        },
+        tick: async () => {
+          throw new Error('should not tick');
+        },
+        now: () => new Date('2026-06-02T12:00:00Z')
+      })
+    ).rejects.toThrow(/watcher intake confirmation requires an interactive prompt/);
   });
 });
 
