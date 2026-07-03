@@ -7,12 +7,8 @@ import type { AgentAdapter } from '../agents/types.js';
 import type { HostTool } from '../core/types.js';
 import { getPromptPreset, type FixerFailedCheck, type FixerPromptContext } from '../prompts/presets.js';
 import { getCandidateBranchDiff, resolveIssueBodyFromRepo } from './context-deps.js';
+import { readLogTail } from './log-tail.js';
 import type { FailureContext, FixerResult } from './route-runner.js';
-
-/** How many trailing lines of a failing check's log to summarize into the prompt. */
-const LOG_TAIL_LINES = 40;
-/** Hard cap on the summarized tail so a huge log cannot blow up the prompt. */
-const LOG_TAIL_MAX_CHARS = 4000;
 
 /**
  * External calls the real fixer makes, injected so tests can pass a
@@ -32,19 +28,6 @@ export const defaultFixerCheckDeps: FixerCheckDeps = {
   getBranchDiff: getCandidateBranchDiff,
   getIssueBody: resolveIssueBodyFromRepo
 };
-
-/** Reads and tails a failing check's per-check log for the Failure Context. */
-async function summarizeLog(logPath: string): Promise<string> {
-  let content: string;
-  try {
-    content = await fs.readFile(logPath, 'utf8');
-  } catch {
-    return '';
-  }
-  const lines = content.split('\n');
-  const tail = lines.slice(-LOG_TAIL_LINES).join('\n').trim();
-  return tail.length > LOG_TAIL_MAX_CHARS ? tail.slice(-LOG_TAIL_MAX_CHARS) : tail;
-}
 
 /**
  * Real Fixer Agent seam (the default {@link FailureContext}-driven runFixer).
@@ -97,7 +80,7 @@ async function buildFixerPrompt(context: FailureContext, deps: FixerCheckDeps): 
       command: c.command,
       exitCode: c.exitCode,
       logPath: c.logPath,
-      logSummary: await summarizeLog(c.logPath),
+      logSummary: await readLogTail(c.logPath),
       reviewFindings: c.reviewFindings ?? null
     }))
   );

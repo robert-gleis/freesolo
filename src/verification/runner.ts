@@ -26,9 +26,29 @@ export type ExecCheck = (
 ) => Promise<ExecCheckResult>;
 
 /**
+ * Milliseconds to wait after the graceful termination signal before execa
+ * escalates to SIGKILL. Overridable via ISSUEFLOW_FORCE_KILL_MS (tests set a
+ * short value). Defaults to 5s so a well-behaved child gets a chance to flush.
+ */
+function forceKillAfterMs(): number {
+  const raw = process.env.ISSUEFLOW_FORCE_KILL_MS;
+  if (raw !== undefined) {
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      return parsed;
+    }
+  }
+  return 5000;
+}
+
+/**
  * Real subprocess exec used by the Gate Route shell checks. Streams stdout and
  * stderr chunks to `onChunk`, never rejects (spawn failures surface as
- * `exitCode: null` plus a message chunk), and forwards SIGINT on abort.
+ * `exitCode: null` plus a message chunk), and terminates on abort with a
+ * GUARANTEED bound: on abort execa sends SIGTERM (via `cancelSignal`) and, if
+ * the child ignores or traps it, escalates to SIGKILL after
+ * `forceKillAfterDelay`. This means the per-check timeout truly bounds the await
+ * even for shell scripts / npm-wrapped runners that swallow the soft signal.
  */
 export const defaultExecCheck: ExecCheck = async (spec, onChunk, abortSignal) => {
   try {
@@ -38,7 +58,11 @@ export const defaultExecCheck: ExecCheck = async (spec, onChunk, abortSignal) =>
       reject: false,
       buffer: false,
       stdout: 'pipe',
-      stderr: 'pipe'
+      stderr: 'pipe',
+      // On abort, execa sends SIGTERM and (via forceKillAfterDelay) escalates to
+      // SIGKILL, so a child that ignores SIGTERM cannot keep the await pending.
+      cancelSignal: abortSignal,
+      forceKillAfterDelay: forceKillAfterMs()
     });
 
     subprocess.stdout?.on('data', (chunk: Buffer) => onChunk('stdout', chunk.toString('utf8')));
@@ -46,55 +70,29 @@ export const defaultExecCheck: ExecCheck = async (spec, onChunk, abortSignal) =>
     subprocess.stdout?.on('error', (err) => onChunk('stderr', `[runner] stdout error: ${err.message}\n`));
     subprocess.stderr?.on('error', (err) => onChunk('stderr', `[runner] stderr error: ${err.message}\n`));
 
-    const onAbort = abortSignal
-      ? () => {
-          try {
-            subprocess.kill('SIGINT');
-          } catch {
-            // subprocess may already have exited
-          }
-        }
-      : null;
-    if (abortSignal && onAbort) {
-      if (abortSignal.aborted) {
-        try {
-          subprocess.kill('SIGINT');
-        } catch {
-          // subprocess may already have exited
-        }
-      } else {
-        abortSignal.addEventListener('abort', onAbort, { once: true });
-      }
+    const result = (await subprocess) as {
+      exitCode?: number | null;
+      signal?: string | null;
+      failed?: boolean;
+      shortMessage?: string;
+      originalMessage?: string;
+      code?: string;
+    };
+
+    // execa 9 with `reject: false` does NOT throw on spawn failures
+    // (ENOENT, EACCES, etc.). Instead it resolves with `failed: true` and
+    // an empty exitCode. Surface the failure message via onChunk so the
+    // log contains a useful explanation rather than being empty. A cancel
+    // (timeout/abort) also resolves with an empty exitCode — record it too.
+    if (result.failed && (result.exitCode === null || result.exitCode === undefined)) {
+      const failureMessage = result.shortMessage ?? result.originalMessage ?? result.code ?? 'spawn failed';
+      onChunk('stderr', `${failureMessage}\n`);
     }
 
-    try {
-      const result = (await subprocess) as {
-        exitCode?: number | null;
-        signal?: string | null;
-        failed?: boolean;
-        shortMessage?: string;
-        originalMessage?: string;
-        code?: string;
-      };
-
-      // execa 9 with `reject: false` does NOT throw on spawn failures
-      // (ENOENT, EACCES, etc.). Instead it resolves with `failed: true` and
-      // an empty exitCode. Surface the failure message via onChunk so the
-      // log contains a useful explanation rather than being empty.
-      if (result.failed && (result.exitCode === null || result.exitCode === undefined)) {
-        const failureMessage = result.shortMessage ?? result.originalMessage ?? result.code ?? 'spawn failed';
-        onChunk('stderr', `${failureMessage}\n`);
-      }
-
-      return {
-        exitCode: typeof result.exitCode === 'number' ? result.exitCode : null,
-        signal: typeof result.signal === 'string' ? result.signal : null
-      };
-    } finally {
-      if (abortSignal && onAbort) {
-        abortSignal.removeEventListener('abort', onAbort);
-      }
-    }
+    return {
+      exitCode: typeof result.exitCode === 'number' ? result.exitCode : null,
+      signal: typeof result.signal === 'string' ? result.signal : null
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     onChunk('stderr', `${message}\n`);

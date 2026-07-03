@@ -121,6 +121,12 @@ function buildPrintOnlySummary(input: {
 }
 
 function runExitCode(run: GateRouteRun, aborted: boolean): 0 | 1 | 130 {
+  // Abort (operator Ctrl-C via createVerifyPlan's handler, or a timeout signal)
+  // yields the SIGINT exit convention. A check that recorded a SIGINT signal —
+  // e.g. an external SIGINT delivered straight to the child — is treated the
+  // same. Note our own runner terminates a timed-out/aborted child with
+  // SIGTERM→SIGKILL, so that path is covered by the `aborted` flag, not this
+  // signal check.
   if (aborted || run.checks.some((check) => check.signal === 'SIGINT')) {
     return 130;
   }

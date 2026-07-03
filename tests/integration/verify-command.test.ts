@@ -112,9 +112,9 @@ describe('issueflow verify (integration)', () => {
     await expect(fs.access(issueDir)).rejects.toThrow();
   });
 
-  it('records SIGINT on the running check when a real subprocess is killed', async () => {
+  it('terminates the running check on abort and records the run as failed', async () => {
     if (process.platform === 'win32') {
-      // Windows SIGINT handling on Node subprocesses is unreliable; skip there.
+      // Windows signal handling on Node subprocesses is unreliable; skip there.
       return;
     }
 
@@ -142,9 +142,14 @@ describe('issueflow verify (integration)', () => {
     expect(result.mode).toBe('completed');
     if (result.mode !== 'completed') throw new Error('expected completed mode');
 
+    // Abort yields the SIGINT exit convention (130) regardless of the actual
+    // termination signal, and the interrupted check is recorded as failed.
     expect(result.exitCode).toBe(130);
     expect(result.run.checks[0].status).toBe('fail');
-    expect(result.run.checks[0].signal).toBe('SIGINT');
+    // The check was terminated by a real signal (SIGTERM, or SIGKILL if the
+    // child ignored the graceful signal) — never a clean exit.
+    expect(result.run.checks[0].signal).not.toBeNull();
+    expect(result.run.checks[0].exitCode).toBeNull();
 
     const runDir = path.join(
       repoRoot,

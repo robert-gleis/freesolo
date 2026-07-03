@@ -11,7 +11,15 @@ import { listAdrs } from '../memory/adrs.js';
 import type { AdrRecord } from '../memory/adrs.js';
 import { getPromptPreset } from '../prompts/presets.js';
 import { getCandidateBranchDiff, resolveIssueBodyFromRepo } from './context-deps.js';
+import { readLogTail } from './log-tail.js';
 import type { AgentReviewRequest, AgentReviewResult } from './route-runner.js';
+
+/**
+ * Hard cap on the whole assembled prior-logs block. Each log is already tailed
+ * by {@link readLogTail}, but many prior checks could still add up, so bound the
+ * aggregate before it enters the prompt.
+ */
+const PRIOR_LOGS_MAX_CHARS = 32 * 1024;
 
 /**
  * External calls the real agent-review check makes, injected so tests can pass a
@@ -41,7 +49,11 @@ export const defaultAgentReviewDeps: AgentReviewDeps = {
   runReviewAgent
 };
 
-/** Reads the prior route logs written for the CURRENT attempt in the run dir. */
+/**
+ * Reads the prior route logs written for the CURRENT attempt in the run dir.
+ * Each log is read as a BOUNDED tail (never the whole file) so a runaway earlier
+ * check cannot OOM this path, and the assembled block is then capped in total.
+ */
 async function readPriorLogs(runDirectory: string, attempt: number): Promise<string> {
   let entries: string[];
   try {
@@ -54,17 +66,19 @@ async function readPriorLogs(runDirectory: string, attempt: number): Promise<str
   const matching = entries.filter((name) => name.startsWith(prefix) && name.endsWith('.log')).sort();
 
   const blocks: string[] = [];
+  let total = 0;
   for (const name of matching) {
-    let content: string;
-    try {
-      content = await fs.readFile(path.join(runDirectory, name), 'utf8');
-    } catch {
-      continue;
+    const tail = await readLogTail(path.join(runDirectory, name));
+    const block = `### ${name}\n\n${tail}`;
+    blocks.push(block);
+    total += block.length;
+    if (total >= PRIOR_LOGS_MAX_CHARS) {
+      break;
     }
-    blocks.push(`### ${name}\n\n${content.trim()}`);
   }
 
-  return blocks.join('\n\n');
+  const assembled = blocks.join('\n\n');
+  return assembled.length > PRIOR_LOGS_MAX_CHARS ? assembled.slice(0, PRIOR_LOGS_MAX_CHARS) : assembled;
 }
 
 /** Distills verdict findings into a single human-readable summary string. */

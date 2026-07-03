@@ -204,6 +204,56 @@ describe('runAgentReviewCheck', () => {
     expect(capturedPrompt).not.toContain('unrelated attempt');
   });
 
+  it('caps each prior log so a runaway earlier check cannot blow up the review prompt', async () => {
+    const runDirectory = await makeRunDir();
+    // A prior check for THIS attempt wrote a runaway multi-MB log. It must be
+    // tailed/capped before entering the prompt, not read in full.
+    const runaway = `${'RUNAWAY '.repeat(2 * 1024 * 1024)}\nFINAL-TAIL-LINE\n`;
+    await fs.writeFile(path.join(runDirectory, 'attempt-1-build.log'), runaway);
+
+    let capturedPrompt = '';
+    const adapter = new ScriptedAgentAdapter({ steps: [{ match: /.*/, output: PASS_JSON }] });
+    const original = adapter.send.bind(adapter);
+    adapter.send = async (input: string) => {
+      capturedPrompt = input;
+      return original(input);
+    };
+
+    await runAgentReviewCheck(makeRequest(runDirectory), makeDeps(adapter));
+
+    // The whole runaway log must NOT be in the prompt; the prompt stays bounded.
+    expect(capturedPrompt.length).toBeLessThan(runaway.length);
+    // The prompt is on the order of the tail cap, not megabytes.
+    expect(capturedPrompt.length).toBeLessThan(100 * 1024);
+    // The recent tail of the log is preserved (the useful part for the reviewer).
+    expect(capturedPrompt).toContain('FINAL-TAIL-LINE');
+  });
+
+  it('caps the total assembled prior logs across many prior checks', async () => {
+    const runDirectory = await makeRunDir();
+    // Several prior checks, each with a sizeable log. The assembled priorLogs
+    // block must stay bounded even in aggregate.
+    for (let i = 0; i < 20; i += 1) {
+      await fs.writeFile(
+        path.join(runDirectory, `attempt-1-check${i}.log`),
+        `${'z'.repeat(500 * 1024)}\nTAIL-${i}\n`
+      );
+    }
+
+    let capturedPrompt = '';
+    const adapter = new ScriptedAgentAdapter({ steps: [{ match: /.*/, output: PASS_JSON }] });
+    const original = adapter.send.bind(adapter);
+    adapter.send = async (input: string) => {
+      capturedPrompt = input;
+      return original(input);
+    };
+
+    await runAgentReviewCheck(makeRequest(runDirectory), makeDeps(adapter));
+
+    // Total prompt must not balloon to the raw ~10 MB of concatenated logs.
+    expect(capturedPrompt.length).toBeLessThan(1 * 1024 * 1024);
+  });
+
   it('diffs the candidate against the recorded base branch (not a hardcoded main)', async () => {
     const runDirectory = await makeRunDir();
     const adapter = new ScriptedAgentAdapter({ steps: [{ match: /.*/, output: PASS_JSON }] });
