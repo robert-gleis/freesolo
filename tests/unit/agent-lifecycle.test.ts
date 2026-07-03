@@ -79,6 +79,30 @@ describe('runOwnedAgentSession', () => {
     expect(stopped).toBe(true);
   });
 
+  it('maps a status() failure via onError and does not stop (never owned)', async () => {
+    let stopped = false;
+    const adapter: AgentAdapter = {
+      start: async () => {},
+      stop: async () => {
+        stopped = true;
+      },
+      send: async () => ({ output: 'out' }),
+      status: async () => {
+        throw new Error('status boom');
+      }
+    };
+
+    const result = await runOwnedAgentSession(
+      { adapter, cwd: '/tmp' },
+      async (send) => send('go'),
+      () => 'ABORT',
+      (msg) => `ERROR:${msg}`
+    );
+
+    expect(result).toBe('ERROR:status boom');
+    expect(stopped).toBe(false);
+  });
+
   it('maps a timeout via onAbort and stops the owned adapter', async () => {
     const adapter = hangingAdapter();
 

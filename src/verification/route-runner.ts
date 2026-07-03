@@ -113,14 +113,13 @@ export const defaultGateRouteDeps: GateRouteDeps = {
 function timeoutAwareSignal(
   base: AbortSignal | undefined,
   timeoutSeconds: number | undefined
-): { signal: AbortSignal | undefined; dispose: () => void } {
+): AbortSignal | undefined {
   if (timeoutSeconds === undefined) {
-    return { signal: base, dispose: () => {} };
+    return base;
   }
 
   const timeout = AbortSignal.timeout(timeoutSeconds * 1000);
-  const signal = base ? AbortSignal.any([base, timeout]) : timeout;
-  return { signal, dispose: () => {} };
+  return base ? AbortSignal.any([base, timeout]) : timeout;
 }
 
 function skippedResult(check: RouteCheck, now: string, logPath: string): RouteCheckResult {
@@ -145,7 +144,7 @@ async function runOneShellCheck(
   logPath: string
 ): Promise<RouteCheckResult> {
   const startedAt = deps.now();
-  const { signal } = timeoutAwareSignal(input.abortSignal, check.timeoutSeconds);
+  const signal = timeoutAwareSignal(input.abortSignal, check.timeoutSeconds);
   const outcome = await runShellCheck(
     {
       command: check.command,
@@ -182,7 +181,7 @@ async function runOneReviewCheck(
   reviewArtifactPaths: string[]
 ): Promise<RouteCheckResult> {
   const startedAt = deps.now();
-  const { signal } = timeoutAwareSignal(input.abortSignal, check.timeoutSeconds);
+  const signal = timeoutAwareSignal(input.abortSignal, check.timeoutSeconds);
   const result = await deps.runAgentReview({
     check,
     repoRoot: input.repoRoot,

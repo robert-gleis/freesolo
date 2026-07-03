@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { gateEvaluateAction, type GateCommandDeps } from '../../src/commands/gate.js';
 import { assertPrGate } from '../../src/commands/pr.js';
 import { runGateRoute, type GateRouteDeps } from '../../src/verification/route-runner.js';
-import { getRunDirectory, loadLatestRun } from '../../src/verification/store.js';
+import { getRunDirectory, loadLatestRun, writeRun } from '../../src/verification/store.js';
 import {
   readGateVerdictRecord,
   writeGateVerdictRecord,
@@ -101,10 +101,7 @@ describe('Gate Route state path integration', () => {
         return { status: 'pass', detail: 'fixed', log: '' };
       },
       // Persist through the real store so loadLatestRun below round-trips run.json.
-      writeRun: async (run) => {
-        const { writeRun } = await import('../../src/verification/store.js');
-        await writeRun(run);
-      },
+      writeRun,
       now: makeMonotonicNow()
     };
 
@@ -186,10 +183,7 @@ describe('Gate Route state path integration', () => {
       execCheck: async () => ({ exitCode: 1, signal: null }),
       runAgentReview: async () => ({ status: 'pass', artifactPath: null, findings: null }),
       runFixer: async () => ({ status: 'pass', detail: 'attempted a fix', log: '' }),
-      writeRun: async (run) => {
-        const { writeRun } = await import('../../src/verification/store.js');
-        await writeRun(run);
-      },
+      writeRun,
       now: makeMonotonicNow()
     };
 

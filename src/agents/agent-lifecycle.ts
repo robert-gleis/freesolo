@@ -88,14 +88,16 @@ export async function runOwnedAgentSession<T>(
 ): Promise<T> {
   const { adapter, cwd } = session;
 
-  const status = await adapter.status();
-  const shouldStart = status.state === 'idle' || status.state === 'stopped';
   let ownsAdapter = false;
 
   const signal = buildAgentSignal(session.timeoutSeconds, session.abortSignal);
   const send: SessionSend = (prompt) => sendWithSignal(adapter, prompt, signal);
 
   try {
+    // Inside the try so a status() failure is classified as onError like any
+    // other adapter error, rather than propagating unhandled.
+    const status = await adapter.status();
+    const shouldStart = status.state === 'idle' || status.state === 'stopped';
     if (shouldStart) {
       await adapter.start({ workingDirectory: cwd });
       ownsAdapter = true;

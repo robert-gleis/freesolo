@@ -76,10 +76,13 @@ export interface CheckResult {
 }
 
 export interface VerificationRun {
-  // Widened from the literal `1` so the Gate Route record can bump to
-  // schemaVersion 2 while the older consumer test fixtures (which still
-  // construct `schemaVersion: 1`) keep type-checking. Downstream consumers
-  // (gate, pr, merge, reports) only read the fields below.
+  // ponytail: left as `number` rather than tightened to literal `2`. The route
+  // run is the only *runtime* writer, but the consumer tests (verification-store,
+  // pr-command, gate-command, gate-pr-command) deliberately construct plain
+  // `schemaVersion: 1` VerificationRun fixtures to prove those consumers (gate,
+  // pr, merge, reports) read ONLY status/runId and ignore the version. Tightening
+  // to `2` here would churn 6+ unrelated fixtures for zero runtime benefit; the
+  // GateRouteRun subtype already pins `schemaVersion: 2` where it actually matters.
   schemaVersion: number;
   runId: string;
   issueNumber: number;

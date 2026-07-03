@@ -136,7 +136,9 @@ export async function gateEvaluateAction(
   const latestRun = await deps.loadLatestRun(repoRoot, issueNumber);
   const evaluation = evaluateGate(latestRun);
 
-  if (evaluation.outcome === 'no-run') {
+  // evaluateGate returns runId null ONLY for 'no-run'; guarding here (rather than
+  // a bare `!` at the write path below) narrows runId to string for the record.
+  if (evaluation.outcome === 'no-run' || evaluation.runId === null) {
     deps.write('stderr', `${evaluation.nextAction}\n`);
     deps.setExitCode(2);
     return;
@@ -159,7 +161,7 @@ export async function gateEvaluateAction(
   const record: GateVerdictRecord = {
     schemaVersion: 1,
     issueNumber,
-    runId: evaluation.runId!,
+    runId: evaluation.runId,
     outcome: evaluation.outcome,
     reason: evaluation.reason,
     nextAction: evaluation.nextAction,
