@@ -14,40 +14,55 @@ async function makeRepo(): Promise<string> {
   return dir;
 }
 
+function validGateRoute() {
+  return {
+    verification: {
+      gateRoute: {
+        maxAttempts: 3,
+        bail: true,
+        checks: [
+          { name: 'build', kind: 'shell', command: 'npm', args: ['run', 'build'] },
+          {
+            name: 'review',
+            kind: 'agent-review',
+            host: 'codex',
+            promptPreset: 'thermonuclear-review'
+          }
+        ],
+        fixer: { host: 'codex', promptPreset: 'gate-fixer' }
+      }
+    }
+  };
+}
+
+async function writeConfig(repoRoot: string, config: unknown): Promise<void> {
+  await fs.writeFile(path.join(repoRoot, DEFAULT_CONFIG_FILENAME), JSON.stringify(config));
+}
+
 afterEach(async () => {
   await Promise.all(tempDirs.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })));
 });
 
 describe('loadVerificationConfig', () => {
-  it('loads and validates the default config file', async () => {
+  it('loads and validates a gateRoute config', async () => {
     const repoRoot = await makeRepo();
-    await fs.writeFile(
-      path.join(repoRoot, DEFAULT_CONFIG_FILENAME),
-      JSON.stringify({
-        verification: {
-          checks: [{ name: 'lint', command: 'npm', args: ['run', 'lint'] }]
-        }
-      })
-    );
+    await writeConfig(repoRoot, validGateRoute());
 
     const config = await loadVerificationConfig(repoRoot);
 
-    expect(config.verification.checks).toHaveLength(1);
-    expect(config.verification.checks[0].name).toBe('lint');
+    expect(config.verification.gateRoute.checks).toHaveLength(2);
+    expect(config.verification.gateRoute.maxAttempts).toBe(3);
   });
 
   it('accepts an explicit relative config path', async () => {
     const repoRoot = await makeRepo();
-    const configPath = 'configs/checks.json';
+    const configPath = 'configs/gate.json';
     await fs.mkdir(path.join(repoRoot, 'configs'), { recursive: true });
-    await fs.writeFile(
-      path.join(repoRoot, configPath),
-      JSON.stringify({ verification: { checks: [{ name: 'lint', command: 'eslint' }] } })
-    );
+    await fs.writeFile(path.join(repoRoot, configPath), JSON.stringify(validGateRoute()));
 
     const config = await loadVerificationConfig(repoRoot, configPath);
 
-    expect(config.verification.checks[0].command).toBe('eslint');
+    expect(config.verification.gateRoute.fixer.host).toBe('codex');
   });
 
   it('throws VerificationConfigError when the config is missing', async () => {
@@ -61,16 +76,33 @@ describe('loadVerificationConfig', () => {
     const repoRoot = await makeRepo();
     await fs.writeFile(path.join(repoRoot, DEFAULT_CONFIG_FILENAME), '{ not json');
 
+    await expect(loadVerificationConfig(repoRoot)).rejects.toBeInstanceOf(VerificationConfigError);
     await expect(loadVerificationConfig(repoRoot)).rejects.toThrow(/not valid JSON/);
+  });
+
+  it('throws VerificationConfigError for the old verification.checks shape', async () => {
+    const repoRoot = await makeRepo();
+    await writeConfig(repoRoot, {
+      verification: { checks: [{ name: 'lint', command: 'npm', args: ['run', 'lint'] }] }
+    });
+
+    await expect(loadVerificationConfig(repoRoot)).rejects.toBeInstanceOf(VerificationConfigError);
+    await expect(loadVerificationConfig(repoRoot)).rejects.toThrow(/invalid/);
+  });
+
+  it('throws VerificationConfigError when gateRoute is missing', async () => {
+    const repoRoot = await makeRepo();
+    await writeConfig(repoRoot, { verification: {} });
+
+    await expect(loadVerificationConfig(repoRoot)).rejects.toBeInstanceOf(VerificationConfigError);
   });
 
   it('throws VerificationConfigError when the schema fails', async () => {
     const repoRoot = await makeRepo();
-    await fs.writeFile(
-      path.join(repoRoot, DEFAULT_CONFIG_FILENAME),
-      JSON.stringify({ verification: { checks: [] } })
-    );
+    const config = validGateRoute();
+    config.verification.gateRoute.checks = [];
+    await writeConfig(repoRoot, config);
 
-    await expect(loadVerificationConfig(repoRoot)).rejects.toThrow(/at least one check/i);
+    await expect(loadVerificationConfig(repoRoot)).rejects.toBeInstanceOf(VerificationConfigError);
   });
 });

@@ -1,28 +1,61 @@
 import { z } from 'zod';
 
-const checkNamePattern = /^[a-z0-9][a-z0-9-]{0,63}$/;
+import { HOST_TOOLS } from '../core/types.js';
 
-export const verificationCheckSpecSchema = z.object({
-  name: z.string().regex(checkNamePattern, 'Check name must match /^[a-z0-9][a-z0-9-]{0,63}$/'),
-  command: z.string().min(1, 'Check command must not be empty'),
+const checkNamePattern = /^[a-z0-9][a-z0-9-]{0,63}$/;
+const checkNameSchema = z
+  .string()
+  .regex(checkNamePattern, 'Check name must match /^[a-z0-9][a-z0-9-]{0,63}$/');
+const promptPresetSchema = z.string().min(1, 'promptPreset must not be empty');
+const timeoutSecondsSchema = z.number().int().positive('timeoutSeconds must be a positive integer');
+// Built from HOST_TOOLS so the route stays host-agnostic (no hardcoded host, no 'pi').
+const hostToolSchema = z.enum(HOST_TOOLS);
+
+export const shellCheckSchema = z.strictObject({
+  name: checkNameSchema,
+  kind: z.literal('shell'),
+  command: z.string().min(1, 'Shell check command must not be empty'),
   args: z.array(z.string()).default([]),
   cwd: z.string().optional(),
-  env: z.record(z.string(), z.string()).default({})
+  env: z.record(z.string(), z.string()).default({}),
+  timeoutSeconds: timeoutSecondsSchema.optional()
 });
 
-export const verificationConfigSchema = z.object({
-  verification: z.object({
-    checks: z
-      .array(verificationCheckSpecSchema)
-      .min(1, 'verification.checks must contain at least one check')
-      .refine(
-        (checks) => new Set(checks.map((check) => check.name)).size === checks.length,
-        { message: 'verification.checks names must be unique' }
-      )
+export const agentReviewCheckSchema = z.strictObject({
+  name: checkNameSchema,
+  kind: z.literal('agent-review'),
+  host: hostToolSchema,
+  promptPreset: promptPresetSchema,
+  timeoutSeconds: timeoutSecondsSchema.optional()
+});
+
+export const routeCheckSchema = z.discriminatedUnion('kind', [shellCheckSchema, agentReviewCheckSchema]);
+
+export const fixerSpecSchema = z.strictObject({
+  host: hostToolSchema,
+  promptPreset: promptPresetSchema,
+  timeoutSeconds: timeoutSecondsSchema.optional()
+});
+
+export const gateRouteConfigSchema = z.strictObject({
+  maxAttempts: z.number().int().min(1, 'maxAttempts must be an integer >= 1'),
+  bail: z.boolean(),
+  checks: z.array(routeCheckSchema).min(1, 'gateRoute.checks must contain at least one check'),
+  fixer: fixerSpecSchema
+});
+
+// strictObject rejects the old `verification.checks` shape and any unknown key.
+export const verificationConfigSchema = z.strictObject({
+  verification: z.strictObject({
+    gateRoute: gateRouteConfigSchema
   })
 });
 
-export type VerificationCheckSpec = z.infer<typeof verificationCheckSpecSchema>;
+export type ShellCheck = z.infer<typeof shellCheckSchema>;
+export type AgentReviewCheck = z.infer<typeof agentReviewCheckSchema>;
+export type RouteCheck = z.infer<typeof routeCheckSchema>;
+export type FixerSpec = z.infer<typeof fixerSpecSchema>;
+export type GateRouteConfig = z.infer<typeof gateRouteConfigSchema>;
 export type VerificationConfig = z.infer<typeof verificationConfigSchema>;
 
 export type CheckStatus = 'pass' | 'fail' | 'skipped';
