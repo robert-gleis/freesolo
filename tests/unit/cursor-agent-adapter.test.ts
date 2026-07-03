@@ -77,6 +77,22 @@ describe('CursorAgentAdapter', () => {
     expect((await adapter.status()).lastActivityAt).toBeInstanceOf(Date);
   });
 
+  it('forwards the send signal into run options so the child can be cancelled', async () => {
+    const run = vi.fn(async (args: string[]) => {
+      if (args.includes('create-chat')) return { sessionId: 'chat-1', output: '' };
+      return { sessionId: 'chat-1', output: 'done' };
+    });
+    const adapter = new CursorAgentAdapter(fakeDeps(run));
+    await adapter.start({ workingDirectory: '/wt' });
+    const controller = new AbortController();
+
+    await adapter.send('next step', { signal: controller.signal });
+
+    expect(run.mock.calls[1][1]).toEqual(
+      expect.objectContaining({ signal: controller.signal })
+    );
+  });
+
   it('send before start throws invalid-state', async () => {
     const adapter = new CursorAgentAdapter(fakeDeps(async () => ({ sessionId: 's', output: '' })));
     await expect(adapter.send('hi')).rejects.toMatchObject({ code: 'invalid-state' });

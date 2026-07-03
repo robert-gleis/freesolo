@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { CodexAgentAdapter, type CodexInvoker } from '../../src/agents/codex.js';
 import { ScriptedAgentAdapter } from '../../src/agents/scripted.js';
 import { runReviewAgent } from '../../src/agents/review-runner.js';
 
@@ -130,6 +131,52 @@ describe('runReviewAgent', () => {
     await runReviewAgent({ adapter, prompt: 'review', cwd: '/tmp' });
 
     expect((await adapter.status()).state).toBe('stopped');
+  });
+
+  it('cancels the spawned subprocess when the timeout fires (signal reaches the invoker)', async () => {
+    // A real adapter with a fake invoker that never resolves until its signal
+    // aborts. Proves the review timeout terminates the child rather than leaking
+    // a process that keeps running after the check recorded fail.
+    let seenSignal: AbortSignal | undefined;
+    const invoker: CodexInvoker = ({ signal }) =>
+      new Promise((_resolve, reject) => {
+        seenSignal = signal;
+        signal?.addEventListener('abort', () => reject(new Error('cancelled')), { once: true });
+      });
+    const adapter = new CodexAgentAdapter({ invoker });
+
+    const result = await runReviewAgent({
+      adapter,
+      prompt: 'review',
+      cwd: process.cwd(),
+      timeoutSeconds: 0.01
+    });
+
+    expect(result.verdict).toBe('fail');
+    expect(seenSignal).toBeInstanceOf(AbortSignal);
+    expect(seenSignal!.aborted).toBe(true);
+  });
+
+  it('cancels the spawned subprocess when an external abort fires', async () => {
+    let seenSignal: AbortSignal | undefined;
+    const invoker: CodexInvoker = ({ signal }) =>
+      new Promise((_resolve, reject) => {
+        seenSignal = signal;
+        signal?.addEventListener('abort', () => reject(new Error('cancelled')), { once: true });
+      });
+    const adapter = new CodexAgentAdapter({ invoker });
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 5);
+
+    const result = await runReviewAgent({
+      adapter,
+      prompt: 'review',
+      cwd: process.cwd(),
+      abortSignal: controller.signal
+    });
+
+    expect(result.verdict).toBe('fail');
+    expect(seenSignal!.aborted).toBe(true);
   });
 
   it('stops an owned adapter even after a timeout', async () => {

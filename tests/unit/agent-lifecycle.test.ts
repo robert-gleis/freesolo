@@ -132,6 +132,79 @@ describe('runOwnedAgentSession', () => {
     expect(result).toBe('ABORTED');
   });
 
+  it('sends without a signal when no timeout/abort is configured (planner compatibility)', async () => {
+    let sawSecondArg: unknown = 'unset';
+    const adapter: AgentAdapter = {
+      start: async () => {},
+      stop: async () => {},
+      send: async (_input, opts) => {
+        sawSecondArg = opts;
+        return { output: 'out' };
+      },
+      status: async () => ({ state: 'idle' })
+    };
+
+    const result = await runOwnedAgentSession(
+      { adapter, cwd: '/tmp' },
+      async (send) => send('go'),
+      () => 'ABORT',
+      () => 'ERROR'
+    );
+
+    expect(result).toBe('out');
+    // No combined signal exists, so sendWithSignal takes the plain adapter.send(prompt)
+    // path — the adapter is called with a single argument.
+    expect(sawSecondArg).toBeUndefined();
+  });
+
+  it('forwards the combined signal into adapter.send when a timeout is configured', async () => {
+    let seenSignal: AbortSignal | undefined | 'unset' = 'unset';
+    const adapter: AgentAdapter = {
+      start: async () => {},
+      stop: async () => {},
+      send: async (_input, opts) => {
+        seenSignal = opts?.signal;
+        return { output: 'out' };
+      },
+      status: async () => ({ state: 'idle' })
+    };
+
+    await runOwnedAgentSession(
+      { adapter, cwd: '/tmp', timeoutSeconds: 5 },
+      async (send) => send('go'),
+      () => 'ABORT',
+      () => 'ERROR'
+    );
+
+    expect(seenSignal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('aborts the send signal when the timeout fires so a subprocess adapter can cancel', async () => {
+    let seenSignal: AbortSignal | undefined;
+    const adapter: AgentAdapter = {
+      start: async () => {},
+      stop: async () => {},
+      send: (_input, opts) =>
+        new Promise((_resolve, reject) => {
+          seenSignal = opts?.signal;
+          opts?.signal?.addEventListener('abort', () => reject(new Error('cancelled')), {
+            once: true
+          });
+        }),
+      status: async () => ({ state: 'idle' })
+    };
+
+    const result = await runOwnedAgentSession(
+      { adapter, cwd: '/tmp', timeoutSeconds: 0.01 },
+      async (send) => send('go'),
+      () => 'ABORTED',
+      () => 'ERROR'
+    );
+
+    expect(result).toBe('ABORTED');
+    expect(seenSignal!.aborted).toBe(true);
+  });
+
   it('never lets a stop() failure override the work result', async () => {
     const adapter: AgentAdapter = {
       start: async () => {},

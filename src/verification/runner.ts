@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import { execa } from 'execa';
 
+import { forceKillAfterMs } from '../core/exec-cancel.js';
 import type { CheckStatus } from './types.js';
 
 export interface ExecCheckSpec {
@@ -24,22 +25,6 @@ export type ExecCheck = (
   onChunk: (stream: ExecCheckChunkStream, text: string) => void,
   abortSignal: AbortSignal | undefined
 ) => Promise<ExecCheckResult>;
-
-/**
- * Milliseconds to wait after the graceful termination signal before execa
- * escalates to SIGKILL. Overridable via ISSUEFLOW_FORCE_KILL_MS (tests set a
- * short value). Defaults to 5s so a well-behaved child gets a chance to flush.
- */
-function forceKillAfterMs(): number {
-  const raw = process.env.ISSUEFLOW_FORCE_KILL_MS;
-  if (raw !== undefined) {
-    const parsed = Number(raw);
-    if (Number.isFinite(parsed) && parsed >= 0) {
-      return parsed;
-    }
-  }
-  return 5000;
-}
 
 /**
  * Real subprocess exec used by the Gate Route shell checks. Streams stdout and

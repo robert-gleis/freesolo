@@ -4,7 +4,8 @@ import {
   type AgentResponse,
   type AgentStartInput,
   type AgentState,
-  type AgentStatus
+  type AgentStatus,
+  type SendOptions
 } from './types.js';
 
 export interface ScriptStep {
@@ -46,12 +47,18 @@ export class ScriptedAgentAdapter implements AgentAdapter {
     this.state = 'stopped';
   }
 
-  async send(input: string): Promise<AgentResponse> {
+  async send(input: string, opts?: SendOptions): Promise<AgentResponse> {
     if (this.state !== 'running') {
       throw new AgentAdapterError(
         'invalid-state',
         `Cannot send while in state "${this.state}"`
       );
+    }
+
+    // Honor an already-aborted signal so tests can drive the cancellation path
+    // deterministically (mirrors how a real subprocess adapter would bail).
+    if (opts?.signal?.aborted) {
+      throw opts.signal.reason ?? new DOMException('Aborted', 'AbortError');
     }
 
     for (const step of this.script.steps) {

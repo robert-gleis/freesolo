@@ -70,7 +70,8 @@ describe('ClaudeCodeAgentAdapter send', () => {
     expect(invoker).toHaveBeenCalledWith({
       cwd: process.cwd(),
       prompt: 'do work',
-      sessionId: undefined
+      sessionId: undefined,
+      signal: undefined
     });
     expect((await adapter.status()).lastActivityAt).toBeInstanceOf(Date);
   });
@@ -88,8 +89,22 @@ describe('ClaudeCodeAgentAdapter send', () => {
     expect(invoker.mock.calls[1][0]).toEqual({
       cwd: process.cwd(),
       prompt: 'second',
-      sessionId: 'sess-99'
+      sessionId: 'sess-99',
+      signal: undefined
     });
+  });
+
+  it('forwards the send signal into the invoker so the child can be cancelled', async () => {
+    const invoker = vi.fn().mockResolvedValue({ result: 'ok', session_id: 's' });
+    const adapter = new ClaudeCodeAgentAdapter({ invoker });
+    await adapter.start({ workingDirectory: process.cwd() });
+    const controller = new AbortController();
+
+    await adapter.send('go', { signal: controller.signal });
+
+    expect(invoker).toHaveBeenCalledWith(
+      expect.objectContaining({ signal: controller.signal })
+    );
   });
 
   it('rejects send when not running', async () => {

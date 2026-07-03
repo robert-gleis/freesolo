@@ -26,10 +26,12 @@ export function buildAgentSignal(
 }
 
 /**
- * The AgentAdapter protocol has no built-in cancellation, so enforce the
- * combined signal by racing send() against an abort. A losing send() keeps
- * running to completion in the background; the caller stops the owned adapter in
- * a finally block regardless.
+ * Enforces the combined timeout/abort signal on a single send. The signal is
+ * threaded INTO adapter.send({ signal }) so a subprocess-backed adapter cancels
+ * its child (execa cancelSignal + forceKillAfterDelay) rather than leaking it.
+ * We still race send() against the abort here so the await rejects promptly with
+ * an AbortError even if an adapter is slow to honor the signal (or ignores it),
+ * keeping the timeout/abort classification correct and bounded.
  */
 export async function sendWithSignal(
   adapter: AgentAdapter,
@@ -46,7 +48,7 @@ export async function sendWithSignal(
   return new Promise<string>((resolve, reject) => {
     const onAbort = () => reject(signal.reason ?? new DOMException('Aborted', 'AbortError'));
     signal.addEventListener('abort', onAbort, { once: true });
-    adapter.send(prompt).then(
+    adapter.send(prompt, { signal }).then(
       ({ output }) => {
         signal.removeEventListener('abort', onAbort);
         resolve(output);
@@ -83,7 +85,7 @@ export type SessionSend = (prompt: string) => Promise<string>;
 export async function runOwnedAgentSession<T>(
   session: OwnedAgentSession,
   work: (send: SessionSend) => Promise<T>,
-  onAbort: (message: string) => T,
+  onAbort: () => T,
   onError: (message: string) => T
 ): Promise<T> {
   const { adapter, cwd } = session;
@@ -105,8 +107,10 @@ export async function runOwnedAgentSession<T>(
 
     return await work(send);
   } catch (err) {
+    // onAbort owns its own wording (timeout vs abort) — the callers recompute it
+    // from timeoutSeconds/abortSignal, so we pass no message here.
     if (isAbortError(err)) {
-      return onAbort(abortMessage(session.timeoutSeconds, session.abortSignal));
+      return onAbort();
     }
     return onError(errorMessage(err));
   } finally {
@@ -118,17 +122,6 @@ export async function runOwnedAgentSession<T>(
       }
     }
   }
-}
-
-function abortMessage(
-  timeoutSeconds: number | undefined,
-  abortSignal: AbortSignal | undefined
-): string {
-  if (abortSignal?.aborted) return 'aborted before completing';
-  if (timeoutSeconds !== undefined) {
-    return `timed out after ${timeoutSeconds}s before completing`;
-  }
-  return 'aborted before completing';
 }
 
 export function isAbortError(err: unknown): boolean {

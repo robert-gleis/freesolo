@@ -2,19 +2,23 @@ import fs from 'node:fs/promises';
 
 import { execa } from 'execa';
 
+import { forceKillAfterMs } from '../core/exec-cancel.js';
 import {
   AgentAdapterError,
   type AgentAdapter,
   type AgentResponse,
   type AgentStartInput,
   type AgentState,
-  type AgentStatus
+  type AgentStatus,
+  type SendOptions
 } from './types.js';
 
 export interface ClaudeInvokeInput {
   cwd: string;
   prompt: string;
   sessionId?: string;
+  /** Cancels the spawned claude process (SIGTERM, escalating to SIGKILL). */
+  signal?: AbortSignal;
 }
 
 export interface ClaudePrintJson {
@@ -71,7 +75,7 @@ export class ClaudeCodeAgentAdapter implements AgentAdapter {
     this.state = 'stopped';
   }
 
-  async send(input: string): Promise<AgentResponse> {
+  async send(input: string, opts?: SendOptions): Promise<AgentResponse> {
     if (this.state !== 'running' || !this.workingDirectory) {
       throw new AgentAdapterError('invalid-state', `Cannot send while in state "${this.state}"`);
     }
@@ -80,7 +84,8 @@ export class ClaudeCodeAgentAdapter implements AgentAdapter {
       payload = await this.invoker({
         cwd: this.workingDirectory,
         prompt: input,
-        sessionId: this.sessionId
+        sessionId: this.sessionId,
+        signal: opts?.signal
       });
     } catch (error) {
       if (error instanceof AgentAdapterError) throw error;
@@ -107,10 +112,17 @@ export class ClaudeCodeAgentAdapter implements AgentAdapter {
 }
 
 function createDefaultInvoker(binary: string): ClaudeInvoker {
-  return async ({ cwd, prompt, sessionId }) => {
+  return async ({ cwd, prompt, sessionId, signal }) => {
     const args = ['-p', prompt, '--output-format', 'json'];
     if (sessionId) args.push('--resume', sessionId);
-    const result = await execa(binary, args, { cwd, reject: false });
+    // On abort/timeout, execa sends SIGTERM (via cancelSignal) and escalates to
+    // SIGKILL after forceKillAfterDelay, so the child can't outlive the caller.
+    const result = await execa(binary, args, {
+      cwd,
+      reject: false,
+      cancelSignal: signal,
+      forceKillAfterDelay: forceKillAfterMs()
+    });
     if (result.exitCode !== 0) {
       throw new AgentAdapterError(
         'send-failed',

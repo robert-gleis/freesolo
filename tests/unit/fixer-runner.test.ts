@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { CodexAgentAdapter, type CodexInvoker } from '../../src/agents/codex.js';
 import { ScriptedAgentAdapter } from '../../src/agents/scripted.js';
 import { runFixerAgent } from '../../src/agents/fixer-runner.js';
 import type { AgentAdapter } from '../../src/agents/types.js';
@@ -104,6 +105,52 @@ describe('runFixerAgent', () => {
     await runFixerAgent({ adapter, prompt: 'fix', cwd: '/tmp', timeoutSeconds: 0.01 });
 
     expect((await adapter.status()).state).toBe('stopped');
+  });
+
+  it('cancels the spawned subprocess when the timeout fires (signal reaches the invoker)', async () => {
+    // A real adapter with a fake invoker that never resolves until its signal
+    // aborts — mirroring a host-agent process that keeps editing the tree. This
+    // proves the timeout actually reaches the child rather than leaking it.
+    let seenSignal: AbortSignal | undefined;
+    const invoker: CodexInvoker = ({ signal }) =>
+      new Promise((_resolve, reject) => {
+        seenSignal = signal;
+        signal?.addEventListener('abort', () => reject(new Error('cancelled')), { once: true });
+      });
+    const adapter = new CodexAgentAdapter({ invoker });
+
+    const result = await runFixerAgent({
+      adapter,
+      prompt: 'fix',
+      cwd: process.cwd(),
+      timeoutSeconds: 0.01
+    });
+
+    expect(result.ok).toBe(false);
+    expect(seenSignal).toBeInstanceOf(AbortSignal);
+    expect(seenSignal!.aborted).toBe(true);
+  });
+
+  it('cancels the spawned subprocess when an external abort fires', async () => {
+    let seenSignal: AbortSignal | undefined;
+    const invoker: CodexInvoker = ({ signal }) =>
+      new Promise((_resolve, reject) => {
+        seenSignal = signal;
+        signal?.addEventListener('abort', () => reject(new Error('cancelled')), { once: true });
+      });
+    const adapter = new CodexAgentAdapter({ invoker });
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 5);
+
+    const result = await runFixerAgent({
+      adapter,
+      prompt: 'fix',
+      cwd: process.cwd(),
+      abortSignal: controller.signal
+    });
+
+    expect(result.ok).toBe(false);
+    expect(seenSignal!.aborted).toBe(true);
   });
 
   it('stops an owned adapter after an adapter error', async () => {

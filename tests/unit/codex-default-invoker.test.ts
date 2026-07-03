@@ -31,7 +31,7 @@ describe('createDefaultInvoker', () => {
     expect(execaMock).toHaveBeenCalledWith(
       'codex',
       ['exec', '--json', '-C', '/wt', '--skip-git-repo-check', 'hello'],
-      { cwd: '/wt', reject: false }
+      { cwd: '/wt', reject: false, cancelSignal: undefined, forceKillAfterDelay: 5000 }
     );
   });
 
@@ -51,7 +51,7 @@ describe('createDefaultInvoker', () => {
     expect(execaMock).toHaveBeenCalledWith(
       'codex',
       ['exec', 'resume', 't1', '--json', '-C', '/wt', 'continue'],
-      { cwd: '/wt', reject: false }
+      { cwd: '/wt', reject: false, cancelSignal: undefined, forceKillAfterDelay: 5000 }
     );
   });
 
@@ -68,6 +68,28 @@ describe('createDefaultInvoker', () => {
       code: 'send-failed',
       message: expect.stringContaining('auth required')
     });
+  });
+
+  it('threads the signal into execa as cancelSignal so an abort kills the child', async () => {
+    execaMock.mockResolvedValue({
+      exitCode: 0,
+      stdout: [
+        '{"type":"thread.started","thread_id":"t1"}',
+        '{"type":"item.completed","item":{"id":"a","type":"agent_message","text":"done"}}'
+      ].join('\n'),
+      stderr: ''
+    });
+    const controller = new AbortController();
+
+    const invoker = createDefaultInvoker('codex');
+    await invoker({ cwd: '/wt', prompt: 'go', signal: controller.signal });
+
+    const options = execaMock.mock.calls[0][2] as {
+      cancelSignal?: AbortSignal;
+      forceKillAfterDelay?: number;
+    };
+    expect(options.cancelSignal).toBe(controller.signal);
+    expect(typeof options.forceKillAfterDelay).toBe('number');
   });
 
   it('wraps parser failures as send-failed', async () => {

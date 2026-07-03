@@ -122,7 +122,8 @@ describe('CodexAgentAdapter send', () => {
     expect(invoker).toHaveBeenCalledWith({
       cwd: process.cwd(),
       prompt: 'first',
-      threadId: undefined
+      threadId: undefined,
+      signal: undefined
     });
 
     const second = await adapter.send('second');
@@ -130,8 +131,22 @@ describe('CodexAgentAdapter send', () => {
     expect(invoker.mock.calls[1][0]).toEqual({
       cwd: process.cwd(),
       prompt: 'second',
-      threadId: 'thread-a'
+      threadId: 'thread-a',
+      signal: undefined
     });
+  });
+
+  it('forwards the send signal into the invoker so the child can be cancelled', async () => {
+    const invoker = vi.fn().mockResolvedValue({ threadId: 't', output: 'ok' });
+    const adapter = new CodexAgentAdapter({ invoker });
+    await adapter.start({ workingDirectory: process.cwd() });
+    const controller = new AbortController();
+
+    await adapter.send('go', { signal: controller.signal });
+
+    expect(invoker).toHaveBeenCalledWith(
+      expect.objectContaining({ signal: controller.signal })
+    );
   });
 
   it('updates lastActivityAt on successful send', async () => {
