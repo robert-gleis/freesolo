@@ -216,7 +216,15 @@ describe('runGateRoute', () => {
     expect(run.fixerInvocations[0].status).toBe('fail');
   });
 
-  it('receives a structured FailureContext and fails immediately when the fixer times out', async () => {
+  // ponytail: at the runner layer a fixer timeout is indistinguishable from a
+  // fixer failure — both collapse to `fixer.status !== 'pass'` in route-runner.ts
+  // and fail the route immediately. The timeout-vs-failure distinction (honoring
+  // fixer.timeoutSeconds via an abortSignal and surfacing a timeout-specific
+  // result) is delegated to the real Fixer Agent seam in A3, so this test does
+  // NOT claim to cover the timeout dimension. What it uniquely covers over the
+  // 'fixer fails' test above is the *structured FailureContext* handed to the
+  // fixer: attempt number, the failed check's name/exitCode, and its log path.
+  it('hands the fixer a structured FailureContext for the failed checks', async () => {
     const runDirectory = await makeRunDir();
     let captured: FailureContext | null = null;
     const run = await runGateRoute(
@@ -226,7 +234,7 @@ describe('runGateRoute', () => {
           spec.command === 'test-cmd' ? { exitCode: 2, signal: null } : { exitCode: 0, signal: null },
         runFixer: async (context) => {
           captured = context;
-          return { status: 'fail', detail: 'fixer timed out', log: '' };
+          return { status: 'fail', detail: 'could not fix', log: '' };
         }
       })
     );
