@@ -169,4 +169,90 @@ describe('Gate Route state path integration', () => {
     });
     expect(prGate.ok).toBe(true);
   });
+
+  it('drives implementing -> verifying -> implementing when the route stays failing, and pr create is refused', async () => {
+    const repoRoot = await makeGitRepo();
+    const store = makeStateStore('implementing');
+
+    await store.writeState(repo, ISSUE, 'implementing', 'reviewing');
+    await store.writeState(repo, ISSUE, 'reviewing', 'verifying');
+    expect(store.get()).toBe('verifying');
+
+    // The shell check never passes. The fake fixer always "succeeds", so the
+    // route keeps rerunning the whole route until maxAttempts is exhausted and
+    // then stays failed. This is the mirror of the pass path: it proves attempt
+    // counting, the fixer seam on the failing side, and the fail verdict path.
+    const routeDeps: GateRouteDeps = {
+      execCheck: async () => ({ exitCode: 1, signal: null }),
+      runAgentReview: async () => ({ status: 'pass', artifactPath: null, findings: null }),
+      runFixer: async () => ({ status: 'pass', detail: 'attempted a fix', log: '' }),
+      writeRun: async (run) => {
+        const { writeRun } = await import('../../src/verification/store.js');
+        await writeRun(run);
+      },
+      now: makeMonotonicNow()
+    };
+
+    const runDirectory = await getRunDirectory(repoRoot, ISSUE, RUN_ID);
+    const run = await runGateRoute(
+      {
+        config: makeConfig(),
+        routeConfigPath: path.join(repoRoot, 'issueflow.config.json'),
+        repoRoot,
+        issueNumber: ISSUE,
+        candidateBranch: 'candidate/42-native-gate-route',
+        runDirectory,
+        runId: RUN_ID
+      },
+      routeDeps
+    );
+
+    // maxAttempts is 2: attempt 1 fails -> fixer runs -> attempt 2 fails -> no
+    // attempts remain -> route fails. Both attempts were used; the fixer ran once.
+    expect(run.status).toBe('fail');
+    expect(run.attemptsUsed).toBe(2);
+    expect(run.fixerInvocations).toHaveLength(1);
+
+    // The gate loads the persisted failing run and, as the sole authority,
+    // transitions verifying -> implementing while recording a fail verdict.
+    let verdictLabel: VerdictStatus | null = null;
+    const gateDeps: GateCommandDeps = {
+      resolveRepoRoot: async () => repoRoot,
+      resolveRepoRef: async () => repo,
+      resolveIssueNumber: async () => ISSUE,
+      readState: store.readState,
+      writeState: store.writeState,
+      readVerdict: async () => verdictLabel,
+      writeVerdict: async (_r, _n, _from, to) => {
+        verdictLabel = to;
+      },
+      loadLatestRun,
+      writeGateVerdictRecord,
+      env: { ISSUEFLOW_ENGINE: '1' },
+      write: () => {},
+      setExitCode: () => {},
+      now: () => new Date('2026-07-03T11:30:00.000Z')
+    };
+
+    await gateEvaluateAction({ issue: ISSUE }, gateDeps);
+
+    // The gate bounced the issue back to implementing and recorded a fail verdict.
+    expect(store.get()).toBe('implementing');
+    expect(verdictLabel).toBe('fail');
+
+    const record = await readGateVerdictRecord(repoRoot, ISSUE);
+    expect(record?.outcome).toBe('fail');
+    expect(record?.runId).toBe(run.runId);
+
+    // pr create must refuse: the issue is back in implementing, the verdict is
+    // fail, and the latest run did not pass. The gate is the only PR authority.
+    const latest = await loadLatestRun(repoRoot, ISSUE);
+    const prGate = assertPrGate({
+      state: store.get(),
+      verdict: verdictLabel,
+      latestRun: latest,
+      storedRunId: record?.runId ?? null
+    });
+    expect(prGate.ok).toBe(false);
+  });
 });
