@@ -45,3 +45,28 @@ export async function readOriginRemote(cwd: string): Promise<string> {
     throw new Error('issueflow requires an origin remote that points at GitHub');
   }
 }
+
+/** Runs `git <args>` in `cwd` and returns raw stdout. Injectable for tests. */
+export type GitRunner = (args: string[], cwd: string) => Promise<string>;
+
+const defaultGitRunner: GitRunner = async (args, cwd) => {
+  const { stdout } = await execa('git', args, { cwd });
+  return stdout;
+};
+
+export interface BranchDiffOptions {
+  cwd: string;
+  base?: string;
+  run?: GitRunner;
+}
+
+/**
+ * Returns the candidate diff of HEAD against its merge-base with `base`
+ * (default 'main'), i.e. only what this branch introduced. Uses two-dot range
+ * `<merge-base>..HEAD` so unrelated changes on `base` are excluded.
+ */
+export async function getBranchDiff(options: BranchDiffOptions): Promise<string> {
+  const { cwd, base = 'main', run = defaultGitRunner } = options;
+  const mergeBase = (await run(['merge-base', base, 'HEAD'], cwd)).trim();
+  return run(['diff', `${mergeBase}..HEAD`], cwd);
+}

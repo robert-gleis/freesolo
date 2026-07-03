@@ -2,19 +2,23 @@ import fs from 'node:fs/promises';
 
 import { execa } from 'execa';
 
+import { forceKillAfterMs } from '../core/exec-cancel.js';
 import {
   AgentAdapterError,
   type AgentAdapter,
   type AgentResponse,
   type AgentStartInput,
   type AgentState,
-  type AgentStatus
+  type AgentStatus,
+  type SendOptions
 } from './types.js';
 
 export interface CodexInvokeInput {
   cwd: string;
   prompt: string;
   threadId?: string;
+  /** Cancels the spawned codex process (SIGTERM, escalating to SIGKILL). */
+  signal?: AbortSignal;
 }
 
 export interface CodexInvokeResult {
@@ -81,12 +85,19 @@ export function parseCodexExecJsonl(stdout: string): CodexInvokeResult {
 }
 
 export function createDefaultInvoker(binary: string): CodexInvoker {
-  return async ({ cwd, prompt, threadId }) => {
+  return async ({ cwd, prompt, threadId, signal }) => {
     const args = threadId
       ? ['exec', 'resume', threadId, '--json', '-C', cwd, prompt]
       : ['exec', '--json', '-C', cwd, '--skip-git-repo-check', prompt];
 
-    const result = await execa(binary, args, { cwd, reject: false });
+    // On abort/timeout, execa sends SIGTERM (via cancelSignal) and escalates to
+    // SIGKILL after forceKillAfterDelay, so the child can't outlive the caller.
+    const result = await execa(binary, args, {
+      cwd,
+      reject: false,
+      cancelSignal: signal,
+      forceKillAfterDelay: forceKillAfterMs()
+    });
     if (result.exitCode !== 0) {
       throw new AgentAdapterError(
         'send-failed',
@@ -144,7 +155,7 @@ export class CodexAgentAdapter implements AgentAdapter {
     this.state = 'stopped';
   }
 
-  async send(input: string): Promise<AgentResponse> {
+  async send(input: string, opts?: SendOptions): Promise<AgentResponse> {
     if (this.state !== 'running' || !this.workingDirectory) {
       throw new AgentAdapterError('invalid-state', `Cannot send while in state "${this.state}"`);
     }
@@ -153,7 +164,8 @@ export class CodexAgentAdapter implements AgentAdapter {
       const result = await this.invoker({
         cwd: this.workingDirectory,
         prompt: input,
-        threadId: this.threadId
+        threadId: this.threadId,
+        signal: opts?.signal
       });
       this.threadId = result.threadId;
       this.lastActivityAt = new Date();

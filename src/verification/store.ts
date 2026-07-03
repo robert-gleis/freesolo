@@ -21,9 +21,11 @@ export async function getRunDirectory(repoRoot: string, issueNumber: number, run
 }
 
 /**
- * Intentionally not called by the pipeline — the runner writes `run.json` itself
- * so that partial runs persist even if log writes fail. Exported for use by tests
- * and future consumers (e.g. tooling that imports already-built runs).
+ * Canonical run-persistence path: writes `<runDir>/run.json`. Injected as
+ * `GateRouteDeps.writeRun` by route-runner.ts (a GateRouteRun is a
+ * VerificationRun, so it is assignable) and is the run-writer the Gate Route
+ * actually uses. Also usable directly by tests and tooling that imports
+ * already-built runs.
  */
 export async function writeRun(run: VerificationRun): Promise<void> {
   const runDir = await getRunDirectory(run.repoRoot, run.issueNumber, run.runId);

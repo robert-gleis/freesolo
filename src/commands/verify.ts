@@ -2,38 +2,40 @@ import path from 'node:path';
 
 import { resolveRepoRoot } from '../core/git.js';
 import { IssueIdError, resolveIssueNumber } from '../core/issue-id.js';
+import { readCandidateBranchRecord } from '../integration/store.js';
 import { updateSessionReportArtifact } from '../reports/session-artifacts.js';
 import { writeTestReportToDisk } from '../reports/store.js';
 import { DEFAULT_CONFIG_FILENAME, VerificationConfigError, loadVerificationConfig } from '../verification/config.js';
-import { defaultRunPipelineDeps, runVerificationPipeline } from '../verification/runner.js';
+import { defaultGateRouteDeps, runGateRoute, type GateRouteInput } from '../verification/route-runner.js';
 import { getRunDirectory } from '../verification/store.js';
-import type { VerificationConfig, VerificationRun } from '../verification/types.js';
+import type { GateRouteRun, VerificationConfig } from '../verification/types.js';
 
 export interface VerifyOptions {
   issue?: number;
   config?: string;
   printOnly?: boolean;
-  bail?: boolean;
+}
+
+/**
+ * Candidate branch identity threaded into the Gate Route. `baseBranch` is the
+ * authoritative base recorded when the candidate was created; the route diffs
+ * against it (falling back to 'main' only when no record exists).
+ */
+export interface CandidateBranchInfo {
+  branchName: string | null;
+  baseBranch: string | null;
 }
 
 export interface VerifyPlanDeps {
   resolveRepoRoot: (cwd: string) => Promise<string>;
   resolveIssueNumber: (repoRoot: string, override: number | undefined) => Promise<number>;
   loadVerificationConfig: (repoRoot: string, configPath?: string) => Promise<VerificationConfig>;
+  resolveCandidateBranch: (repoRoot: string) => Promise<CandidateBranchInfo>;
   getRunDirectory: (repoRoot: string, issueNumber: number, runId: string) => Promise<string>;
-  runPipeline: (input: {
-    config: VerificationConfig;
-    configPath: string;
-    repoRoot: string;
-    issueNumber: number;
-    runDirectory: string;
-    runId: string;
-    bail: boolean;
-    abortSignal?: AbortSignal;
-  }) => Promise<VerificationRun>;
+  runRoute: (input: GateRouteInput) => Promise<GateRouteRun>;
   now: () => Date;
   newRunId: () => string;
-  writeTestReport?: (run: VerificationRun) => Promise<string | null>;
+  writeTestReport?: (run: GateRouteRun) => Promise<string | null>;
 }
 
 export type VerifyPlanResult =
@@ -46,7 +48,7 @@ export type VerifyPlanResult =
     }
   | {
       mode: 'completed';
-      run: VerificationRun;
+      run: GateRouteRun;
       exitCode: 0 | 1 | 130;
     }
   | {
@@ -63,8 +65,12 @@ export const defaultVerifyPlanDeps: VerifyPlanDeps = {
   resolveRepoRoot,
   resolveIssueNumber: (repoRoot, override) => resolveIssueNumber(repoRoot, override),
   loadVerificationConfig,
+  resolveCandidateBranch: async (repoRoot) => {
+    const record = await readCandidateBranchRecord(repoRoot).catch(() => null);
+    return { branchName: record?.branchName ?? null, baseBranch: record?.baseBranch ?? null };
+  },
   getRunDirectory,
-  runPipeline: (input) => runVerificationPipeline(input, defaultRunPipelineDeps),
+  runRoute: (input) => runGateRoute(input, defaultGateRouteDeps),
   now: () => new Date(),
   newRunId: () => defaultRunId(new Date()),
   writeTestReport: async (run) => {
@@ -91,25 +97,36 @@ function buildPrintOnlySummary(input: {
   configPath: string;
   runDirectory: string;
   config: VerificationConfig;
-  bail: boolean;
 }): string[] {
+  const { gateRoute } = input.config.verification;
   const lines = [
     `Issue: #${input.issueNumber}`,
     `Config: ${input.configPath}`,
     `Run directory: ${input.runDirectory}`,
-    `Bail on first failure: ${input.bail ? 'yes' : 'no'}`,
+    `Max attempts: ${gateRoute.maxAttempts}`,
+    `Bail on first failure: ${gateRoute.bail ? 'yes' : 'no'}`,
     'Checks:'
   ];
 
-  for (const check of input.config.verification.checks) {
-    const argsPart = check.args.length > 0 ? ` ${check.args.join(' ')}` : '';
-    lines.push(`  - ${check.name}: ${check.command}${argsPart}`);
+  for (const check of gateRoute.checks) {
+    if (check.kind === 'shell') {
+      const argsPart = check.args.length > 0 ? ` ${check.args.join(' ')}` : '';
+      lines.push(`  - ${check.name} (shell): ${check.command}${argsPart}`);
+    } else {
+      lines.push(`  - ${check.name} (agent-review): ${check.host}/${check.promptPreset}`);
+    }
   }
 
   return lines;
 }
 
-function runExitCode(run: VerificationRun, aborted: boolean): 0 | 1 | 130 {
+function runExitCode(run: GateRouteRun, aborted: boolean): 0 | 1 | 130 {
+  // Abort (operator Ctrl-C via createVerifyPlan's handler, or a timeout signal)
+  // yields the SIGINT exit convention. A check that recorded a SIGINT signal —
+  // e.g. an external SIGINT delivered straight to the child — is treated the
+  // same. Note our own runner terminates a timed-out/aborted child with
+  // SIGTERM→SIGKILL, so that path is covered by the `aborted` flag, not this
+  // signal check.
   if (aborted || run.checks.some((check) => check.signal === 'SIGINT')) {
     return 130;
   }
@@ -155,26 +172,28 @@ export async function createVerifyPlan(
       exitCode: 2
     };
   }
-  const bail = Boolean(input.options.bail);
 
   if (input.options.printOnly) {
     return {
       mode: 'print-only',
-      summaryLines: buildPrintOnlySummary({ issueNumber, configPath, runDirectory, config, bail }),
+      summaryLines: buildPrintOnlySummary({ issueNumber, configPath, runDirectory, config }),
       runDirectory,
       issueNumber,
       configPath
     };
   }
 
-  const run = await deps.runPipeline({
-    config,
-    configPath,
+  const candidate = await deps.resolveCandidateBranch(repoRoot);
+
+  const run = await deps.runRoute({
+    config: config.verification.gateRoute,
+    routeConfigPath: configPath,
     repoRoot,
     issueNumber,
+    candidateBranch: candidate.branchName,
+    baseBranch: candidate.baseBranch,
     runDirectory,
     runId,
-    bail,
     abortSignal: input.abortSignal
   });
 
@@ -195,7 +214,7 @@ export async function createVerifyPlan(
   };
 }
 
-function summarizeRun(run: VerificationRun): string[] {
+function summarizeRun(run: GateRouteRun): string[] {
   const lines: string[] = [];
 
   for (const check of run.checks) {
@@ -204,7 +223,7 @@ function summarizeRun(run: VerificationRun): string[] {
     lines.push(`  ${indicator} ${check.name}${detail}`);
   }
 
-  lines.push(`Run: ${run.runId} → ${run.status.toUpperCase()}`);
+  lines.push(`Run: ${run.runId} → ${run.status.toUpperCase()} (attempt ${run.attemptsUsed}/${run.maxAttempts})`);
   return lines;
 }
 

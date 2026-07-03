@@ -1,12 +1,14 @@
 import { execa } from 'execa';
 
+import { forceKillAfterMs } from '../core/exec-cancel.js';
 import {
   AgentAdapterError,
   type AgentAdapter,
   type AgentResponse,
   type AgentStartInput,
   type AgentState,
-  type AgentStatus
+  type AgentStatus,
+  type SendOptions
 } from './types.js';
 
 export interface CursorAgentRunResult {
@@ -16,6 +18,8 @@ export interface CursorAgentRunResult {
 
 export interface CursorAgentRunOptions {
   cwd?: string;
+  /** Cancels the spawned cursor-agent process (SIGTERM, escalating to SIGKILL). */
+  signal?: AbortSignal;
 }
 
 export interface CursorAgentDeps {
@@ -51,7 +55,12 @@ export function createDefaultCursorAgentDeps(binary = 'cursor-agent'): CursorAge
         if (!sessionId) throw new Error('create-chat returned empty session id');
         return { sessionId, output: '' };
       }
-      const { stdout } = await execa(binary, args);
+      // On abort/timeout, execa sends SIGTERM (via cancelSignal) and escalates to
+      // SIGKILL after forceKillAfterDelay, so the child can't outlive the caller.
+      const { stdout } = await execa(binary, args, {
+        cancelSignal: options?.signal,
+        forceKillAfterDelay: forceKillAfterMs()
+      });
       return parseCursorAgentJson(stdout);
     }
   };
@@ -103,22 +112,25 @@ export class CursorAgentAdapter implements AgentAdapter {
     this.state = 'stopped';
   }
 
-  async send(input: string): Promise<AgentResponse> {
+  async send(input: string, opts?: SendOptions): Promise<AgentResponse> {
     if (this.state !== 'running' || !this.sessionId) {
       throw new AgentAdapterError('invalid-state', `Cannot send while in state "${this.state}"`);
     }
     try {
-      const result = await this.deps.run([
-        '--resume',
-        this.sessionId,
-        '--print',
-        '--trust',
-        '--output-format',
-        'json',
-        '--workspace',
-        this.workingDirectory!,
-        input
-      ]);
+      const result = await this.deps.run(
+        [
+          '--resume',
+          this.sessionId,
+          '--print',
+          '--trust',
+          '--output-format',
+          'json',
+          '--workspace',
+          this.workingDirectory!,
+          input
+        ],
+        { cwd: this.workingDirectory, signal: opts?.signal }
+      );
       this.sessionId = result.sessionId;
       this.lastActivityAt = new Date();
       return { output: result.output };

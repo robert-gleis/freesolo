@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
+import { hasPreset, KNOWN_PRESETS } from '../prompts/presets.js';
 import { verificationConfigSchema, type VerificationConfig } from './types.js';
 
 export const DEFAULT_CONFIG_FILENAME = 'issueflow.config.json';
@@ -56,5 +57,31 @@ export async function loadVerificationConfig(repoRoot: string, configPath?: stri
     throw new VerificationConfigError(`Verification config at ${resolvedPath} is invalid: ${summary}`, resolvedPath);
   }
 
+  assertKnownPresets(parsed.data, resolvedPath);
+
   return parsed.data;
+}
+
+// Zod validates promptPreset only as a non-empty string so the schema stays
+// decoupled from the prompt builders. Every agent-review check and the fixer must
+// still name a preset the registry actually knows — an unknown preset is a config
+// error (spec: invalid verification.gateRoute exits with code 2), not a run-time
+// throw deep inside the route.
+function assertKnownPresets(config: VerificationConfig, resolvedPath: string): void {
+  const { checks, fixer } = config.verification.gateRoute;
+  const referenced: Array<{ where: string; preset: string }> = [
+    ...checks
+      .filter((check) => check.kind === 'agent-review')
+      .map((check) => ({ where: `check "${check.name}"`, preset: check.promptPreset })),
+    { where: 'fixer', preset: fixer.promptPreset }
+  ];
+
+  const unknown = referenced.filter((entry) => !hasPreset(entry.preset));
+  if (unknown.length > 0) {
+    const detail = unknown.map((entry) => `${entry.where}: "${entry.preset}"`).join('; ');
+    throw new VerificationConfigError(
+      `Verification config at ${resolvedPath} references unknown prompt preset(s): ${detail} (known: ${KNOWN_PRESETS.join(', ')}).`,
+      resolvedPath
+    );
+  }
 }

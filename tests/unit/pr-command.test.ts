@@ -230,6 +230,40 @@ describe('prCreateAction', () => {
     );
   });
 
+  it('refuses to create a PR when a newer route run makes the stored verdict stale', async () => {
+    let exitCode = 99;
+    const output: string[] = [];
+    const createPullRequest = vi.fn().mockResolvedValue(createdOutcome);
+
+    await prCreateAction(
+      { printOnly: false },
+      makeDeps({
+        // A newer Gate Route run landed after the verdict was recorded: its id
+        // differs from the id stored in the GateVerdictRecord below.
+        loadLatestRun: async () => ({ ...makePassRun(), runId: 'newer-route-run-id' }),
+        readGateVerdictRecord: async () => ({
+          schemaVersion: 1 as const,
+          issueNumber: 29,
+          runId: RUN_ID,
+          outcome: 'pass' as const,
+          reason: 'Verification run passed.',
+          nextAction: 'Create a pull request.',
+          evaluatedAt: '2026-06-01T08:02:00.000Z'
+        }),
+        createPullRequest,
+        setExitCode: (code) => {
+          exitCode = code;
+        },
+        write: (_channel, msg) => output.push(msg)
+      })
+    );
+
+    expect(exitCode).toBe(1);
+    expect(createPullRequest).not.toHaveBeenCalled();
+    expect(output.join('')).toMatch(/stale/i);
+    expect(output.join('')).toContain('newer-route-run-id');
+  });
+
   it('prints dry-run output when --dry-run and gate passes', async () => {
     const dryRunOutcome: PullRequestOutcome = {
       status: 'dry-run',

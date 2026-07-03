@@ -16,33 +16,45 @@ async function makeRepo(): Promise<string> {
   return dir;
 }
 
+function gateRouteConfig(checks: unknown[], overrides: Record<string, unknown> = {}): string {
+  return JSON.stringify({
+    verification: {
+      gateRoute: {
+        maxAttempts: 1,
+        bail: false,
+        checks,
+        fixer: { host: 'codex', promptPreset: 'gate-fixer' },
+        ...overrides
+      }
+    }
+  });
+}
+
 afterEach(async () => {
   await Promise.all(tempDirs.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })));
 });
 
 describe('issueflow verify (integration)', () => {
-  it('runs configured checks and writes run.json plus per-check logs', async () => {
+  it('runs configured shell checks end-to-end and writes run.json plus per-check logs', async () => {
     const repoRoot = await makeRepo();
     const configPath = path.join(repoRoot, 'issueflow.config.json');
 
     await fs.writeFile(
       configPath,
-      JSON.stringify({
-        verification: {
-          checks: [
-            {
-              name: 'pass-check',
-              command: process.execPath,
-              args: ['-e', 'process.stdout.write("ok\\n", () => process.exit(0))']
-            },
-            {
-              name: 'fail-check',
-              command: process.execPath,
-              args: ['-e', 'process.stdout.write("failure\\n", () => process.exit(3))']
-            }
-          ]
+      gateRouteConfig([
+        {
+          name: 'pass-check',
+          kind: 'shell',
+          command: process.execPath,
+          args: ['-e', 'process.stdout.write("ok\\n", () => process.exit(0))']
+        },
+        {
+          name: 'fail-check',
+          kind: 'shell',
+          command: process.execPath,
+          args: ['-e', 'process.stdout.write("failure\\n", () => process.exit(3))']
         }
-      })
+      ])
     );
 
     const result = await createVerifyPlan(
@@ -59,15 +71,17 @@ describe('issueflow verify (integration)', () => {
     expect(result.exitCode).toBe(1);
     expect(result.run.checks.map((check) => check.status)).toEqual(['pass', 'fail']);
     expect(result.run.checks[1].exitCode).toBe(3);
+    expect(result.run.attemptsUsed).toBe(1);
 
     const runDir = path.join(repoRoot, '.git/issueflow/verifications/issue-99', result.run.runId);
     const runJson = JSON.parse(await fs.readFile(path.join(runDir, 'run.json'), 'utf8'));
     expect(runJson.runId).toBe(result.run.runId);
+    expect(runJson.schemaVersion).toBe(2);
 
-    const passLog = await fs.readFile(path.join(runDir, 'pass-check.log'), 'utf8');
+    const passLog = await fs.readFile(path.join(runDir, 'attempt-1-pass-check.log'), 'utf8');
     expect(passLog).toContain('[stdout] ok');
 
-    const failLog = await fs.readFile(path.join(runDir, 'fail-check.log'), 'utf8');
+    const failLog = await fs.readFile(path.join(runDir, 'attempt-1-fail-check.log'), 'utf8');
     expect(failLog).toContain('[stdout] failure');
   });
 
@@ -77,11 +91,9 @@ describe('issueflow verify (integration)', () => {
 
     await fs.writeFile(
       configPath,
-      JSON.stringify({
-        verification: {
-          checks: [{ name: 'pass-check', command: process.execPath, args: ['-e', 'console.log("ok")'] }]
-        }
-      })
+      gateRouteConfig([
+        { name: 'pass-check', kind: 'shell', command: process.execPath, args: ['-e', 'console.log("ok")'] }
+      ])
     );
 
     const result = await createVerifyPlan(
@@ -100,26 +112,23 @@ describe('issueflow verify (integration)', () => {
     await expect(fs.access(issueDir)).rejects.toThrow();
   });
 
-  it('records SIGINT on the running check when a real subprocess is killed', async () => {
+  it('terminates the running check on abort and records the run as failed', async () => {
     if (process.platform === 'win32') {
-      // Windows SIGINT handling on Node subprocesses is unreliable; skip there.
+      // Windows signal handling on Node subprocesses is unreliable; skip there.
       return;
     }
 
     const repoRoot = await makeRepo();
     await fs.writeFile(
       path.join(repoRoot, 'issueflow.config.json'),
-      JSON.stringify({
-        verification: {
-          checks: [
-            {
-              name: 'long-running',
-              command: process.execPath,
-              args: ['-e', 'setInterval(() => {}, 1000)']
-            }
-          ]
+      gateRouteConfig([
+        {
+          name: 'long-running',
+          kind: 'shell',
+          command: process.execPath,
+          args: ['-e', 'setInterval(() => {}, 1000)']
         }
-      })
+      ])
     );
 
     const controller = new AbortController();
@@ -133,11 +142,14 @@ describe('issueflow verify (integration)', () => {
     expect(result.mode).toBe('completed');
     if (result.mode !== 'completed') throw new Error('expected completed mode');
 
+    // Abort yields the SIGINT exit convention (130) regardless of the actual
+    // termination signal, and the interrupted check is recorded as failed.
     expect(result.exitCode).toBe(130);
-    // Depending on scheduling, SIGINT can land while the first check is running ("fail")
-    // or just before execution starts ("skipped"). Both are valid as long as exit 130 is
-    // preserved and run artifacts are written.
-    expect(['fail', 'skipped']).toContain(result.run.checks[0].status);
+    expect(result.run.checks[0].status).toBe('fail');
+    // The check was terminated by a real signal (SIGTERM, or SIGKILL if the
+    // child ignored the graceful signal) — never a clean exit.
+    expect(result.run.checks[0].signal).not.toBeNull();
+    expect(result.run.checks[0].exitCode).toBeNull();
 
     const runDir = path.join(
       repoRoot,
@@ -147,7 +159,7 @@ describe('issueflow verify (integration)', () => {
     await expect(fs.access(path.join(runDir, 'run.json'))).resolves.toBeUndefined();
   }, 10000);
 
-  it('reports a hard error when the config is missing', async () => {
+  it('reports a hard error (exit 2) when the config is missing', async () => {
     const repoRoot = await makeRepo();
 
     const result = await createVerifyPlan(
@@ -162,5 +174,22 @@ describe('issueflow verify (integration)', () => {
 
     expect(result.exitCode).toBe(2);
     expect(result.message).toMatch(/not found/);
+  });
+
+  it('reports a hard error (exit 2) when the config uses the old checks shape', async () => {
+    const repoRoot = await makeRepo();
+    await fs.writeFile(
+      path.join(repoRoot, 'issueflow.config.json'),
+      JSON.stringify({ verification: { checks: [{ name: 'x', command: 'true', args: [] }] } })
+    );
+
+    const result = await createVerifyPlan(
+      { cwd: repoRoot, options: { issue: 1 } },
+      defaultVerifyPlanDeps
+    );
+
+    expect(result.mode).toBe('error');
+    if (result.mode !== 'error') throw new Error('expected error mode');
+    expect(result.exitCode).toBe(2);
   });
 });

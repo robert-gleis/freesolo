@@ -3,16 +3,73 @@ import { describe, expect, it } from 'vitest';
 import { createVerifyPlan, type VerifyPlanDeps } from '../../src/commands/verify.js';
 import { IssueIdError } from '../../src/core/issue-id.js';
 import { VerificationConfigError } from '../../src/verification/config.js';
-import type { VerificationConfig, VerificationRun } from '../../src/verification/types.js';
+import type { GateRouteInput } from '../../src/verification/route-runner.js';
+import type { GateRouteRun, RouteCheckResult, VerificationConfig } from '../../src/verification/types.js';
 
 function makeConfig(): VerificationConfig {
   return {
     verification: {
-      checks: [
-        { name: 'lint', command: 'lint-cmd', args: [], env: {} },
-        { name: 'typecheck', command: 'tsc', args: ['--noEmit'], env: {} }
-      ]
+      gateRoute: {
+        maxAttempts: 2,
+        bail: true,
+        checks: [
+          { name: 'lint', kind: 'shell', command: 'lint-cmd', args: [], env: {} },
+          { name: 'typecheck', kind: 'shell', command: 'tsc', args: ['--noEmit'], env: {} }
+        ],
+        fixer: { host: 'codex', promptPreset: 'gate-fixer' }
+      }
     }
+  };
+}
+
+function passCheck(name: string): RouteCheckResult {
+  return {
+    name,
+    kind: 'shell',
+    status: 'pass',
+    command: name,
+    exitCode: 0,
+    signal: null,
+    startedAt: '2026-06-01T10:00:00.000Z',
+    finishedAt: '2026-06-01T10:00:01.000Z',
+    durationMs: 1000,
+    logPath: `/run/${name}.log`
+  };
+}
+
+function buildRun(input: GateRouteInput, overrides: Partial<GateRouteRun> = {}): GateRouteRun {
+  const checks = input.config.checks.map((check) => passCheck(check.name));
+  return {
+    schemaVersion: 2,
+    runId: input.runId,
+    issueNumber: input.issueNumber,
+    repoRoot: input.repoRoot,
+    configPath: input.routeConfigPath,
+    startedAt: '2026-06-01T10:00:00.000Z',
+    finishedAt: '2026-06-01T10:00:01.000Z',
+    status: 'pass',
+    bail: input.config.bail,
+    checks: checks.map((c) => ({
+      name: c.name,
+      command: c.command ?? c.kind,
+      args: [],
+      cwd: input.repoRoot,
+      status: c.status,
+      exitCode: c.exitCode,
+      signal: c.signal,
+      startedAt: c.startedAt,
+      finishedAt: c.finishedAt,
+      durationMs: c.durationMs,
+      logPath: c.logPath
+    })),
+    candidateBranch: input.candidateBranch,
+    routeConfigPath: input.routeConfigPath,
+    maxAttempts: input.config.maxAttempts,
+    attemptsUsed: 1,
+    attempts: [{ attempt: 1, status: 'pass', checks }],
+    reviewArtifactPaths: [],
+    fixerInvocations: [],
+    ...overrides
   };
 }
 
@@ -21,32 +78,10 @@ function makeDeps(overrides: Partial<VerifyPlanDeps> = {}): VerifyPlanDeps {
     resolveRepoRoot: async () => '/repo',
     resolveIssueNumber: async (_repoRoot, override) => override ?? 20,
     loadVerificationConfig: async () => makeConfig(),
+    resolveCandidateBranch: async () => ({ branchName: 'candidate/20', baseBranch: 'main' }),
     getRunDirectory: async (_repoRoot, issueNumber, runId) =>
       `/repo/.git/issueflow/verifications/issue-${issueNumber}/${runId}`,
-    runPipeline: async (input) => ({
-      schemaVersion: 1 as const,
-      runId: input.runId,
-      issueNumber: input.issueNumber,
-      repoRoot: input.repoRoot,
-      configPath: input.configPath,
-      startedAt: '2026-06-01T10:00:00.000Z',
-      finishedAt: '2026-06-01T10:00:01.000Z',
-      status: 'pass',
-      bail: input.bail,
-      checks: input.config.verification.checks.map((check) => ({
-        name: check.name,
-        command: check.command,
-        args: check.args,
-        cwd: input.repoRoot,
-        status: 'pass',
-        exitCode: 0,
-        signal: null,
-        startedAt: '2026-06-01T10:00:00.000Z',
-        finishedAt: '2026-06-01T10:00:01.000Z',
-        durationMs: 1000,
-        logPath: `${input.runDirectory}/${check.name}.log`
-      }))
-    }),
+    runRoute: async (input) => buildRun(input),
     now: () => new Date('2026-06-01T10:00:00.000Z'),
     newRunId: () => '2026-06-01T10-00-00-000Z',
     ...overrides
@@ -54,15 +89,15 @@ function makeDeps(overrides: Partial<VerifyPlanDeps> = {}): VerifyPlanDeps {
 }
 
 describe('createVerifyPlan', () => {
-  it('returns a print-only result without invoking the runner', async () => {
+  it('returns a print-only result without invoking the route', async () => {
     const calls: string[] = [];
 
     const result = await createVerifyPlan(
       { cwd: '/cwd', options: { printOnly: true } },
       makeDeps({
-        runPipeline: async () => {
-          calls.push('runPipeline');
-          return undefined as unknown as VerificationRun;
+        runRoute: async (input) => {
+          calls.push('runRoute');
+          return buildRun(input);
         }
       })
     );
@@ -73,10 +108,11 @@ describe('createVerifyPlan', () => {
       expect(result.summaryLines.join('\n')).toContain('lint');
       expect(result.summaryLines.join('\n')).toContain('typecheck');
       expect(result.summaryLines.join('\n')).toContain('issue-20');
+      expect(result.summaryLines.join('\n')).toContain('Max attempts: 2');
     }
   });
 
-  it('returns a completed run when the runner reports pass', async () => {
+  it('returns a completed run when the route reports pass', async () => {
     const result = await createVerifyPlan({ cwd: '/cwd', options: {} }, makeDeps());
 
     expect(result.mode).toBe('completed');
@@ -86,22 +122,11 @@ describe('createVerifyPlan', () => {
     }
   });
 
-  it('returns a completed run with exit 1 when the runner reports fail', async () => {
+  it('returns a completed run with exit 1 when the route reports fail', async () => {
     const result = await createVerifyPlan(
       { cwd: '/cwd', options: {} },
       makeDeps({
-        runPipeline: async (input) => ({
-          schemaVersion: 1 as const,
-          runId: input.runId,
-          issueNumber: input.issueNumber,
-          repoRoot: input.repoRoot,
-          configPath: input.configPath,
-          startedAt: '2026-06-01T10:00:00.000Z',
-          finishedAt: '2026-06-01T10:00:01.000Z',
-          status: 'fail',
-          bail: input.bail,
-          checks: []
-        })
+        runRoute: async (input) => buildRun(input, { status: 'fail', checks: [] })
       })
     );
 
@@ -115,32 +140,25 @@ describe('createVerifyPlan', () => {
     const result = await createVerifyPlan(
       { cwd: '/cwd', options: {} },
       makeDeps({
-        runPipeline: async (input) => ({
-          schemaVersion: 1 as const,
-          runId: input.runId,
-          issueNumber: input.issueNumber,
-          repoRoot: input.repoRoot,
-          configPath: input.configPath,
-          startedAt: '2026-06-01T10:00:00.000Z',
-          finishedAt: '2026-06-01T10:00:01.000Z',
-          status: 'fail',
-          bail: input.bail,
-          checks: [
-            {
-              name: 'lint',
-              command: 'lint-cmd',
-              args: [],
-              cwd: input.repoRoot,
-              status: 'fail',
-              exitCode: null,
-              signal: 'SIGINT',
-              startedAt: '2026-06-01T10:00:00.000Z',
-              finishedAt: '2026-06-01T10:00:01.000Z',
-              durationMs: 1000,
-              logPath: `${input.runDirectory}/lint.log`
-            }
-          ]
-        })
+        runRoute: async (input) =>
+          buildRun(input, {
+            status: 'fail',
+            checks: [
+              {
+                name: 'lint',
+                command: 'lint-cmd',
+                args: [],
+                cwd: input.repoRoot,
+                status: 'fail',
+                exitCode: null,
+                signal: 'SIGINT',
+                startedAt: '2026-06-01T10:00:00.000Z',
+                finishedAt: '2026-06-01T10:00:01.000Z',
+                durationMs: 1000,
+                logPath: '/run/lint.log'
+              }
+            ]
+          })
       })
     );
 
@@ -176,38 +194,14 @@ describe('createVerifyPlan', () => {
     expect(result).toEqual({ mode: 'error', message: 'config missing', exitCode: 2 });
   });
 
-  it('maps an aborted-between-checks run to exit code 130', async () => {
+  it('maps an aborted run to exit code 130', async () => {
     const controller = new AbortController();
     controller.abort();
 
     const result = await createVerifyPlan(
       { cwd: '/cwd', options: {}, abortSignal: controller.signal },
       makeDeps({
-        runPipeline: async (input) => ({
-          schemaVersion: 1 as const,
-          runId: input.runId,
-          issueNumber: input.issueNumber,
-          repoRoot: input.repoRoot,
-          configPath: input.configPath,
-          startedAt: '2026-06-01T10:00:00.000Z',
-          finishedAt: '2026-06-01T10:00:01.000Z',
-          status: 'fail',
-          bail: input.bail,
-          checks: [
-            {
-              name: 'lint', command: 'lint-cmd', args: [], cwd: '/repo',
-              status: 'pass', exitCode: 0, signal: null,
-              startedAt: '2026-06-01T10:00:00.000Z', finishedAt: '2026-06-01T10:00:00.500Z',
-              durationMs: 500, logPath: `${input.runDirectory}/lint.log`
-            },
-            {
-              name: 'typecheck', command: 'tsc', args: ['--noEmit'], cwd: '/repo',
-              status: 'skipped', exitCode: null, signal: null,
-              startedAt: '2026-06-01T10:00:00.500Z', finishedAt: '2026-06-01T10:00:00.500Z',
-              durationMs: 0, logPath: `${input.runDirectory}/typecheck.log`
-            }
-          ]
-        })
+        runRoute: async (input) => buildRun(input, { status: 'fail' })
       })
     );
 
@@ -280,60 +274,12 @@ describe('createVerifyPlan', () => {
       { cwd: '/cwd', options: {} },
       makeDeps({
         writeTestReport: failingWrite,
-        runPipeline: async (input) => ({
-          schemaVersion: 1 as const,
-          runId: input.runId,
-          issueNumber: input.issueNumber,
-          repoRoot: input.repoRoot,
-          configPath: input.configPath,
-          startedAt: '2026-06-01T10:00:00.000Z',
-          finishedAt: '2026-06-01T10:00:01.000Z',
-          status: 'fail',
-          bail: input.bail,
-          checks: []
-        })
+        runRoute: async (input) => buildRun(input, { status: 'fail', checks: [] })
       })
     );
     expect(failResult.mode).toBe('completed');
     if (failResult.mode === 'completed') {
       expect(failResult.exitCode).toBe(1);
-    }
-
-    const sigintResult = await createVerifyPlan(
-      { cwd: '/cwd', options: {} },
-      makeDeps({
-        writeTestReport: failingWrite,
-        runPipeline: async (input) => ({
-          schemaVersion: 1 as const,
-          runId: input.runId,
-          issueNumber: input.issueNumber,
-          repoRoot: input.repoRoot,
-          configPath: input.configPath,
-          startedAt: '2026-06-01T10:00:00.000Z',
-          finishedAt: '2026-06-01T10:00:01.000Z',
-          status: 'fail',
-          bail: input.bail,
-          checks: [
-            {
-              name: 'lint',
-              command: 'lint-cmd',
-              args: [],
-              cwd: input.repoRoot,
-              status: 'fail',
-              exitCode: null,
-              signal: 'SIGINT',
-              startedAt: '2026-06-01T10:00:00.000Z',
-              finishedAt: '2026-06-01T10:00:01.000Z',
-              durationMs: 1000,
-              logPath: `${input.runDirectory}/lint.log`
-            }
-          ]
-        })
-      })
-    );
-    expect(sigintResult.mode).toBe('completed');
-    if (sigintResult.mode === 'completed') {
-      expect(sigintResult.exitCode).toBe(130);
     }
   });
 
@@ -356,30 +302,23 @@ describe('createVerifyPlan', () => {
     expect(calls).toEqual([]);
   });
 
-  it('passes bail through to the pipeline', async () => {
-    let captured = false;
+  it('passes the resolved candidate branch and base branch through to the route', async () => {
+    let capturedBranch: string | null = 'unset';
+    let capturedBase: string | null = 'unset';
 
     await createVerifyPlan(
-      { cwd: '/cwd', options: { bail: true } },
+      { cwd: '/cwd', options: {} },
       makeDeps({
-        runPipeline: async (input) => {
-          captured = input.bail;
-          return {
-            schemaVersion: 1 as const,
-            runId: input.runId,
-            issueNumber: input.issueNumber,
-            repoRoot: input.repoRoot,
-            configPath: input.configPath,
-            startedAt: '2026-06-01T10:00:00.000Z',
-            finishedAt: '2026-06-01T10:00:01.000Z',
-            status: 'pass',
-            bail: input.bail,
-            checks: []
-          };
+        resolveCandidateBranch: async () => ({ branchName: 'candidate/99', baseBranch: 'develop' }),
+        runRoute: async (input) => {
+          capturedBranch = input.candidateBranch;
+          capturedBase = input.baseBranch;
+          return buildRun(input);
         }
       })
     );
 
-    expect(captured).toBe(true);
+    expect(capturedBranch).toBe('candidate/99');
+    expect(capturedBase).toBe('develop');
   });
 });

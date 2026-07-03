@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { gateEvaluateAction, type GateCommandDeps } from '../../src/commands/gate.js';
-import type { VerificationRun } from '../../src/verification/types.js';
+import type { GateRouteRun, RunStatus, VerificationRun } from '../../src/verification/types.js';
 import { MultipleVerdictLabelsError, type GateVerdictRecord, type VerdictStatus } from '../../src/verification/verdict-store.js';
 import type { WorkflowState } from '../../src/workflow/state-machine.js';
 import type { RepoRef } from '../../src/core/types.js';
@@ -25,6 +25,68 @@ function makePassRun(): VerificationRun {
 
 function makeFailRun(): VerificationRun {
   return { ...makePassRun(), status: 'fail' };
+}
+
+const ROUTE_RUN_ID = '2026-07-03T09-15-00-000Z';
+
+/**
+ * A full Gate Route run record (schemaVersion 2) as written by runGateRoute — the
+ * actual shape loadLatestRun returns in production. gate evaluate must treat this
+ * as authoritative, recording the ROUTE run id in the GateVerdictRecord.
+ */
+function makeRouteRun(status: RunStatus): GateRouteRun {
+  return {
+    schemaVersion: 2,
+    runId: ROUTE_RUN_ID,
+    issueNumber: 29,
+    repoRoot: '/repo',
+    configPath: '/repo/issueflow.config.json',
+    startedAt: '2026-07-03T09:15:00.000Z',
+    finishedAt: '2026-07-03T09:20:00.000Z',
+    status,
+    bail: true,
+    checks: [
+      {
+        name: 'build',
+        command: 'npm',
+        args: ['run', 'build'],
+        cwd: '/repo',
+        status: status === 'pass' ? 'pass' : 'fail',
+        exitCode: status === 'pass' ? 0 : 1,
+        signal: null,
+        startedAt: '2026-07-03T09:15:00.000Z',
+        finishedAt: '2026-07-03T09:16:00.000Z',
+        durationMs: 60000,
+        logPath: '/repo/.git/issueflow/verifications/issue-29/attempt-1-build.log'
+      }
+    ],
+    candidateBranch: 'candidate/29-native-gate-route',
+    routeConfigPath: '/repo/issueflow.config.json',
+    maxAttempts: 3,
+    attemptsUsed: 1,
+    attempts: [
+      {
+        attempt: 1,
+        status,
+        checks: [
+          {
+            name: 'build',
+            kind: 'shell',
+            status: status === 'pass' ? 'pass' : 'fail',
+            command: 'npm',
+            exitCode: status === 'pass' ? 0 : 1,
+            signal: null,
+            startedAt: '2026-07-03T09:15:00.000Z',
+            finishedAt: '2026-07-03T09:16:00.000Z',
+            durationMs: 60000,
+            logPath: '/repo/.git/issueflow/verifications/issue-29/attempt-1-build.log'
+          }
+        ]
+      }
+    ],
+    reviewArtifactPaths: [],
+    fixerInvocations: []
+  };
 }
 
 function makeDeps(overrides: Partial<GateCommandDeps> = {}): GateCommandDeps {
@@ -171,6 +233,78 @@ describe('gateEvaluateAction', () => {
     expect(capturedVerdict).toBe('fail');
     expect(exitCode).toBe(1);
     expect(stderr.join('')).toContain('issueflow verify');
+  });
+
+  it('records the ROUTE run id and transitions to pr-ready on a passing GateRouteRun', async () => {
+    let exitCode = 99;
+    let capturedTo: WorkflowState | null = null;
+    let capturedFrom: WorkflowState | null = null;
+    let capturedVerdict: VerdictStatus | null = null;
+    let capturedRecord: GateVerdictRecord | null = null;
+
+    await gateEvaluateAction(
+      { issue: undefined },
+      makeDeps({
+        loadLatestRun: async () => makeRouteRun('pass'),
+        writeState: async (_r, _n, from, to) => {
+          capturedFrom = from;
+          capturedTo = to;
+        },
+        writeVerdict: async (_r, _n, _from, to) => {
+          capturedVerdict = to;
+        },
+        writeGateVerdictRecord: async (_root, _n, record) => {
+          capturedRecord = record;
+        },
+        setExitCode: (code) => {
+          exitCode = code;
+        }
+      })
+    );
+
+    expect(capturedVerdict).toBe('pass');
+    expect(capturedRecord?.outcome).toBe('pass');
+    // The verdict record must point at the ROUTE run id, so pr create's
+    // stale-verdict guard can compare it against the latest route run.
+    expect(capturedRecord?.runId).toBe(ROUTE_RUN_ID);
+    expect(capturedFrom).toBe('verifying');
+    expect(capturedTo).toBe('pr-ready');
+    expect(exitCode).toBe(0);
+  });
+
+  it('records the ROUTE run id and transitions to implementing on a failing GateRouteRun', async () => {
+    let exitCode = 99;
+    let capturedTo: WorkflowState | null = null;
+    let capturedFrom: WorkflowState | null = null;
+    let capturedVerdict: VerdictStatus | null = null;
+    let capturedRecord: GateVerdictRecord | null = null;
+
+    await gateEvaluateAction(
+      { issue: undefined },
+      makeDeps({
+        loadLatestRun: async () => makeRouteRun('fail'),
+        writeState: async (_r, _n, from, to) => {
+          capturedFrom = from;
+          capturedTo = to;
+        },
+        writeVerdict: async (_r, _n, _from, to) => {
+          capturedVerdict = to;
+        },
+        writeGateVerdictRecord: async (_root, _n, record) => {
+          capturedRecord = record;
+        },
+        setExitCode: (code) => {
+          exitCode = code;
+        }
+      })
+    );
+
+    expect(capturedVerdict).toBe('fail');
+    expect(capturedRecord?.outcome).toBe('fail');
+    expect(capturedRecord?.runId).toBe(ROUTE_RUN_ID);
+    expect(capturedFrom).toBe('verifying');
+    expect(capturedTo).toBe('implementing');
+    expect(exitCode).toBe(1);
   });
 
   it('exits 4 when readVerdict throws MultipleVerdictLabelsError', async () => {

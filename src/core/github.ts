@@ -1,7 +1,7 @@
 import { execa } from 'execa';
 
 import { slugifyIssueTitle } from './slug.js';
-import type { IssueSummary, RepoContext } from './types.js';
+import type { IssueSummary, RepoContext, RepoRef } from './types.js';
 
 interface GitHubIssueJson {
   id: string;
@@ -189,4 +189,46 @@ export async function listAssignedIssues(repo: RepoContext): Promise<IssueSummar
   const statusesByIssueId = await fetchIssueStatusesById(issues.map((issue) => issue.id));
 
   return sortIssuesByStatus(normalizeIssueList(issues, statusesByIssueId));
+}
+
+/** Runs `gh <args>` and returns raw stdout. Injectable for tests. */
+export type GhRunner = (args: string[]) => Promise<string>;
+
+export interface GetIssueBodyDeps {
+  run?: GhRunner;
+}
+
+const defaultGhRunner: GhRunner = async (args) => {
+  const { stdout } = await execa('gh', args);
+  return stdout;
+};
+
+/**
+ * Reads a single issue's body via `gh issue view <n> --json body`.
+ *
+ * Returns '' when the issue exists but has an empty body, and null when the
+ * issue cannot be read at all (missing issue, gh failure, or unparseable
+ * output) so callers can degrade gracefully instead of throwing.
+ */
+export async function getIssueBody(
+  repo: RepoRef,
+  issueNumber: number,
+  deps: GetIssueBodyDeps = {}
+): Promise<string | null> {
+  const run = deps.run ?? defaultGhRunner;
+  try {
+    const stdout = await run([
+      'issue',
+      'view',
+      String(issueNumber),
+      '--repo',
+      `${repo.owner}/${repo.repo}`,
+      '--json',
+      'body'
+    ]);
+    const parsed = JSON.parse(stdout) as { body?: string | null };
+    return parsed.body ?? '';
+  } catch {
+    return null;
+  }
 }

@@ -22,10 +22,19 @@ export interface AgentResponse {
   output: string;
 }
 
+export interface SendOptions {
+  /**
+   * Cancels the in-flight send. Adapters backed by a subprocess MUST thread this
+   * into their execa call (cancelSignal + forceKillAfterDelay) so an abort/timeout
+   * actually terminates the child rather than leaving it running unattended.
+   */
+  signal?: AbortSignal;
+}
+
 export interface AgentAdapter {
   start(input: AgentStartInput): Promise<void>;
   stop(): Promise<void>;
-  send(input: string): Promise<AgentResponse>;
+  send(input: string, opts?: SendOptions): Promise<AgentResponse>;
   status(): Promise<AgentStatus>;
 }
 

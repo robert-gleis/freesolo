@@ -157,6 +157,31 @@ describe('ScriptedAgentAdapter', () => {
         code: 'invalid-state'
       });
     });
+
+    it('honors an already-aborted signal by rejecting before matching a step', async () => {
+      const adapter = new ScriptedAgentAdapter({
+        steps: [{ match: 'ping', output: 'pong' }]
+      });
+      await adapter.start({ workingDirectory: '/tmp/work' });
+      const controller = new AbortController();
+      controller.abort();
+
+      await expect(adapter.send('ping', { signal: controller.signal })).rejects.toBeInstanceOf(
+        Error
+      );
+    });
+
+    it('still resolves normally when given a non-aborted signal', async () => {
+      const adapter = new ScriptedAgentAdapter({
+        steps: [{ match: 'ping', output: 'pong' }]
+      });
+      await adapter.start({ workingDirectory: '/tmp/work' });
+      const controller = new AbortController();
+
+      const response = await adapter.send('ping', { signal: controller.signal });
+
+      expect(response.output).toBe('pong');
+    });
   });
 
   describe('reuse after stop', () => {
