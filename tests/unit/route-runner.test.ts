@@ -343,4 +343,10 @@ describe('defaultGateRouteDeps stubs', () => {
     expect(result.status).toBe('fail');
     expect(result.detail).toContain('not implemented');
   });
+
+  it('writeRun default IS the canonical store writer, not a reimplementation', async () => {
+    const { defaultGateRouteDeps } = await import('../../src/verification/route-runner.js');
+    const { writeRun } = await import('../../src/verification/store.js');
+    expect(defaultGateRouteDeps.writeRun).toBe(writeRun);
+  });
 });

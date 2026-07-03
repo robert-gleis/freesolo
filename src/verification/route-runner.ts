@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { getRunDirectory } from './store.js';
+import { writeRun } from './store.js';
 import {
   defaultExecCheck,
   resolveCheckCwd,
@@ -84,13 +84,6 @@ export interface GateRouteDeps {
   now: () => Date;
 }
 
-async function defaultWriteRun(run: GateRouteRun): Promise<void> {
-  const fs = await import('node:fs/promises');
-  const runDir = await getRunDirectory(run.repoRoot, run.issueNumber, run.runId);
-  await fs.mkdir(runDir, { recursive: true });
-  await fs.writeFile(path.join(runDir, 'run.json'), JSON.stringify(run, null, 2));
-}
-
 export const defaultGateRouteDeps: GateRouteDeps = {
   execCheck: defaultExecCheck,
   // ponytail: agent-review is an injected seam. The default is a hard failure so
@@ -108,7 +101,10 @@ export const defaultGateRouteDeps: GateRouteDeps = {
     detail: 'fixer not implemented yet (A3)',
     log: ''
   }),
-  writeRun: defaultWriteRun,
+  // ponytail: the canonical run-writer is store.writeRun. GateRouteRun extends
+  // VerificationRun, so store.writeRun (typed for VerificationRun) is assignable
+  // here — no wrapper needed. Reused instead of reimplemented per the shared-helper rule.
+  writeRun,
   now: () => new Date()
 };
 
