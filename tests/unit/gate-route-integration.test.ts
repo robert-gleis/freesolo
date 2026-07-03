@@ -113,6 +113,7 @@ describe('Gate Route state path integration', () => {
         repoRoot,
         issueNumber: ISSUE,
         candidateBranch: 'candidate/42-native-gate-route',
+        baseBranch: 'main',
         runDirectory,
         runId: RUN_ID
       },
@@ -195,6 +196,7 @@ describe('Gate Route state path integration', () => {
         repoRoot,
         issueNumber: ISSUE,
         candidateBranch: 'candidate/42-native-gate-route',
+        baseBranch: 'main',
         runDirectory,
         runId: RUN_ID
       },

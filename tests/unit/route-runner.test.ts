@@ -74,6 +74,7 @@ function makeInput(config: GateRouteConfig, runDirectory: string): GateRouteInpu
     repoRoot: '/repo',
     issueNumber: 7,
     candidateBranch: 'candidate/7',
+    baseBranch: 'main',
     runDirectory,
     runId: '2026-07-03T10-00-00-000Z'
   };
@@ -579,6 +580,7 @@ describe('defaultGateRouteDeps stubs', () => {
       repoRoot: runDirectory,
       issueNumber: 7,
       candidateBranch: 'candidate/7',
+      baseBranch: 'main',
       attempt: 1,
       runDirectory,
       logPath: path.join(runDirectory, 'attempt-1-review.log')
@@ -601,6 +603,7 @@ describe('defaultGateRouteDeps stubs', () => {
       repoRoot: runDirectory,
       issueNumber: 7,
       candidateBranch: 'candidate/7',
+      baseBranch: 'main',
       fixer: { host: 'codex', promptPreset: 'gate-fixer' },
       failedChecks: [
         {

@@ -23,6 +23,7 @@ function makeContext(runDirectory: string, overrides: Partial<FailureContext> = 
     repoRoot: '/repo',
     issueNumber: 7,
     candidateBranch: 'candidate/7',
+    baseBranch: 'main',
     fixer: { host: 'codex', promptPreset: 'gate-fixer' },
     failedChecks: [
       {
@@ -125,6 +126,24 @@ describe('runFixerCheck (default runFixer)', () => {
     );
 
     expect(capturedPrompt).toContain('off-by-one in loop');
+  });
+
+  it('diffs the candidate against the recorded base branch (not a hardcoded main)', async () => {
+    const runDirectory = await makeRunDir();
+    const adapter = new ScriptedAgentAdapter({ steps: [{ match: /.*/, output: 'ok' }] });
+    const seen: Array<{ repoRoot: string; base: string | null }> = [];
+
+    await runFixerCheck(
+      makeContext(runDirectory, { repoRoot: '/repo', baseBranch: 'develop' }),
+      makeDeps(adapter, {
+        getBranchDiff: async (repoRoot, base) => {
+          seen.push({ repoRoot, base });
+          return 'diff';
+        }
+      })
+    );
+
+    expect(seen).toEqual([{ repoRoot: '/repo', base: 'develop' }]);
   });
 
   it('resolves the adapter for the fixer host (host-agnostic)', async () => {

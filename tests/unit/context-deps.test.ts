@@ -1,6 +1,31 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { resolveIssueBodyFromRepo } from '../../src/verification/context-deps.js';
+import { getCandidateBranchDiff, resolveIssueBodyFromRepo } from '../../src/verification/context-deps.js';
+
+vi.mock('../../src/core/git.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/core/git.js')>();
+  return { ...actual, getBranchDiff: vi.fn(async () => 'the diff') };
+});
+
+describe('getCandidateBranchDiff', () => {
+  it('diffs against the provided base branch', async () => {
+    const { getBranchDiff } = await import('../../src/core/git.js');
+    await getCandidateBranchDiff('/repo', 'develop');
+    expect(getBranchDiff).toHaveBeenLastCalledWith({ cwd: '/repo', base: 'develop' });
+  });
+
+  it("falls back to 'main' when the base branch is null", async () => {
+    const { getBranchDiff } = await import('../../src/core/git.js');
+    await getCandidateBranchDiff('/repo', null);
+    expect(getBranchDiff).toHaveBeenLastCalledWith({ cwd: '/repo', base: 'main' });
+  });
+
+  it("falls back to 'main' when the base branch is omitted", async () => {
+    const { getBranchDiff } = await import('../../src/core/git.js');
+    await getCandidateBranchDiff('/repo');
+    expect(getBranchDiff).toHaveBeenLastCalledWith({ cwd: '/repo', base: 'main' });
+  });
+});
 
 describe('resolveIssueBodyFromRepo', () => {
   it('resolves the repo ref from origin and returns the issue body', async () => {

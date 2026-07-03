@@ -10,9 +10,14 @@ import type { RepoRef } from '../core/types.js';
  * a single source of truth instead of a copy in each check's default deps.
  */
 
-/** Candidate diff of HEAD vs its merge-base with the base branch ('main'). */
-export function getCandidateBranchDiff(repoRoot: string): Promise<string> {
-  return getBranchDiff({ cwd: repoRoot, base: 'main' });
+/**
+ * Candidate diff of HEAD vs its merge-base with the recorded base branch.
+ * Falls back to 'main' only when the record has no base branch (null/absent),
+ * so the review/fixer diff is 'what this branch introduced' against the
+ * authoritative base rather than a hardcoded 'main'.
+ */
+export function getCandidateBranchDiff(repoRoot: string, base?: string | null): Promise<string> {
+  return getBranchDiff({ cwd: repoRoot, base: base ?? 'main' });
 }
 
 /** Injectable seams for {@link resolveIssueBodyFromRepo}, so tests skip git/gh. */

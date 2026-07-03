@@ -21,8 +21,8 @@ const LOG_TAIL_MAX_CHARS = 4000;
 export interface FixerCheckDeps {
   /** Resolves a fresh host-agnostic adapter for the fixer's host. */
   getAgentAdapter: (host: HostTool) => AgentAdapter;
-  /** Candidate diff of HEAD vs its merge-base with the base branch. */
-  getBranchDiff: (repoRoot: string) => Promise<string>;
+  /** Candidate diff of HEAD vs its merge-base with the base branch (null falls back to 'main'). */
+  getBranchDiff: (repoRoot: string, base: string | null) => Promise<string>;
   /** Issue/spec body, or null when unreadable. */
   getIssueBody: (repoRoot: string, issueNumber: number) => Promise<string | null>;
 }
@@ -86,7 +86,7 @@ export async function runFixerCheck(
 
 async function buildFixerPrompt(context: FailureContext, deps: FixerCheckDeps): Promise<string> {
   const [diff, issueBody] = await Promise.all([
-    deps.getBranchDiff(context.repoRoot),
+    deps.getBranchDiff(context.repoRoot, context.baseBranch),
     deps.getIssueBody(context.repoRoot, context.issueNumber)
   ]);
 

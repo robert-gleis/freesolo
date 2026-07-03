@@ -16,11 +16,21 @@ export interface VerifyOptions {
   printOnly?: boolean;
 }
 
+/**
+ * Candidate branch identity threaded into the Gate Route. `baseBranch` is the
+ * authoritative base recorded when the candidate was created; the route diffs
+ * against it (falling back to 'main' only when no record exists).
+ */
+export interface CandidateBranchInfo {
+  branchName: string | null;
+  baseBranch: string | null;
+}
+
 export interface VerifyPlanDeps {
   resolveRepoRoot: (cwd: string) => Promise<string>;
   resolveIssueNumber: (repoRoot: string, override: number | undefined) => Promise<number>;
   loadVerificationConfig: (repoRoot: string, configPath?: string) => Promise<VerificationConfig>;
-  resolveCandidateBranch: (repoRoot: string) => Promise<string | null>;
+  resolveCandidateBranch: (repoRoot: string) => Promise<CandidateBranchInfo>;
   getRunDirectory: (repoRoot: string, issueNumber: number, runId: string) => Promise<string>;
   runRoute: (input: GateRouteInput) => Promise<GateRouteRun>;
   now: () => Date;
@@ -57,7 +67,7 @@ export const defaultVerifyPlanDeps: VerifyPlanDeps = {
   loadVerificationConfig,
   resolveCandidateBranch: async (repoRoot) => {
     const record = await readCandidateBranchRecord(repoRoot).catch(() => null);
-    return record?.branchName ?? null;
+    return { branchName: record?.branchName ?? null, baseBranch: record?.baseBranch ?? null };
   },
   getRunDirectory,
   runRoute: (input) => runGateRoute(input, defaultGateRouteDeps),
@@ -167,14 +177,15 @@ export async function createVerifyPlan(
     };
   }
 
-  const candidateBranch = await deps.resolveCandidateBranch(repoRoot);
+  const candidate = await deps.resolveCandidateBranch(repoRoot);
 
   const run = await deps.runRoute({
     config: config.verification.gateRoute,
     routeConfigPath: configPath,
     repoRoot,
     issueNumber,
-    candidateBranch,
+    candidateBranch: candidate.branchName,
+    baseBranch: candidate.baseBranch,
     runDirectory,
     runId,
     abortSignal: input.abortSignal

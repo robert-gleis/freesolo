@@ -20,8 +20,8 @@ import type { AgentReviewRequest, AgentReviewResult } from './route-runner.js';
 export interface AgentReviewDeps {
   /** Resolves a fresh host-agnostic adapter for the check's host. */
   getAgentAdapter: (host: HostTool) => AgentAdapter;
-  /** Candidate diff of HEAD vs its merge-base with the base branch. */
-  getBranchDiff: (repoRoot: string) => Promise<string>;
+  /** Candidate diff of HEAD vs its merge-base with the base branch (null falls back to 'main'). */
+  getBranchDiff: (repoRoot: string, base: string | null) => Promise<string>;
   /** Issue/spec body, or null when unreadable. */
   getIssueBody: (repoRoot: string, issueNumber: number) => Promise<string | null>;
   /** Architecture Decision Records. */
@@ -116,12 +116,12 @@ async function computeVerdict(
   request: AgentReviewRequest,
   deps: AgentReviewDeps
 ): Promise<ReviewVerdict> {
-  const { check, repoRoot, issueNumber, candidateBranch, attempt, runDirectory } = request;
+  const { check, repoRoot, issueNumber, candidateBranch, baseBranch, attempt, runDirectory } = request;
 
   let prompt: string;
   try {
     const [diff, issueBody, adrs, knowledge, priorLogs] = await Promise.all([
-      deps.getBranchDiff(repoRoot),
+      deps.getBranchDiff(repoRoot, baseBranch),
       deps.getIssueBody(repoRoot, issueNumber),
       deps.listAdrs(repoRoot),
       deps.loadKnowledgeEntries(repoRoot),

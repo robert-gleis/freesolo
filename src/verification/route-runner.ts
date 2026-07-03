@@ -28,6 +28,8 @@ export interface GateRouteInput {
   repoRoot: string;
   issueNumber: number;
   candidateBranch: string | null;
+  /** Authoritative base branch the candidate branched off; null falls back to 'main'. */
+  baseBranch: string | null;
   runDirectory: string;
   runId: string;
   abortSignal?: AbortSignal;
@@ -38,6 +40,8 @@ export interface AgentReviewRequest {
   repoRoot: string;
   issueNumber: number;
   candidateBranch: string | null;
+  /** Authoritative base branch the candidate branched off; null falls back to 'main'. */
+  baseBranch: string | null;
   attempt: number;
   runDirectory: string;
   logPath: string;
@@ -65,6 +69,8 @@ export interface FailureContext {
   repoRoot: string;
   issueNumber: number;
   candidateBranch: string | null;
+  /** Authoritative base branch the candidate branched off; null falls back to 'main'. */
+  baseBranch: string | null;
   fixer: FixerSpec;
   failedChecks: FailedCheckSummary[];
   logPath: string;
@@ -187,6 +193,7 @@ async function runOneReviewCheck(
     repoRoot: input.repoRoot,
     issueNumber: input.issueNumber,
     candidateBranch: input.candidateBranch,
+    baseBranch: input.baseBranch,
     attempt,
     runDirectory: input.runDirectory,
     logPath,
@@ -305,6 +312,7 @@ export async function runGateRoute(
       repoRoot: input.repoRoot,
       issueNumber: input.issueNumber,
       candidateBranch: input.candidateBranch,
+      baseBranch: input.baseBranch,
       fixer: input.config.fixer,
       failedChecks: toFailedCheckSummaries(record),
       logPath: fixerLogPath,

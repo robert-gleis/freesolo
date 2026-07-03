@@ -37,6 +37,7 @@ function makeRequest(runDirectory: string, overrides: Partial<AgentReviewRequest
     repoRoot: '/repo',
     issueNumber: 7,
     candidateBranch: 'candidate/7',
+    baseBranch: 'main',
     attempt: 1,
     runDirectory,
     logPath: path.join(runDirectory, 'attempt-1-review.log'),
@@ -179,6 +180,24 @@ describe('runAgentReviewCheck', () => {
     expect(capturedPrompt).toContain('KNOWLEDGE-MARKER');
     expect(capturedPrompt).toContain('compile error XYZ');
     expect(capturedPrompt).not.toContain('unrelated attempt');
+  });
+
+  it('diffs the candidate against the recorded base branch (not a hardcoded main)', async () => {
+    const runDirectory = await makeRunDir();
+    const adapter = new ScriptedAgentAdapter({ steps: [{ match: /.*/, output: PASS_JSON }] });
+    const seen: Array<{ repoRoot: string; base: string | null }> = [];
+
+    await runAgentReviewCheck(
+      makeRequest(runDirectory, { repoRoot: '/repo', baseBranch: 'develop' }),
+      makeDeps(adapter, {
+        getBranchDiff: async (repoRoot, base) => {
+          seen.push({ repoRoot, base });
+          return 'diff';
+        }
+      })
+    );
+
+    expect(seen).toEqual([{ repoRoot: '/repo', base: 'develop' }]);
   });
 
   it('resolves the adapter for the check host (host-agnostic)', async () => {

@@ -78,7 +78,7 @@ function makeDeps(overrides: Partial<VerifyPlanDeps> = {}): VerifyPlanDeps {
     resolveRepoRoot: async () => '/repo',
     resolveIssueNumber: async (_repoRoot, override) => override ?? 20,
     loadVerificationConfig: async () => makeConfig(),
-    resolveCandidateBranch: async () => 'candidate/20',
+    resolveCandidateBranch: async () => ({ branchName: 'candidate/20', baseBranch: 'main' }),
     getRunDirectory: async (_repoRoot, issueNumber, runId) =>
       `/repo/.git/issueflow/verifications/issue-${issueNumber}/${runId}`,
     runRoute: async (input) => buildRun(input),
@@ -302,20 +302,23 @@ describe('createVerifyPlan', () => {
     expect(calls).toEqual([]);
   });
 
-  it('passes the resolved candidate branch through to the route', async () => {
-    let captured: string | null = 'unset';
+  it('passes the resolved candidate branch and base branch through to the route', async () => {
+    let capturedBranch: string | null = 'unset';
+    let capturedBase: string | null = 'unset';
 
     await createVerifyPlan(
       { cwd: '/cwd', options: {} },
       makeDeps({
-        resolveCandidateBranch: async () => 'candidate/99',
+        resolveCandidateBranch: async () => ({ branchName: 'candidate/99', baseBranch: 'develop' }),
         runRoute: async (input) => {
-          captured = input.candidateBranch;
+          capturedBranch = input.candidateBranch;
+          capturedBase = input.baseBranch;
           return buildRun(input);
         }
       })
     );
 
-    expect(captured).toBe('candidate/99');
+    expect(capturedBranch).toBe('candidate/99');
+    expect(capturedBase).toBe('develop');
   });
 });
