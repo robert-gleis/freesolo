@@ -4,14 +4,13 @@ import path from 'node:path';
 import { getAgentAdapter, runReviewAgent } from '../agents/index.js';
 import type { AgentAdapter } from '../agents/types.js';
 import type { ReviewVerdict, RunReviewAgentInput } from '../agents/review-runner.js';
-import { getBranchDiff, parseGitHubRemote, readOriginRemote } from '../core/git.js';
-import { getIssueBody } from '../core/github.js';
 import type { HostTool } from '../core/types.js';
 import { formatKnowledgeSection, loadKnowledgeEntries } from '../knowledge/loader.js';
 import type { KnowledgeEntry } from '../knowledge/loader.js';
 import { listAdrs } from '../memory/adrs.js';
 import type { AdrRecord } from '../memory/adrs.js';
 import { getPromptPreset } from '../prompts/presets.js';
+import { getCandidateBranchDiff, resolveIssueBodyFromRepo } from './context-deps.js';
 import type { AgentReviewRequest, AgentReviewResult } from './route-runner.js';
 
 /**
@@ -35,19 +34,8 @@ export interface AgentReviewDeps {
 
 export const defaultAgentReviewDeps: AgentReviewDeps = {
   getAgentAdapter,
-  getBranchDiff: (repoRoot) => getBranchDiff({ cwd: repoRoot, base: 'main' }),
-  // Resolve the repo ref from the origin remote so the check needs only repoRoot;
-  // degrade to null (no body) if the remote is missing or unparseable.
-  getIssueBody: async (repoRoot, issueNumber) => {
-    try {
-      const remote = await readOriginRemote(repoRoot);
-      const repo = parseGitHubRemote(remote);
-      if (!repo) return null;
-      return await getIssueBody({ owner: repo.owner, repo: repo.repo }, issueNumber);
-    } catch {
-      return null;
-    }
-  },
+  getBranchDiff: getCandidateBranchDiff,
+  getIssueBody: resolveIssueBodyFromRepo,
   listAdrs,
   loadKnowledgeEntries,
   runReviewAgent

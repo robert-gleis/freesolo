@@ -4,10 +4,9 @@ import path from 'node:path';
 import { getAgentAdapter } from '../agents/index.js';
 import { runFixerAgent, type FixerAgentResult } from '../agents/fixer-runner.js';
 import type { AgentAdapter } from '../agents/types.js';
-import { getBranchDiff, parseGitHubRemote, readOriginRemote } from '../core/git.js';
-import { getIssueBody } from '../core/github.js';
 import type { HostTool } from '../core/types.js';
 import { getPromptPreset, type FixerFailedCheck, type FixerPromptContext } from '../prompts/presets.js';
+import { getCandidateBranchDiff, resolveIssueBodyFromRepo } from './context-deps.js';
 import type { FailureContext, FixerResult } from './route-runner.js';
 
 /** How many trailing lines of a failing check's log to summarize into the prompt. */
@@ -30,20 +29,8 @@ export interface FixerCheckDeps {
 
 export const defaultFixerCheckDeps: FixerCheckDeps = {
   getAgentAdapter,
-  getBranchDiff: (repoRoot) => getBranchDiff({ cwd: repoRoot, base: 'main' }),
-  // Resolve the repo ref from the origin remote so the fixer needs only repoRoot;
-  // degrade to null (no body) if the remote is missing or unparseable.
-  // ponytail: same resolution A2 uses in agent-review-check's default deps.
-  getIssueBody: async (repoRoot, issueNumber) => {
-    try {
-      const remote = await readOriginRemote(repoRoot);
-      const repo = parseGitHubRemote(remote);
-      if (!repo) return null;
-      return await getIssueBody({ owner: repo.owner, repo: repo.repo }, issueNumber);
-    } catch {
-      return null;
-    }
-  }
+  getBranchDiff: getCandidateBranchDiff,
+  getIssueBody: resolveIssueBodyFromRepo
 };
 
 /** Reads and tails a failing check's per-check log for the Failure Context. */

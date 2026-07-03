@@ -2,12 +2,7 @@ import { z } from 'zod';
 
 import { extractJson } from '../planner/extract.js';
 import type { AgentAdapter } from './types.js';
-import {
-  buildAgentSignal,
-  errorMessage,
-  isAbortError,
-  sendWithSignal
-} from './agent-lifecycle.js';
+import { errorMessage, runOwnedAgentSession } from './agent-lifecycle.js';
 
 export const reviewFindingSchema = z.object({
   severity: z.string().optional(),
@@ -38,56 +33,36 @@ export interface RunReviewAgentInput {
  * Runs a fresh review agent and maps its structured output to a pass/fail
  * verdict.
  *
- * ponytail: mirrors runPlanner's lifecycle (start-if-owned, extractJson +
- * zod safeParse, retry once on invalid output, stop-in-finally) rather than
- * extracting a shared helper WITH the planner — the two differ in a load-bearing
- * way: the planner THROWS on unusable output, but a review check must never
- * throw past the gate; every failure path (timeout, abort, unparseable,
- * schema-invalid) collapses to a `fail` verdict so the route stays the sole
- * authority and never silently passes. The semantics-neutral abort/timeout/send
- * plumbing IS shared with runFixerAgent via agent-lifecycle.ts; only the result
- * mapping (verdict vs ok/fail) stays per-runner.
+ * ponytail: the retry-once-then-parse policy stays here (extractJson + zod
+ * safeParse, one corrective follow-up) rather than sharing WITH the planner —
+ * the two differ in a load-bearing way: the planner THROWS on unusable output,
+ * but a review check must never throw past the gate; every failure path
+ * (timeout, abort, unparseable, schema-invalid) collapses to a `fail` verdict
+ * so the route stays the sole authority and never silently passes. The
+ * start-if-owned / stop-in-finally lifecycle AND the abort/timeout/send plumbing
+ * ARE shared with runFixerAgent via runOwnedAgentSession (agent-lifecycle.ts);
+ * only the result mapping (verdict vs ok/fail) stays per-runner.
  */
 export async function runReviewAgent(input: RunReviewAgentInput): Promise<ReviewVerdict> {
-  const { adapter, prompt, cwd } = input;
+  const { adapter, prompt, cwd, timeoutSeconds, abortSignal } = input;
 
-  const status = await adapter.status();
-  const shouldStart = status.state === 'idle' || status.state === 'stopped';
-  let ownsAdapter = false;
-
-  const signal = buildAgentSignal(input.timeoutSeconds, input.abortSignal);
-
-  try {
-    if (shouldStart) {
-      await adapter.start({ workingDirectory: cwd });
-      ownsAdapter = true;
-    }
-
-    let nextPrompt = prompt;
-    for (let attempt = 1; attempt <= 2; attempt += 1) {
-      const output = await sendWithSignal(adapter, nextPrompt, signal);
-      const parsed = tryParseVerdict(output);
-      if (parsed.ok) {
-        return parsed.value;
+  return runOwnedAgentSession<ReviewVerdict>(
+    { adapter, cwd, timeoutSeconds, abortSignal },
+    async (send) => {
+      let nextPrompt = prompt;
+      for (let attempt = 1; attempt <= 2; attempt += 1) {
+        const output = await send(nextPrompt);
+        const parsed = tryParseVerdict(output);
+        if (parsed.ok) {
+          return parsed.value;
+        }
+        nextPrompt = buildRetryPrompt(parsed.reason);
       }
-      nextPrompt = buildRetryPrompt(parsed.reason);
-    }
-
-    return failVerdict('review agent output could not be parsed as a valid verdict JSON');
-  } catch (err) {
-    if (isAbortError(err)) {
-      return failVerdict(abortMessage(input.timeoutSeconds, input.abortSignal));
-    }
-    return failVerdict(`review agent invocation failed: ${errorMessage(err)}`);
-  } finally {
-    if (ownsAdapter) {
-      try {
-        await adapter.stop();
-      } catch {
-        // best-effort: never let a stop failure override the verdict
-      }
-    }
-  }
+      return failVerdict('review agent output could not be parsed as a valid verdict JSON');
+    },
+    () => failVerdict(abortMessage(timeoutSeconds, abortSignal)),
+    (message) => failVerdict(`review agent invocation failed: ${message}`)
+  );
 }
 
 function tryParseVerdict(

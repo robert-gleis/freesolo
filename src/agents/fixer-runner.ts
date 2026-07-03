@@ -1,10 +1,5 @@
 import type { AgentAdapter } from './types.js';
-import {
-  buildAgentSignal,
-  errorMessage,
-  isAbortError,
-  sendWithSignal
-} from './agent-lifecycle.js';
+import { runOwnedAgentSession } from './agent-lifecycle.js';
 
 export interface RunFixerAgentInput {
   adapter: AgentAdapter;
@@ -33,42 +28,24 @@ export interface FixerAgentResult {
  * There is deliberately no verdict/JSON requirement — the subsequent COMPLETE
  * route rerun (route-runner) is the sole arbiter of whether the fix worked.
  *
- * ponytail: mirrors runReviewAgent's start-if-owned / stop-in-finally lifecycle
- * and reuses the shared abort/timeout plumbing (agent-lifecycle.ts). It does NOT
- * share a result mapper with review because the semantics differ: review maps
- * output to a pass/fail verdict; the fixer only cares that the process completed.
+ * ponytail: shares the start-if-owned / stop-in-finally lifecycle AND the
+ * abort/timeout plumbing with runReviewAgent via runOwnedAgentSession
+ * (agent-lifecycle.ts). Only the result mapping stays here, because the
+ * semantics differ: review maps output to a pass/fail verdict; the fixer only
+ * cares that the process completed (ok/fail).
  */
 export async function runFixerAgent(input: RunFixerAgentInput): Promise<FixerAgentResult> {
-  const { adapter, prompt, cwd } = input;
+  const { adapter, prompt, cwd, timeoutSeconds, abortSignal } = input;
 
-  const status = await adapter.status();
-  const shouldStart = status.state === 'idle' || status.state === 'stopped';
-  let ownsAdapter = false;
-
-  const signal = buildAgentSignal(input.timeoutSeconds, input.abortSignal);
-
-  try {
-    if (shouldStart) {
-      await adapter.start({ workingDirectory: cwd });
-      ownsAdapter = true;
-    }
-
-    const output = await sendWithSignal(adapter, prompt, signal);
-    return { ok: true, detail: 'fixer agent completed', output };
-  } catch (err) {
-    if (isAbortError(err)) {
-      return { ok: false, detail: abortMessage(input.timeoutSeconds, input.abortSignal) };
-    }
-    return { ok: false, detail: `fixer agent invocation failed: ${errorMessage(err)}` };
-  } finally {
-    if (ownsAdapter) {
-      try {
-        await adapter.stop();
-      } catch {
-        // best-effort: never let a stop failure override the result
-      }
-    }
-  }
+  return runOwnedAgentSession<FixerAgentResult>(
+    { adapter, cwd, timeoutSeconds, abortSignal },
+    async (send) => {
+      const output = await send(prompt);
+      return { ok: true, detail: 'fixer agent completed', output };
+    },
+    () => ({ ok: false, detail: abortMessage(timeoutSeconds, abortSignal) }),
+    (message) => ({ ok: false, detail: `fixer agent invocation failed: ${message}` })
+  );
 }
 
 function abortMessage(
