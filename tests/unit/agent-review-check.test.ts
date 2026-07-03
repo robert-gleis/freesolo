@@ -70,11 +70,32 @@ describe('runAgentReviewCheck', () => {
 
     expect(result.status).toBe('pass');
     expect(result.findings).toBeNull();
-    const artifactPath = path.join(runDirectory, 'review-review.json');
+    const artifactPath = path.join(runDirectory, 'attempt-1-review-review.json');
     expect(result.artifactPath).toBe(artifactPath);
     const artifact = JSON.parse(await fs.readFile(artifactPath, 'utf8'));
     expect(artifact.verdict).toBe('pass');
     expect(artifact.findings).toEqual([]);
+  });
+
+  it('scopes the artifact filename by attempt so a later attempt cannot clobber an earlier one', async () => {
+    const runDirectory = await makeRunDir();
+    const adapter = new ScriptedAgentAdapter({ steps: [{ match: /.*/, output: PASS_JSON }] });
+
+    const first = await runAgentReviewCheck(
+      makeRequest(runDirectory, { attempt: 1 }),
+      makeDeps(adapter)
+    );
+    const second = await runAgentReviewCheck(
+      makeRequest(runDirectory, { attempt: 2 }),
+      makeDeps(adapter)
+    );
+
+    expect(first.artifactPath).toBe(path.join(runDirectory, 'attempt-1-review-review.json'));
+    expect(second.artifactPath).toBe(path.join(runDirectory, 'attempt-2-review-review.json'));
+    expect(first.artifactPath).not.toBe(second.artifactPath);
+    // both survive on disk
+    await fs.access(first.artifactPath as string);
+    await fs.access(second.artifactPath as string);
   });
 
   it('fails with findings when the scripted agent returns a fail verdict', async () => {
@@ -85,6 +106,7 @@ describe('runAgentReviewCheck', () => {
 
     expect(result.status).toBe('fail');
     expect(result.findings).toContain('boom');
+    expect(result.artifactPath).toBe(path.join(runDirectory, 'attempt-1-review-review.json'));
     const artifact = JSON.parse(await fs.readFile(result.artifactPath as string, 'utf8'));
     expect(artifact.verdict).toBe('fail');
     expect(artifact.findings[0].message).toBe('boom');

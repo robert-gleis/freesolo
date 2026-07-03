@@ -368,7 +368,7 @@ describe('runGateRoute with the REAL agent-review check (scripted adapter)', () 
     );
 
     expect(run.status).toBe('pass');
-    const artifactPath = path.join(runDirectory, 'review-review.json');
+    const artifactPath = path.join(runDirectory, 'attempt-1-review-review.json');
     expect(run.reviewArtifactPaths).toContain(artifactPath);
     const artifact = JSON.parse(await fs.readFile(artifactPath, 'utf8'));
     expect(artifact.verdict).toBe('pass');
@@ -387,7 +387,7 @@ describe('runGateRoute with the REAL agent-review check (scripted adapter)', () 
     const reviewCheck = run.attempts[0].checks.find((c) => c.name === 'review');
     expect(reviewCheck?.status).toBe('fail');
     expect(reviewCheck?.reviewFindings ?? '').toContain('blocking correctness bug');
-    const artifactPath = path.join(runDirectory, 'review-review.json');
+    const artifactPath = path.join(runDirectory, 'attempt-1-review-review.json');
     expect(run.reviewArtifactPaths).toContain(artifactPath);
     const artifact = JSON.parse(await fs.readFile(artifactPath, 'utf8'));
     expect(artifact.verdict).toBe('fail');
@@ -418,6 +418,40 @@ describe('runGateRoute with the REAL agent-review check (scripted adapter)', () 
     expect(capturedFindings ?? '').toContain('blocking correctness bug');
   });
 
+  it('preserves BOTH attempts review artifacts on disk with distinct verdicts and distinct paths', async () => {
+    const runDirectory = await makeRunDir();
+    let attempt = 0;
+
+    const run = await runGateRoute(
+      makeInput(makeConfig({ ...reviewConfig(), maxAttempts: 2 }), runDirectory),
+      makeDeps({
+        runAgentReview: (request) => {
+          attempt += 1;
+          const output = attempt === 1 ? FAIL_VERDICT : PASS_VERDICT;
+          return runAgentReviewCheck(request, reviewDepsWith(output));
+        },
+        runFixer: async () => ({ status: 'pass', detail: 'fixed', log: '' })
+      })
+    );
+
+    expect(run.status).toBe('pass');
+    expect(run.attemptsUsed).toBe(2);
+
+    const attempt1Artifact = path.join(runDirectory, 'attempt-1-review-review.json');
+    const attempt2Artifact = path.join(runDirectory, 'attempt-2-review-review.json');
+
+    // Two DISTINCT artifact paths recorded, one per attempt — attempt 2 did not clobber attempt 1.
+    expect(run.reviewArtifactPaths).toContain(attempt1Artifact);
+    expect(run.reviewArtifactPaths).toContain(attempt2Artifact);
+    expect(new Set(run.reviewArtifactPaths).size).toBe(run.reviewArtifactPaths.length);
+
+    // Both files survive on disk, each holding its own attempt's verdict.
+    const first = JSON.parse(await fs.readFile(attempt1Artifact, 'utf8'));
+    const second = JSON.parse(await fs.readFile(attempt2Artifact, 'utf8'));
+    expect(first.verdict).toBe('fail');
+    expect(second.verdict).toBe('pass');
+  });
+
   it('fails the route when the scripted review agent returns unparseable output (never silently passes)', async () => {
     const runDirectory = await makeRunDir();
     const run = await runGateRoute(
@@ -429,7 +463,7 @@ describe('runGateRoute with the REAL agent-review check (scripted adapter)', () 
 
     expect(run.status).toBe('fail');
     const artifact = JSON.parse(
-      await fs.readFile(path.join(runDirectory, 'review-review.json'), 'utf8')
+      await fs.readFile(path.join(runDirectory, 'attempt-1-review-review.json'), 'utf8')
     );
     expect(artifact.verdict).toBe('fail');
   });
@@ -587,7 +621,7 @@ describe('defaultGateRouteDeps stubs', () => {
     });
     expect(result.status).toBe('fail');
     expect(result.findings ?? '').not.toContain('not implemented');
-    expect(result.artifactPath).toBe(path.join(runDirectory, 'review-review.json'));
+    expect(result.artifactPath).toBe(path.join(runDirectory, 'attempt-1-review-review.json'));
     const artifact = JSON.parse(await fs.readFile(result.artifactPath as string, 'utf8'));
     expect(artifact.verdict).toBe('fail');
   });

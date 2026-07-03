@@ -93,7 +93,13 @@ export async function runAgentReviewCheck(
   deps: AgentReviewDeps = defaultAgentReviewDeps
 ): Promise<AgentReviewResult> {
   const { check, runDirectory } = request;
-  const artifactPath = path.join(runDirectory, `review-${check.name}.json`);
+  // Attempt-scope the artifact filename (mirroring the per-check log naming at
+  // route-runner.ts `attempt-${attempt}-${check.name}.log`) so a multi-attempt
+  // route's later attempt cannot clobber an earlier attempt's review evidence.
+  const artifactPath = path.join(
+    runDirectory,
+    `attempt-${request.attempt}-review-${check.name}.json`
+  );
 
   const verdict = await computeVerdict(request, deps);
 
