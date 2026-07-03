@@ -76,7 +76,11 @@ export interface CheckResult {
 }
 
 export interface VerificationRun {
-  schemaVersion: 1;
+  // Widened from the literal `1` so the Gate Route record can bump to
+  // schemaVersion 2 while the older consumer test fixtures (which still
+  // construct `schemaVersion: 1`) keep type-checking. Downstream consumers
+  // (gate, pr, merge, reports) only read the fields below.
+  schemaVersion: number;
   runId: string;
   issueNumber: number;
   repoRoot: string;
@@ -86,4 +90,55 @@ export interface VerificationRun {
   status: RunStatus;
   bail: boolean;
   checks: CheckResult[];
+}
+
+/**
+ * Result of a single check within one Gate Route attempt.
+ * Shell checks carry command/exitCode; agent-review checks carry findings.
+ */
+export interface RouteCheckResult {
+  name: string;
+  kind: RouteCheck['kind'];
+  status: CheckStatus;
+  command: string | null;
+  exitCode: number | null;
+  signal: string | null;
+  startedAt: string;
+  finishedAt: string;
+  durationMs: number;
+  logPath: string;
+  // agent-review only: blocking findings summary when the review failed.
+  reviewFindings?: string | null;
+}
+
+/** One full pass over the route's checks. */
+export interface AttemptRecord {
+  attempt: number;
+  status: RunStatus;
+  checks: RouteCheckResult[];
+}
+
+/** Result of invoking the Fixer Agent between two attempts. */
+export interface FixerInvocationResult {
+  afterAttempt: number;
+  status: RunStatus;
+  logPath: string;
+  detail: string;
+}
+
+/**
+ * Machine-readable evidence for one Gate Route run. It is a superset of
+ * VerificationRun: `checks` mirrors the final attempt's check results so the
+ * existing pr-body / test-report / gate consumers read it unchanged, while the
+ * route-specific fields below carry the per-attempt and fixer evidence.
+ */
+export interface GateRouteRun extends VerificationRun {
+  schemaVersion: 2;
+  candidateBranch: string | null;
+  routeConfigPath: string;
+  maxAttempts: number;
+  attemptsUsed: number;
+  attempts: AttemptRecord[];
+  reviewArtifactPaths: string[];
+  fixerInvocations: FixerInvocationResult[];
 }

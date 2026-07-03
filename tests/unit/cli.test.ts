@@ -35,7 +35,8 @@ describe('buildCli', () => {
     expect(optionFlags).toContain('--issue');
     expect(optionFlags).toContain('--config');
     expect(optionFlags).toContain('--print-only');
-    expect(optionFlags).toContain('--bail');
+    // --bail is gone: bail is now part of the gateRoute config, not a CLI flag.
+    expect(optionFlags).not.toContain('--bail');
   });
 
   it('rejects non-integer --issue values', () => {
