@@ -1,5 +1,6 @@
 import path from 'node:path';
 
+import { runAgentReviewCheck } from './agent-review-check.js';
 import { writeRun } from './store.js';
 import {
   defaultExecCheck,
@@ -86,14 +87,12 @@ export interface GateRouteDeps {
 
 export const defaultGateRouteDeps: GateRouteDeps = {
   execCheck: defaultExecCheck,
-  // ponytail: agent-review is an injected seam. The default is a hard failure so
-  // shell-only routes work end-to-end today and a misconfigured agent-review
-  // check fails loudly instead of silently passing. Real impl lands in A3.
-  runAgentReview: async () => ({
-    status: 'fail',
-    artifactPath: null,
-    findings: 'agent-review not implemented yet (A2)'
-  }),
+  // agent-review is an injected seam. The default runs a fresh host agent via the
+  // real check impl (agent-review-check.ts), which fails soft on any bad output so
+  // the route stays the sole authority and never silently passes. Route-runner
+  // tests still inject a fake runAgentReview; the real impl is tested directly in
+  // agent-review-check.test.ts with a ScriptedAgentAdapter.
+  runAgentReview: (request) => runAgentReviewCheck(request),
   // ponytail: fixer is an injected seam. Default fails so a route that needs a
   // fix cannot succeed until the real Fixer Agent lands in A3.
   runFixer: async () => ({

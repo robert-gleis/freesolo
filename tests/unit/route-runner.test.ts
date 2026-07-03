@@ -4,14 +4,38 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { ScriptedAgentAdapter } from '../../src/agents/scripted.js';
 import {
   runGateRoute,
   type GateRouteDeps,
   type GateRouteInput,
   type FailureContext
 } from '../../src/verification/route-runner.js';
+import {
+  runAgentReviewCheck,
+  type AgentReviewDeps
+} from '../../src/verification/agent-review-check.js';
+import { runReviewAgent } from '../../src/agents/review-runner.js';
 import type { ExecCheckResult } from '../../src/verification/runner.js';
 import type { GateRouteConfig, RouteCheck } from '../../src/verification/types.js';
+
+const PASS_VERDICT = JSON.stringify({ verdict: 'pass', findings: [] });
+const FAIL_VERDICT = JSON.stringify({
+  verdict: 'fail',
+  findings: [{ severity: 'high', message: 'blocking correctness bug' }]
+});
+
+/** Fake AgentReviewDeps driven by a ScriptedAgentAdapter, for route-level tests. */
+function reviewDepsWith(output: string): AgentReviewDeps {
+  return {
+    getAgentAdapter: () => new ScriptedAgentAdapter({ steps: [{ match: /.*/, output }] }),
+    getBranchDiff: async () => 'diff',
+    getIssueBody: async () => 'body',
+    listAdrs: async () => [],
+    loadKnowledgeEntries: async () => [],
+    runReviewAgent
+  };
+}
 
 const tempDirs: string[] = [];
 
@@ -312,20 +336,121 @@ describe('runGateRoute', () => {
   });
 });
 
+describe('runGateRoute with the REAL agent-review check (scripted adapter)', () => {
+  function reviewConfig(): GateRouteConfig {
+    return makeConfig({
+      maxAttempts: 1,
+      bail: true,
+      checks: [
+        shell('build', 'build-cmd'),
+        {
+          name: 'review',
+          kind: 'agent-review',
+          host: 'codex',
+          promptPreset: 'thermonuclear-review'
+        }
+      ]
+    });
+  }
+
+  it('passes the route when the scripted review agent returns a pass verdict and writes the artifact', async () => {
+    const runDirectory = await makeRunDir();
+    const run = await runGateRoute(
+      makeInput(reviewConfig(), runDirectory),
+      makeDeps({
+        runAgentReview: (request) => runAgentReviewCheck(request, reviewDepsWith(PASS_VERDICT))
+      })
+    );
+
+    expect(run.status).toBe('pass');
+    const artifactPath = path.join(runDirectory, 'review-review.json');
+    expect(run.reviewArtifactPaths).toContain(artifactPath);
+    const artifact = JSON.parse(await fs.readFile(artifactPath, 'utf8'));
+    expect(artifact.verdict).toBe('pass');
+  });
+
+  it('fails the route (single attempt) when the scripted review agent returns fail, capturing findings + artifact', async () => {
+    const runDirectory = await makeRunDir();
+    const run = await runGateRoute(
+      makeInput(reviewConfig(), runDirectory),
+      makeDeps({
+        runAgentReview: (request) => runAgentReviewCheck(request, reviewDepsWith(FAIL_VERDICT))
+      })
+    );
+
+    expect(run.status).toBe('fail');
+    const reviewCheck = run.attempts[0].checks.find((c) => c.name === 'review');
+    expect(reviewCheck?.status).toBe('fail');
+    expect(reviewCheck?.reviewFindings ?? '').toContain('blocking correctness bug');
+    const artifactPath = path.join(runDirectory, 'review-review.json');
+    expect(run.reviewArtifactPaths).toContain(artifactPath);
+    const artifact = JSON.parse(await fs.readFile(artifactPath, 'utf8'));
+    expect(artifact.verdict).toBe('fail');
+  });
+
+  it('runs the fixer path when the review fails and attempts remain, then passes on the fixed rerun', async () => {
+    const runDirectory = await makeRunDir();
+    let capturedFindings: string | null | undefined;
+    let attempt = 0;
+
+    const run = await runGateRoute(
+      makeInput(makeConfig({ ...reviewConfig(), maxAttempts: 2 }), runDirectory),
+      makeDeps({
+        runAgentReview: (request) => {
+          attempt += 1;
+          const output = attempt === 1 ? FAIL_VERDICT : PASS_VERDICT;
+          return runAgentReviewCheck(request, reviewDepsWith(output));
+        },
+        runFixer: async (context) => {
+          capturedFindings = context.failedChecks[0]?.reviewFindings;
+          return { status: 'pass', detail: 'fixed', log: '' };
+        }
+      })
+    );
+
+    expect(run.status).toBe('pass');
+    expect(run.attemptsUsed).toBe(2);
+    expect(capturedFindings ?? '').toContain('blocking correctness bug');
+  });
+
+  it('fails the route when the scripted review agent returns unparseable output (never silently passes)', async () => {
+    const runDirectory = await makeRunDir();
+    const run = await runGateRoute(
+      makeInput(reviewConfig(), runDirectory),
+      makeDeps({
+        runAgentReview: (request) => runAgentReviewCheck(request, reviewDepsWith('not json at all'))
+      })
+    );
+
+    expect(run.status).toBe('fail');
+    const artifact = JSON.parse(
+      await fs.readFile(path.join(runDirectory, 'review-review.json'), 'utf8')
+    );
+    expect(artifact.verdict).toBe('fail');
+  });
+});
+
 describe('defaultGateRouteDeps stubs', () => {
-  it('runAgentReview default reports a clear not-implemented failure', async () => {
+  it('runAgentReview default delegates to the real fail-soft check (no longer a not-implemented stub)', async () => {
+    const runDirectory = await makeRunDir();
     const { defaultGateRouteDeps } = await import('../../src/verification/route-runner.js');
+    // repoRoot points at a non-git temp dir, so context assembly (getBranchDiff)
+    // fails; the real check must fail SOFT (fail verdict + artifact), never throw,
+    // and never emit the old "not implemented" text.
     const result = await defaultGateRouteDeps.runAgentReview({
-      check: { name: 'review', kind: 'agent-review', host: 'codex', promptPreset: 'x' },
-      repoRoot: '/repo',
+      check: { name: 'review', kind: 'agent-review', host: 'codex', promptPreset: 'thermonuclear-review' },
+      repoRoot: runDirectory,
       issueNumber: 7,
       candidateBranch: 'candidate/7',
       attempt: 1,
-      runDirectory: '/tmp',
-      logPath: '/tmp/review.log'
+      runDirectory,
+      logPath: path.join(runDirectory, 'attempt-1-review.log')
     });
     expect(result.status).toBe('fail');
-    expect(result.findings ?? '').toContain('not implemented');
+    expect(result.findings ?? '').not.toContain('not implemented');
+    expect(result.artifactPath).toBe(path.join(runDirectory, 'review-review.json'));
+    const artifact = JSON.parse(await fs.readFile(result.artifactPath as string, 'utf8'));
+    expect(artifact.verdict).toBe('fail');
   });
 
   it('runFixer default reports a clear not-implemented failure', async () => {
