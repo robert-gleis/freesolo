@@ -8,7 +8,7 @@ import {
 } from '../../src/integration/merge-executor.js';
 import type { MergeReadinessRecord } from '../../src/integration/merge-types.js';
 import type { VerificationRun } from '../../src/verification/types.js';
-import type { RepoRef } from '../../src/workflow/state-store.js';
+import type { RepoRef } from '../../src/core/types.js';
 
 const repo: RepoRef = { owner: 'acme', repo: 'widgets' };
 

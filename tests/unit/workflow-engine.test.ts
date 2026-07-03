@@ -3,10 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AgentAdapter, AgentResponse, AgentStatus } from '../../src/agents/index.js';
 import type { AppendEventInput } from '../../src/event-log/types.js';
 import { InvalidTransitionError } from '../../src/workflow/state-machine.js';
-import {
-  InvalidStateLabelError,
-  MultipleStateLabelsError
-} from '../../src/workflow/state-store.js';
+import { MalformedStateError } from '../../src/workflow/local-state-store.js';
 import type { EngineAction, PolicyInput } from '../../src/workflow/policy.js';
 import {
   createWorkflowEngine,
@@ -78,31 +75,18 @@ describe('createWorkflowEngine tick refusals', () => {
     expect(harness.policy).not.toHaveBeenCalled();
   });
 
-  it('refuses with malformed-state when readState throws MultipleStateLabelsError', async () => {
+  it('refuses with malformed-state when readState throws MalformedStateError', async () => {
     const harness = buildHarness({
-      readState: vi
-        .fn()
-        .mockRejectedValue(new MultipleStateLabelsError(24, ['triaged', 'planned']))
+      readState: vi.fn().mockRejectedValue(new MalformedStateError(24, 'bogus'))
     });
 
     const result = await harness.engine.tick({ repo, issueNumber: 24 });
 
     expect(result.refused?.code).toBe('malformed-state');
-    expect(result.refused?.reason).toContain('multiple workflow state labels');
+    expect(result.refused?.reason).toContain('unrecognised state');
     expect(result.fromState).toBeNull();
     expect(harness.events).toHaveLength(1);
     expect(harness.events[0].kind).toBe('decision');
-    expect(harness.policy).not.toHaveBeenCalled();
-  });
-
-  it('refuses with malformed-state when readState throws InvalidStateLabelError', async () => {
-    const harness = buildHarness({
-      readState: vi.fn().mockRejectedValue(new InvalidStateLabelError(24, ['state:bogus']))
-    });
-
-    const result = await harness.engine.tick({ repo, issueNumber: 24 });
-
-    expect(result.refused?.code).toBe('malformed-state');
     expect(harness.policy).not.toHaveBeenCalled();
   });
 

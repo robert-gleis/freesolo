@@ -13,7 +13,7 @@ import {
   writeGateVerdictRecord
 } from '../../src/verification/verdict-store.js';
 import type { VerificationRun } from '../../src/verification/types.js';
-import type { RepoRef } from '../../src/workflow/state-store.js';
+import type { RepoRef } from '../../src/core/types.js';
 
 const tempDirs: string[] = [];
 

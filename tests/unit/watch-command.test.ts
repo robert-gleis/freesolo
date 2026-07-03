@@ -28,7 +28,6 @@ function buildHarness(overrides: Partial<WatchCommandDeps> = {}): Harness {
   const deps: WatchCommandDeps = {
     resolveRepoRef: vi.fn().mockResolvedValue({ owner: 'acme', repo: 'widgets' }),
     loadConfig: vi.fn().mockResolvedValue({
-      state_backend: 'local',
       autonomous_mode: false,
       watcher: {
         interval_seconds: 60,

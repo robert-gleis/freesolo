@@ -7,11 +7,11 @@ import {
   type WorkflowEngineDeps
 } from '../workflow/engine.js';
 import { defaultPolicy } from '../workflow/policy.js';
-import { type RepoRef } from '../workflow/state-store.js';
+import type { RepoRef } from '../core/types.js';
 import {
   readState as defaultReadState,
   writeState as defaultWriteState
-} from '../workflow/configurable-state.js';
+} from '../workflow/local-state-store.js';
 
 export type WriteChannel = 'stdout' | 'stderr';
 

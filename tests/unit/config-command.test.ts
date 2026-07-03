@@ -23,7 +23,6 @@ function buildHarness(overrides: Partial<ConfigCommandDeps> = {}): Harness {
     loadConfigWithOrigins: vi.fn().mockResolvedValue({
       config: structuredClone(DEFAULT_CONFIG),
       origins: {
-        state_backend: 'default',
         autonomous_mode: 'default',
         'watcher.interval_seconds': 'default',
         'watcher.source': 'default',
@@ -55,8 +54,8 @@ afterEach(() => {
 describe('config get', () => {
   it('prints the resolved value for a valid key', async () => {
     const { program, io } = buildHarness();
-    await program.parseAsync(['config', 'get', 'state_backend'], { from: 'user' });
-    expect(io.stdout.join('')).toContain('local');
+    await program.parseAsync(['config', 'get', 'autonomous_mode'], { from: 'user' });
+    expect(io.stdout.join('')).toContain('false');
   });
 
   it('sets exit code 1 and prints error for unknown key', async () => {
@@ -70,27 +69,27 @@ describe('config get', () => {
 describe('config set', () => {
   it('calls setConfigKey with the global path by default', async () => {
     const { program, deps } = buildHarness();
-    await program.parseAsync(['config', 'set', 'state_backend', 'local'], { from: 'user' });
+    await program.parseAsync(['config', 'set', 'autonomous_mode', 'true'], { from: 'user' });
     expect(deps.setConfigKey).toHaveBeenCalledWith(
       '/home/user/.issueflow/config.yaml',
-      'state_backend',
-      'local'
+      'autonomous_mode',
+      'true'
     );
   });
 
   it('calls setConfigKey with the repo path when --repo is given', async () => {
     const { program, deps } = buildHarness();
-    await program.parseAsync(['config', 'set', 'state_backend', 'local', '--repo'], { from: 'user' });
+    await program.parseAsync(['config', 'set', 'autonomous_mode', 'true', '--repo'], { from: 'user' });
     expect(deps.setConfigKey).toHaveBeenCalledWith(
       '/repo/root/.issueflow/config.yaml',
-      'state_backend',
-      'local'
+      'autonomous_mode',
+      'true'
     );
   });
 
   it('sets exit code 1 for an invalid value', async () => {
     const { program, io } = buildHarness();
-    await program.parseAsync(['config', 'set', 'state_backend', 'badvalue'], { from: 'user' });
+    await program.parseAsync(['config', 'set', 'autonomous_mode', 'badvalue'], { from: 'user' });
     expect(io.exitCode).toBe(1);
     expect(io.stderr.join('')).toMatch(/invalid value/i);
   });
@@ -99,7 +98,7 @@ describe('config set', () => {
     const { program, io } = buildHarness({
       tryResolveRepoRoot: vi.fn().mockResolvedValue(null)
     });
-    await program.parseAsync(['config', 'set', 'state_backend', 'local', '--repo'], { from: 'user' });
+    await program.parseAsync(['config', 'set', 'autonomous_mode', 'true', '--repo'], { from: 'user' });
     expect(io.exitCode).toBe(1);
     expect(io.stderr.join('')).toMatch(/not inside a git repo/i);
   });
@@ -142,8 +141,7 @@ describe('config show', () => {
       loadConfigWithOrigins: vi.fn().mockResolvedValue({
         config: structuredClone(DEFAULT_CONFIG),
         origins: {
-          state_backend: 'global',
-          autonomous_mode: 'default',
+          autonomous_mode: 'global',
           'watcher.interval_seconds': 'repo',
           'watcher.source': 'default',
           'watcher.intake_mode': 'default',
@@ -154,7 +152,7 @@ describe('config show', () => {
     });
     await program.parseAsync(['config', 'show'], { from: 'user' });
     const out = io.stdout.join('');
-    expect(out).toContain('state_backend');
+    expect(out).toContain('autonomous_mode');
     expect(out).toContain('[global]');
     expect(out).toContain('watcher.interval_seconds');
     expect(out).toContain('[repo]');

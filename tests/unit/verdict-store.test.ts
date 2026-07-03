@@ -5,7 +5,7 @@ import path from 'node:path';
 import { execa } from 'execa';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { GhRunner } from '../../src/workflow/state-store.js';
+import type { GhRunner } from '../../src/core/gh.js';
 import {
   MultipleVerdictLabelsError,
   readGateVerdictRecord,

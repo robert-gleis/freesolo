@@ -3,8 +3,8 @@ import path from 'node:path';
 
 import { execa } from 'execa';
 
-import type { RepoRef } from '../workflow/state-store.js';
-import type { GhRunner } from '../workflow/state-store.js';
+import type { RepoRef } from '../core/types.js';
+import type { GhRunner } from '../core/gh.js';
 
 export const VERDICT_LABEL_PREFIX = 'verification:';
 

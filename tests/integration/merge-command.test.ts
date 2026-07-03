@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mergeEvaluateAction, mergeExecuteAction } from '../../src/commands/merge.js';
 import type { MergeCommandDeps } from '../../src/commands/merge.js';
 import type { VerificationRun } from '../../src/verification/types.js';
-import type { RepoRef } from '../../src/workflow/state-store.js';
+import type { RepoRef } from '../../src/core/types.js';
 
 const repo: RepoRef = { owner: 'acme', repo: 'widgets' };
 

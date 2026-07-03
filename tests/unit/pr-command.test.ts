@@ -17,7 +17,7 @@ import { getIssueflowPath } from '../../src/core/session-state.js';
 import type { PullRequestOutcome, PullRequestRecord } from '../../src/integration/pr-types.js';
 import type { VerificationRun } from '../../src/verification/types.js';
 import { MultipleVerdictLabelsError } from '../../src/verification/verdict-store.js';
-import type { RepoRef } from '../../src/workflow/state-store.js';
+import type { RepoRef } from '../../src/core/types.js';
 
 const repo: RepoRef = { owner: 'acme', repo: 'widgets' };
 const RUN_ID = '2026-06-01T08-00-00-000Z';

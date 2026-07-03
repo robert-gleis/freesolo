@@ -17,10 +17,7 @@ import {
 } from '../../src/planner/store.js';
 import type { TeamDefinition } from '../../src/planner/schemas/team-definition.js';
 import { maybeAutoApproveTeamPlan as realMaybeAutoApproveTeamPlan } from '../../src/policy/autonomous-approval.js';
-import {
-  InvalidStateLabelError,
-  MultipleStateLabelsError
-} from '../../src/workflow/state-store.js';
+import { MalformedStateError } from '../../src/workflow/local-state-store.js';
 
 interface CapturedIo {
   stdout: string[];
@@ -181,15 +178,15 @@ describe('issueflow plan generate', () => {
     expect(io.exitCode).toBe(1);
   });
 
-  it('exits 4 on malformed state labels', async () => {
+  it('exits 4 on malformed state', async () => {
     const worktreePath = await makeWorktree();
     const { program, io } = buildHarness(worktreePath, {
-      readState: vi.fn().mockRejectedValue(new MultipleStateLabelsError(34, ['triaged', 'planned']))
+      readState: vi.fn().mockRejectedValue(new MalformedStateError(34, 'bogus'))
     });
 
     await program.parseAsync(['node', 'issueflow', 'plan', 'generate', '--issue', '34']);
 
-    expect(io.stderr.join('')).toContain('multiple workflow state labels');
+    expect(io.stderr.join('')).toContain('unrecognised state');
     expect(io.exitCode).toBe(4);
   });
 
@@ -387,15 +384,15 @@ describe('issueflow plan approve', () => {
     expect(io.exitCode).toBe(1);
   });
 
-  it('exits 4 on malformed state labels', async () => {
+  it('exits 4 on malformed state', async () => {
     const worktreePath = await makeWorktree();
     const { program, io } = buildHarness(worktreePath, {
-      readState: vi.fn().mockRejectedValue(new InvalidStateLabelError(34, ['state:bogus']))
+      readState: vi.fn().mockRejectedValue(new MalformedStateError(34, 'bogus'))
     });
 
     await program.parseAsync(['node', 'issueflow', 'plan', 'approve', '--issue', '34']);
 
-    expect(io.stderr.join('')).toContain('unrecognised workflow state label');
+    expect(io.stderr.join('')).toContain('unrecognised state');
     expect(io.exitCode).toBe(4);
   });
 });

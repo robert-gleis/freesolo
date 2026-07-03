@@ -21,7 +21,8 @@ import {
   type VerdictStatus
 } from '../verification/verdict-store.js';
 import type { VerificationRun } from '../verification/types.js';
-import { readState as defaultReadState, type RepoRef } from '../workflow/state-store.js';
+import { readState as defaultReadState } from '../workflow/local-state-store.js';
+import type { RepoRef } from '../core/types.js';
 import type { WorkflowState } from '../workflow/state-machine.js';
 
 export type WriteChannel = 'stdout' | 'stderr';

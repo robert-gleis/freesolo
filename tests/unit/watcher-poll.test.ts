@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { buildIssueSearchQuery, isRateLimitError, pollIssues } from '../../src/watcher/poll.js';
-import type { GhRunner } from '../../src/workflow/state-store.js';
+import type { GhRunner } from '../../src/core/gh.js';
 
 const repo = { owner: 'acme', repo: 'widgets' };
 

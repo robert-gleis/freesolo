@@ -24,7 +24,6 @@ describe('initConfigFile', () => {
     const filePath = path.join(dir, 'config.yaml');
     await initConfigFile(filePath);
     const content = await fs.readFile(filePath, 'utf8');
-    expect(content).toContain('state_backend: local');
     expect(content).toContain('autonomous_mode: false');
     expect(content).toContain('interval_seconds: 60');
     expect(content).toContain('source: assigned-to-me');
@@ -43,7 +42,7 @@ describe('initConfigFile', () => {
   it('throws when the file already exists', async () => {
     const dir = await makeTempDir();
     const filePath = path.join(dir, 'config.yaml');
-    await fs.writeFile(filePath, 'state_backend: local\n');
+    await fs.writeFile(filePath, 'autonomous_mode: false\n');
     await expect(initConfigFile(filePath)).rejects.toThrow(/already exists/);
   });
 });
@@ -52,9 +51,9 @@ describe('setConfigKey — flat keys', () => {
   it('creates the file with the key when it does not exist', async () => {
     const dir = await makeTempDir();
     const filePath = path.join(dir, 'config.yaml');
-    await setConfigKey(filePath, 'state_backend', 'local');
+    await setConfigKey(filePath, 'autonomous_mode', 'true');
     const content = await fs.readFile(filePath, 'utf8');
-    expect(content).toContain('state_backend: local');
+    expect(content).toContain('autonomous_mode: true');
   });
 
   it('creates parent directories when the file does not exist', async () => {
@@ -67,23 +66,22 @@ describe('setConfigKey — flat keys', () => {
   it('replaces an existing flat key in-place', async () => {
     const dir = await makeTempDir();
     const filePath = path.join(dir, 'config.yaml');
-    await fs.writeFile(filePath, '# comment\nstate_backend: github-labels\nautonomous_mode: false\n');
-    await setConfigKey(filePath, 'state_backend', 'local');
+    await fs.writeFile(filePath, '# comment\nautonomous_mode: false\n');
+    await setConfigKey(filePath, 'autonomous_mode', 'true');
     const content = await fs.readFile(filePath, 'utf8');
-    expect(content).toContain('state_backend: local');
+    expect(content).toContain('autonomous_mode: true');
     expect(content).toContain('# comment');
-    expect(content).toContain('autonomous_mode: false');
-    expect(content).not.toContain('state_backend: github-labels');
+    expect(content).not.toContain('autonomous_mode: false');
   });
 
   it('appends a flat key that is absent from the file', async () => {
     const dir = await makeTempDir();
     const filePath = path.join(dir, 'config.yaml');
-    await fs.writeFile(filePath, 'autonomous_mode: false\n');
-    await setConfigKey(filePath, 'state_backend', 'local');
+    await fs.writeFile(filePath, '# comment\n');
+    await setConfigKey(filePath, 'autonomous_mode', 'false');
     const content = await fs.readFile(filePath, 'utf8');
+    expect(content).toContain('# comment');
     expect(content).toContain('autonomous_mode: false');
-    expect(content).toContain('state_backend: local');
   });
 });
 
@@ -112,7 +110,7 @@ describe('setConfigKey — nested keys', () => {
   it('appends the full watcher block when watcher block is absent', async () => {
     const dir = await makeTempDir();
     const filePath = path.join(dir, 'config.yaml');
-    await fs.writeFile(filePath, 'state_backend: local\n');
+    await fs.writeFile(filePath, 'autonomous_mode: false\n');
     await setConfigKey(filePath, 'watcher.interval_seconds', '30');
     const content = await fs.readFile(filePath, 'utf8');
     expect(content).toContain('watcher:');

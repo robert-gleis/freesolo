@@ -35,9 +35,8 @@ describe('loadConfig', () => {
     expect(config).toEqual(DEFAULT_CONFIG);
   });
 
-  it('defaults watcher intake to assigned-to-me confirm with local state', async () => {
+  it('defaults watcher intake to assigned-to-me confirm', async () => {
     const config = await loadConfig('/nonexistent/config.yaml');
-    expect(config.state_backend).toBe('local');
     expect(config.watcher).toEqual({
       interval_seconds: 60,
       source: 'assigned-to-me',
@@ -124,30 +123,6 @@ watcher:
     await expect(loadConfig(file)).rejects.toThrow(/autonomous_mode/);
   });
 
-  it('defaults state_backend to local', async () => {
-    const config = await loadConfig('/nonexistent/config.yaml');
-    expect(config.state_backend).toBe('local');
-  });
-
-  it('parses state_backend local', async () => {
-    const file = await writeTempConfig(`state_backend: local
-`);
-    const config = await loadConfig(file);
-    expect(config.state_backend).toBe('local');
-  });
-
-  it('parses state_backend github-labels explicitly', async () => {
-    const file = await writeTempConfig(`state_backend: github-labels
-`);
-    const config = await loadConfig(file);
-    expect(config.state_backend).toBe('github-labels');
-  });
-
-  it('throws on invalid state_backend value', async () => {
-    const file = await writeTempConfig(`state_backend: s3
-`);
-    await expect(loadConfig(file)).rejects.toThrow(/state_backend/);
-  });
 });
 
 describe('repoConfigPath', () => {
@@ -160,7 +135,6 @@ describe('loadConfig with repoRoot', () => {
   it('returns defaults when neither global nor repo config exists', async () => {
     const dir = await makeTempDir();
     const config = await loadConfig(path.join(dir, 'global.yaml'), dir);
-    expect(config.state_backend).toBe('local');
     expect(config.autonomous_mode).toBe(false);
     expect(config.watcher.interval_seconds).toBe(60);
     expect(config.watcher.trigger_label).toBe('triaged');
@@ -169,13 +143,13 @@ describe('loadConfig with repoRoot', () => {
   it('repo config overrides global config per-field', async () => {
     const dir = await makeTempDir();
     const globalPath = path.join(dir, 'global.yaml');
-    await fs.writeFile(globalPath, 'state_backend: local\nautonomous_mode: true\n');
+    await fs.writeFile(globalPath, 'autonomous_mode: true\nwatcher:\n  interval_seconds: 90\n');
     const repoDir = await makeTempDir();
     await fs.mkdir(path.join(repoDir, '.issueflow'), { recursive: true });
-    await fs.writeFile(path.join(repoDir, '.issueflow', 'config.yaml'), 'state_backend: github-labels\n');
+    await fs.writeFile(path.join(repoDir, '.issueflow', 'config.yaml'), 'watcher:\n  interval_seconds: 120\n');
     const config = await loadConfig(globalPath, repoDir);
-    expect(config.state_backend).toBe('github-labels'); // repo wins
-    expect(config.autonomous_mode).toBe(true);           // falls back to global
+    expect(config.watcher.interval_seconds).toBe(120); // repo wins
+    expect(config.autonomous_mode).toBe(true);         // falls back to global
   });
 
   it('global config applies when no repo config exists', async () => {
@@ -192,7 +166,6 @@ describe('loadConfigWithOrigins', () => {
   it('marks all keys as default when no config files exist', async () => {
     const dir = await makeTempDir();
     const { origins } = await loadConfigWithOrigins(path.join(dir, 'global.yaml'), dir);
-    expect(origins.state_backend).toBe('default');
     expect(origins.autonomous_mode).toBe('default');
     expect(origins['watcher.interval_seconds']).toBe('default');
     expect(origins['watcher.source']).toBe('default');
@@ -204,10 +177,10 @@ describe('loadConfigWithOrigins', () => {
   it('marks a key as global when set only in global config', async () => {
     const dir = await makeTempDir();
     const globalPath = path.join(dir, 'global.yaml');
-    await fs.writeFile(globalPath, 'state_backend: local\n');
+    await fs.writeFile(globalPath, 'autonomous_mode: true\n');
     const { origins } = await loadConfigWithOrigins(globalPath, dir);
-    expect(origins.state_backend).toBe('global');
-    expect(origins.autonomous_mode).toBe('default');
+    expect(origins.autonomous_mode).toBe('global');
+    expect(origins['watcher.interval_seconds']).toBe('default');
   });
 
   it('marks a key as repo when set in repo config', async () => {
@@ -217,6 +190,6 @@ describe('loadConfigWithOrigins', () => {
     await fs.writeFile(path.join(repoDir, '.issueflow', 'config.yaml'), 'autonomous_mode: true\n');
     const { origins } = await loadConfigWithOrigins(path.join(dir, 'global.yaml'), repoDir);
     expect(origins.autonomous_mode).toBe('repo');
-    expect(origins.state_backend).toBe('default');
+    expect(origins['watcher.interval_seconds']).toBe('default');
   });
 });

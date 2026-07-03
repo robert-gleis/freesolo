@@ -13,7 +13,7 @@ import {
   writeMergeLabelVerdict,
   writeMergeReadinessRecord
 } from '../../src/integration/merge-store.js';
-import type { GhRunner } from '../../src/workflow/state-store.js';
+import type { GhRunner } from '../../src/core/gh.js';
 
 const repo = { owner: 'acme', repo: 'widgets' };
 

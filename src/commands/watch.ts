@@ -21,15 +21,13 @@ import {
   type WorkflowEngineDeps
 } from '../workflow/engine.js';
 import { defaultPolicy } from '../workflow/policy.js';
-import {
-  defaultRunner,
-  type RepoRef
-} from '../workflow/state-store.js';
+import { defaultRunner } from '../core/gh.js';
+import type { RepoRef } from '../core/types.js';
 import {
   initializeState as defaultInitializeState,
   readState as defaultReadState,
   writeState as defaultWriteState
-} from '../workflow/configurable-state.js';
+} from '../workflow/local-state-store.js';
 import type { WorkflowState } from '../workflow/state-machine.js';
 import type { WatchIssue } from '../watcher/poll.js';
 

@@ -1,10 +1,5 @@
 # All fields are optional — defaults are shown below.
-
-# Where workflow state is persisted.
-#   github-labels (default) — writes a state:* label to the GitHub issue on
-#                             every transition. Requires gh CLI and write access.
-#   local — stores state in ~/.issueflow/state/<owner>/<repo>/<issue-number>
-state_backend: github-labels
+# Workflow state is persisted locally in ~/.issueflow/state/<owner>/<repo>/<issue-number>
 
 # Autonomous watcher defaults (used by `issueflow watch`).
 watcher:

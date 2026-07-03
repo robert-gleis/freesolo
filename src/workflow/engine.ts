@@ -10,11 +10,8 @@ import {
 } from '../team/index.js';
 import type { EngineAction, PolicyInput } from './policy.js';
 import { InvalidTransitionError, type WorkflowState } from './state-machine.js';
-import {
-  InvalidStateLabelError,
-  MultipleStateLabelsError,
-  type RepoRef
-} from './state-store.js';
+import type { RepoRef } from '../core/types.js';
+import { MalformedStateError } from './local-state-store.js';
 
 export type { EngineAction, PolicyInput, AgentTaskRequest } from './policy.js';
 
@@ -125,10 +122,7 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       try {
         current = await deps.readState(repo, issueNumber);
       } catch (error) {
-        if (
-          error instanceof MultipleStateLabelsError ||
-          error instanceof InvalidStateLabelError
-        ) {
+        if (error instanceof MalformedStateError) {
           return refuse(issueNumber, null, 'malformed-state', error.message);
         }
         throw error;
