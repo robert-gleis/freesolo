@@ -270,6 +270,8 @@ describe('runGateRoute', () => {
     const ctx = captured as unknown as FailureContext;
     expect(ctx.attempt).toBe(1);
     expect(ctx.failedChecks.map((c) => c.name)).toEqual(['test']);
+    // spec line 134: the Failure Context must carry the failed check's command.
+    expect(ctx.failedChecks[0].command).toBe('test-cmd');
     expect(ctx.failedChecks[0].exitCode).toBe(2);
     expect(typeof ctx.failedChecks[0].logPath).toBe('string');
   });
