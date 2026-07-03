@@ -5,6 +5,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { ScriptedAgentAdapter } from '../../src/agents/scripted.js';
+import type { AgentAdapter } from '../../src/agents/types.js';
 import {
   runGateRoute,
   type GateRouteDeps,
@@ -15,6 +16,7 @@ import {
   runAgentReviewCheck,
   type AgentReviewDeps
 } from '../../src/verification/agent-review-check.js';
+import { runFixerCheck, type FixerCheckDeps } from '../../src/verification/fixer-check.js';
 import { runReviewAgent } from '../../src/agents/review-runner.js';
 import type { ExecCheckResult } from '../../src/verification/runner.js';
 import type { GateRouteConfig, RouteCheck } from '../../src/verification/types.js';
@@ -427,6 +429,139 @@ describe('runGateRoute with the REAL agent-review check (scripted adapter)', () 
       await fs.readFile(path.join(runDirectory, 'review-review.json'), 'utf8')
     );
     expect(artifact.verdict).toBe('fail');
+  });
+});
+
+describe('runGateRoute with the REAL fixer (scripted adapter)', () => {
+  /**
+   * Wires the REAL default runFixer (runFixerCheck) into the route with a
+   * ScriptedAgentAdapter and fake git/gh loaders, so the whole fixer path runs:
+   * FailureContext assembly -> gate-fixer prompt -> agent send -> fixer log.
+   * `onFixerSend` lets the test observe the fix "landing" (the agent completing)
+   * and flip the shell check to passing for the rerun.
+   */
+  function realFixerDep(
+    adapter: AgentAdapter,
+    depOverrides: Partial<FixerCheckDeps> = {}
+  ): GateRouteDeps['runFixer'] {
+    const fixerDeps: FixerCheckDeps = {
+      getAgentAdapter: () => adapter,
+      getBranchDiff: async () => 'diff --git a/x b/x',
+      getIssueBody: async () => 'issue body',
+      ...depOverrides
+    };
+    return (context) => runFixerCheck(context, fixerDeps);
+  }
+
+  it('reruns from the FIRST check on attempt 2 after the real scripted fixer completes, and records the fixer log + invocation', async () => {
+    const runDirectory = await makeRunDir();
+    const order: string[] = [];
+    let fixed = false;
+    // The scripted fixer "applies the fix" on completion: flip the failing check.
+    const adapter = new ScriptedAgentAdapter({ steps: [{ match: /.*/, output: 'applied the minimal fix' }] });
+    const original = adapter.send.bind(adapter);
+    adapter.send = async (input: string) => {
+      const response = await original(input);
+      fixed = true;
+      return response;
+    };
+
+    const run = await runGateRoute(
+      makeInput(makeConfig({ maxAttempts: 2, bail: true }), runDirectory),
+      makeDeps({
+        execCheck: async (spec) => {
+          order.push(spec.command);
+          // test-cmd fails until the fixer has run; build always passes.
+          if (spec.command === 'test-cmd' && !fixed) {
+            return { exitCode: 1, signal: null };
+          }
+          return { exitCode: 0, signal: null };
+        },
+        runFixer: realFixerDep(adapter)
+      })
+    );
+
+    expect(run.status).toBe('pass');
+    expect(run.attemptsUsed).toBe(2);
+    // Attempt 1: build, test (fail). Attempt 2 reruns from the FIRST check: build, test.
+    expect(order).toEqual(['build-cmd', 'test-cmd', 'build-cmd', 'test-cmd']);
+    expect(run.attempts[1].checks[0].name).toBe('build');
+
+    // The fixer invocation is recorded and the fixer log was written with the agent output.
+    expect(run.fixerInvocations).toHaveLength(1);
+    expect(run.fixerInvocations[0].afterAttempt).toBe(1);
+    expect(run.fixerInvocations[0].status).toBe('pass');
+    const fixerLogPath = path.join(runDirectory, 'fixer-attempt-1.log');
+    expect(run.fixerInvocations[0].logPath).toBe(fixerLogPath);
+    const fixerLog = await fs.readFile(fixerLogPath, 'utf8');
+    expect(fixerLog).toContain('applied the minimal fix');
+  });
+
+  it('hands the real fixer a Failure Context whose gate-fixer prompt carries the failed check name, exit code, and log summary', async () => {
+    const runDirectory = await makeRunDir();
+    let capturedPrompt = '';
+    let fixed = false;
+    const adapter = new ScriptedAgentAdapter({ steps: [{ match: /.*/, output: 'ok' }] });
+    const original = adapter.send.bind(adapter);
+    adapter.send = async (input: string) => {
+      capturedPrompt = input;
+      fixed = true;
+      return original(input);
+    };
+
+    const run = await runGateRoute(
+      makeInput(makeConfig({ maxAttempts: 2, bail: true }), runDirectory),
+      makeDeps({
+        execCheck: async (spec, onChunk) => {
+          if (spec.command === 'test-cmd' && !fixed) {
+            onChunk('stderr', 'AssertionError: expected 1 to equal 2\n');
+            return { exitCode: 3, signal: null };
+          }
+          return { exitCode: 0, signal: null };
+        },
+        runFixer: realFixerDep(adapter)
+      })
+    );
+
+    expect(run.status).toBe('pass');
+    // The failed check identity, its exit code, and a tail of its log all reach the fixer.
+    expect(capturedPrompt).toContain('test');
+    expect(capturedPrompt).toContain('exit code: 3');
+    expect(capturedPrompt).toContain('AssertionError: expected 1 to equal 2');
+  });
+
+  it('fails the route immediately when the real fixer agent errors (no attempt 2)', async () => {
+    const runDirectory = await makeRunDir();
+    const order: string[] = [];
+    const crashing: AgentAdapter = {
+      start: async () => {},
+      stop: async () => {},
+      send: async () => {
+        throw new Error('agent crashed');
+      },
+      status: async () => ({ state: 'idle' })
+    };
+
+    const run = await runGateRoute(
+      makeInput(makeConfig({ maxAttempts: 3, bail: true }), runDirectory),
+      makeDeps({
+        execCheck: async (spec) => {
+          order.push(spec.command);
+          return spec.command === 'test-cmd'
+            ? { exitCode: 1, signal: null }
+            : { exitCode: 0, signal: null };
+        },
+        runFixer: realFixerDep(crashing)
+      })
+    );
+
+    expect(run.status).toBe('fail');
+    expect(run.attemptsUsed).toBe(1);
+    // Only attempt 1 ran — a fixer error fails the route before any rerun.
+    expect(order).toEqual(['build-cmd', 'test-cmd']);
+    expect(run.fixerInvocations).toHaveLength(1);
+    expect(run.fixerInvocations[0].status).toBe('fail');
+    expect(run.fixerInvocations[0].detail).toContain('agent crashed');
   });
 });
 
