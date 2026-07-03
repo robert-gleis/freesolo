@@ -5,11 +5,9 @@ import path from 'node:path';
 import {
   DEFAULT_CONFIG,
   MIN_INTERVAL_SECONDS,
-  isStateBackend,
   isWatcherIntakeMode,
   isWatcherSource,
   type IssueflowConfig,
-  type StateBackend,
   type WatcherConfig
 } from './types.js';
 import { isNonTerminalWorkflowState } from '../workflow/state-machine.js';
@@ -19,7 +17,6 @@ export type ConfigOrigin = 'default' | 'global' | 'repo';
 export interface ConfigWithOrigins {
   config: IssueflowConfig;
   origins: {
-    state_backend: ConfigOrigin;
     autonomous_mode: ConfigOrigin;
     'watcher.interval_seconds': ConfigOrigin;
     'watcher.source': ConfigOrigin;
@@ -30,7 +27,6 @@ export interface ConfigWithOrigins {
 }
 
 export interface RawConfig {
-  state_backend?: StateBackend;
   autonomous_mode?: boolean;
   watcher?: Partial<RawWatcherConfig>;
 }
@@ -104,21 +100,6 @@ export function parseAutonomousModeFromContent(
   return undefined;
 }
 
-export function parseStateBackendFromContent(
-  content: string,
-  configPath: string
-): StateBackend | undefined {
-  for (const raw of content.split('\n')) {
-    const line = raw.trimEnd();
-    const match = line.match(/^state_backend:\s*(.+)$/);
-    if (!match) continue;
-    const value = match[1].replace(/^["']|["']$/g, '').trim();
-    if (isStateBackend(value)) return value;
-    throw new Error(`${configPath}: state_backend must be "github-labels" or "local"`);
-  }
-  return undefined;
-}
-
 function validateWatcher(configPath: string, watcher: RawWatcherConfig): WatcherConfig {
   if (!Number.isFinite(watcher.interval_seconds) || watcher.interval_seconds < MIN_INTERVAL_SECONDS) {
     throw new Error(`${configPath}: watcher.interval_seconds must be >= ${MIN_INTERVAL_SECONDS}`);
@@ -175,7 +156,6 @@ function parseRawConfig(content: string, configPath: string): RawConfig {
   const lines = content.split('\n');
   const watcherPartial = parseWatcherBlock(lines);
   return {
-    state_backend: parseStateBackendFromContent(content, configPath),
     autonomous_mode: parseAutonomousModeFromContent(content, configPath),
     watcher: Object.keys(watcherPartial).length > 0 ? watcherPartial : undefined
   };
@@ -214,8 +194,7 @@ export async function loadConfig(
 
   return {
     watcher,
-    autonomous_mode: repoRaw.autonomous_mode ?? globalRaw.autonomous_mode ?? DEFAULT_CONFIG.autonomous_mode,
-    state_backend: repoRaw.state_backend ?? globalRaw.state_backend ?? DEFAULT_CONFIG.state_backend
+    autonomous_mode: repoRaw.autonomous_mode ?? globalRaw.autonomous_mode ?? DEFAULT_CONFIG.autonomous_mode
   };
 }
 
@@ -229,8 +208,7 @@ export async function loadConfigWithOrigins(
 
   const config: IssueflowConfig = {
     watcher,
-    autonomous_mode: repoRaw.autonomous_mode ?? globalRaw.autonomous_mode ?? DEFAULT_CONFIG.autonomous_mode,
-    state_backend: repoRaw.state_backend ?? globalRaw.state_backend ?? DEFAULT_CONFIG.state_backend
+    autonomous_mode: repoRaw.autonomous_mode ?? globalRaw.autonomous_mode ?? DEFAULT_CONFIG.autonomous_mode
   };
 
   function origin<T>(
@@ -245,7 +223,6 @@ export async function loadConfigWithOrigins(
   return {
     config,
     origins: {
-      state_backend: origin(repoRaw.state_backend, globalRaw.state_backend),
       autonomous_mode: origin(repoRaw.autonomous_mode, globalRaw.autonomous_mode),
       'watcher.interval_seconds': origin(repoRaw.watcher?.interval_seconds, globalRaw.watcher?.interval_seconds),
       'watcher.source': origin(repoRaw.watcher?.source, globalRaw.watcher?.source),

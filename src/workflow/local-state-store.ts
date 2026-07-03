@@ -2,8 +2,20 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-import type { RepoRef } from './state-store.js';
+import type { RepoRef } from '../core/types.js';
 import { assertTransition, WORKFLOW_STATES, type WorkflowState } from './state-machine.js';
+
+export class MalformedStateError extends Error {
+  readonly issueNumber: number;
+
+  constructor(issueNumber: number, state: string) {
+    super(
+      `Local state file for issue #${issueNumber} contains unrecognised state "${state}". Repair manually before retrying.`
+    );
+    this.name = 'MalformedStateError';
+    this.issueNumber = issueNumber;
+  }
+}
 
 function stateFilePath(repo: RepoRef, issueNumber: number): string {
   return path.join(os.homedir(), '.issueflow', 'state', repo.owner, repo.repo, `${issueNumber}`);
@@ -22,9 +34,7 @@ export async function readState(repo: RepoRef, issueNumber: number): Promise<Wor
   }
 
   if (!(WORKFLOW_STATES as readonly string[]).includes(content)) {
-    throw new Error(
-      `Local state file for issue #${issueNumber} contains unrecognised state "${content}". Repair manually before retrying.`
-    );
+    throw new MalformedStateError(issueNumber, content);
   }
 
   return content as WorkflowState;

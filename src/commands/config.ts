@@ -6,7 +6,7 @@ import {
   repoConfigPath as defaultRepoConfigPath,
   type ConfigWithOrigins
 } from '../config/load.js';
-import { isStateBackend, isWatcherIntakeMode, isWatcherSource } from '../config/types.js';
+import { isWatcherIntakeMode, isWatcherSource } from '../config/types.js';
 import { initConfigFile as defaultInitConfigFile, setConfigKey as defaultSetConfigKey } from '../config/write.js';
 import { resolveRepoRoot } from '../core/git.js';
 import { isNonTerminalWorkflowState } from '../workflow/state-machine.js';
@@ -44,7 +44,6 @@ const defaultDeps: ConfigCommandDeps = {
 };
 
 const VALID_KEYS = [
-  'state_backend',
   'autonomous_mode',
   'watcher.interval_seconds',
   'watcher.source',
@@ -60,11 +59,7 @@ function isValidKey(key: string): key is ConfigKey {
 }
 
 function validateValue(key: ConfigKey, value: string): string | null {
-  if (key === 'state_backend') {
-    if (!isStateBackend(value)) {
-      return `invalid value "${value}" for state_backend — must be "github-labels" or "local"`;
-    }
-  } else if (key === 'autonomous_mode') {
+  if (key === 'autonomous_mode') {
     if (value !== 'true' && value !== 'false') {
       return `invalid value "${value}" for autonomous_mode — must be "true" or "false"`;
     }
@@ -94,7 +89,6 @@ function validateValue(key: ConfigKey, value: string): string | null {
 }
 
 function getConfigValue(key: ConfigKey, config: ConfigWithOrigins['config']): string {
-  if (key === 'state_backend') return config.state_backend;
   if (key === 'autonomous_mode') return String(config.autonomous_mode);
   if (key === 'watcher.interval_seconds') return String(config.watcher.interval_seconds);
   if (key === 'watcher.source') return config.watcher.source;
@@ -165,7 +159,6 @@ export function registerConfigCommands(
       const result = await deps.loadConfigWithOrigins(deps.globalConfigPath(), repoRoot);
 
       const rows: Array<[string, string, string]> = [
-        ['state_backend', result.config.state_backend, result.origins.state_backend],
         ['autonomous_mode', String(result.config.autonomous_mode), result.origins.autonomous_mode],
         ['watcher.interval_seconds', String(result.config.watcher.interval_seconds), result.origins['watcher.interval_seconds']],
         ['watcher.source', result.config.watcher.source, result.origins['watcher.source']],

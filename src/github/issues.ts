@@ -1,7 +1,7 @@
 import { execa } from 'execa';
 
 import type { ChildIssue } from '../planner/schemas/decomposition-plan.js';
-import type { RepoRef } from '../workflow/state-store.js';
+import type { RepoRef } from '../core/types.js';
 
 export type GhRunner = (
   command: string,

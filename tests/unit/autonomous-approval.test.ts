@@ -5,7 +5,7 @@ import type { TeamDefinition } from '../../src/planner/schemas/team-definition.j
 import { TeamPlanValidationError } from '../../src/planner/store.js';
 import { maybeAutoApproveTeamPlan } from '../../src/policy/autonomous-approval.js';
 import { InvalidTransitionError } from '../../src/workflow/state-machine.js';
-import type { RepoRef } from '../../src/workflow/state-store.js';
+import type { RepoRef } from '../../src/core/types.js';
 
 const repo: RepoRef = { owner: 'acme', repo: 'widgets' };
 const definition: TeamDefinition = {

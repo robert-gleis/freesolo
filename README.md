@@ -10,9 +10,7 @@ IssueFlow drives every issue through a fixed state machine:
 triaged → planned → approved → implementing → reviewing → verifying → pr-ready → merged → closed
 ```
 
-By default, state is stored locally under `~/.issueflow/state/`, so IssueFlow does not need to write workflow labels back to GitHub. From triage to merge, every step is enforced by the Workflow Engine; agents cannot skip or self-certify past gates.
-
-If you prefer GitHub labels as the workflow state store, set `state_backend: github-labels` in your global config (see [Global configuration](#global-configuration)).
+State is stored locally under `~/.issueflow/state/`, so IssueFlow never writes workflow labels back to GitHub. From triage to merge, every step is enforced by the Workflow Engine; agents cannot skip or self-certify past gates.
 
 ## Prerequisites
 
@@ -331,15 +329,9 @@ IssueFlow reads `~/.issueflow/config.yaml` on startup. All fields are optional �
 ```yaml
 # ~/.issueflow/config.yaml
 
-# Where workflow state is persisted.
-#
-#   local (default) — stores state in ~/.issueflow/state/<owner>/<repo>/<issue-number>.
-#                     No GitHub writes are made for state tracking.
-#
-#   github-labels — writes a state:* label to the GitHub issue on every
-#                   transition. Requires gh CLI access and write permission on
-#                   the repository.
-state_backend: local
+# Workflow state is persisted locally in
+# ~/.issueflow/state/<owner>/<repo>/<issue-number>.
+# No GitHub writes are made for state tracking.
 
 # Autonomous watcher defaults (used by `issueflow watch`).
 watcher:

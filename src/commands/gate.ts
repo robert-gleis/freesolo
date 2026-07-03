@@ -13,12 +13,12 @@ import {
   type VerdictStatus
 } from '../verification/verdict-store.js';
 import type { VerificationRun } from '../verification/types.js';
-import { type RepoRef } from '../workflow/state-store.js';
+import type { RepoRef } from '../core/types.js';
 import type { WorkflowState } from '../workflow/state-machine.js';
 import {
   readState as defaultReadState,
   writeState as defaultWriteState
-} from '../workflow/configurable-state.js';
+} from '../workflow/local-state-store.js';
 
 export type WriteChannel = 'stdout' | 'stderr';
 

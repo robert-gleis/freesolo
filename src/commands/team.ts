@@ -17,15 +17,12 @@ import {
   type TeamRuntimeSnapshot
 } from '../teams/index.js';
 import type { WorkflowState } from '../workflow/state-machine.js';
+import type { RepoRef } from '../core/types.js';
 import {
-  InvalidStateLabelError,
-  MultipleStateLabelsError,
-  type RepoRef
-} from '../workflow/state-store.js';
-import {
+  MalformedStateError,
   readState as defaultReadState,
   writeState as defaultWriteState
-} from '../workflow/configurable-state.js';
+} from '../workflow/local-state-store.js';
 
 export type WriteChannel = 'stdout' | 'stderr';
 
@@ -100,7 +97,7 @@ function withCommanderErrorHandling(
       return;
     }
 
-    if (error instanceof MultipleStateLabelsError || error instanceof InvalidStateLabelError) {
+    if (error instanceof MalformedStateError) {
       deps.setExitCode(4);
       return;
     }

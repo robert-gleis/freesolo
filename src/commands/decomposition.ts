@@ -25,7 +25,7 @@ import {
   writeDecompositionApplied,
   type PlannerIssue
 } from '../planner/index.js';
-import type { RepoRef } from '../workflow/state-store.js';
+import type { RepoRef } from '../core/types.js';
 
 export type WriteChannel = 'stdout' | 'stderr';
 

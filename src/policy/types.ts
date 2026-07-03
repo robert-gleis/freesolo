@@ -1,6 +1,6 @@
 import type { AppendEventInput } from '../event-log/types.js';
 import type { TeamDefinition } from '../planner/schemas/team-definition.js';
-import type { RepoRef } from '../workflow/state-store.js';
+import type { RepoRef } from '../core/types.js';
 
 export interface AutonomousApprovalInput {
   repoRoot: string;

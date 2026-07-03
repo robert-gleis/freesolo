@@ -17,7 +17,7 @@ import {
   recoverStaleProcessing,
   setCursor
 } from '../../src/state/watcher-store.js';
-import type { RepoRef } from '../../src/workflow/state-store.js';
+import type { RepoRef } from '../../src/core/types.js';
 
 const repo: RepoRef = { owner: 'acme', repo: 'widgets' };
 let db: StateDb;

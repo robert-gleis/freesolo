@@ -31,11 +31,11 @@ import {
   readGateVerdictRecord as defaultReadGateVerdictRecord,
   readVerdict as defaultReadVerdict
 } from '../verification/verdict-store.js';
-import { type RepoRef } from '../workflow/state-store.js';
+import type { RepoRef } from '../core/types.js';
 import {
   readState as defaultReadState,
   writeState as defaultWriteState
-} from '../workflow/configurable-state.js';
+} from '../workflow/local-state-store.js';
 
 export type WriteChannel = 'stdout' | 'stderr';
 

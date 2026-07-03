@@ -4,7 +4,7 @@ import { Command } from 'commander';
 
 import { registerStateCommands, type StateCommandDeps } from '../../src/commands/state.js';
 import { InvalidTransitionError } from '../../src/workflow/state-machine.js';
-import { InvalidStateLabelError, MultipleStateLabelsError } from '../../src/workflow/state-store.js';
+import { MalformedStateError } from '../../src/workflow/local-state-store.js';
 
 interface CapturedIo {
   stdout: string[];
@@ -82,25 +82,13 @@ describe('issueflow state get', () => {
 
   it('reports a malformed state and exits 4', async () => {
     const { program, io } = buildHarness({
-      readState: vi.fn().mockRejectedValue(new MultipleStateLabelsError(17, ['triaged', 'planned']))
+      readState: vi.fn().mockRejectedValue(new MalformedStateError(17, 'bogus'))
     });
 
     await program.parseAsync(['node', 'issueflow', 'state', 'get', '--issue', '17']);
 
     expect(io.stdout).toEqual([]);
-    expect(io.stderr.join('')).toContain('multiple workflow state labels');
-    expect(io.exitCode).toBe(4);
-  });
-
-  it('reports an invalid state label and exits 4', async () => {
-    const { program, io } = buildHarness({
-      readState: vi.fn().mockRejectedValue(new InvalidStateLabelError(17, ['state:bogus']))
-    });
-
-    await program.parseAsync(['node', 'issueflow', 'state', 'get', '--issue', '17']);
-
-    expect(io.stdout).toEqual([]);
-    expect(io.stderr.join('')).toContain('unrecognised workflow state label');
+    expect(io.stderr.join('')).toContain('unrecognised state');
     expect(io.exitCode).toBe(4);
   });
 });
@@ -217,9 +205,9 @@ describe('issueflow state transition', () => {
     expect(io.stderr.join('')).toContain('Invalid workflow transition: triaged → merged');
   });
 
-  it('exits 4 when readState sees multiple state labels during transition', async () => {
+  it('exits 4 when readState sees a malformed state during transition', async () => {
     const { program, io, deps } = buildHarness({
-      readState: vi.fn().mockRejectedValue(new MultipleStateLabelsError(17, ['triaged', 'planned']))
+      readState: vi.fn().mockRejectedValue(new MalformedStateError(17, 'bogus'))
     });
 
     await program.parseAsync([
@@ -236,6 +224,6 @@ describe('issueflow state transition', () => {
     expect(deps.writeState).not.toHaveBeenCalled();
     expect(io.stdout).toEqual([]);
     expect(io.exitCode).toBe(4);
-    expect(io.stderr.join('')).toContain('multiple workflow state labels');
+    expect(io.stderr.join('')).toContain('unrecognised state');
   });
 });

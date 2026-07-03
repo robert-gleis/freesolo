@@ -1,5 +1,5 @@
 import type { StateDb } from './db.js';
-import type { RepoRef } from '../workflow/state-store.js';
+import type { RepoRef } from '../core/types.js';
 
 export type QueueStatus = 'pending' | 'processing' | 'done' | 'failed';
 

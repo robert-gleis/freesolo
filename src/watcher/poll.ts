@@ -1,5 +1,6 @@
 import type { WatcherSource } from '../config/types.js';
-import type { GhRunner, RepoRef } from '../workflow/state-store.js';
+import type { GhRunner } from '../core/gh.js';
+import type { RepoRef } from '../core/types.js';
 
 export interface WatchIssue {
   number: number;

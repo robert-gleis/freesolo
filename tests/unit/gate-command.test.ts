@@ -4,7 +4,7 @@ import { gateEvaluateAction, type GateCommandDeps } from '../../src/commands/gat
 import type { VerificationRun } from '../../src/verification/types.js';
 import { MultipleVerdictLabelsError, type GateVerdictRecord, type VerdictStatus } from '../../src/verification/verdict-store.js';
 import type { WorkflowState } from '../../src/workflow/state-machine.js';
-import type { RepoRef } from '../../src/workflow/state-store.js';
+import type { RepoRef } from '../../src/core/types.js';
 
 const repo: RepoRef = { owner: 'acme', repo: 'widgets' };
 

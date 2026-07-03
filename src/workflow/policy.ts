@@ -1,6 +1,6 @@
 import type { AgentRoleAssignment } from '../team/types.js';
 import type { WorkflowState } from './state-machine.js';
-import type { RepoRef } from './state-store.js';
+import type { RepoRef } from '../core/types.js';
 
 export interface PolicyInput {
   state: WorkflowState;

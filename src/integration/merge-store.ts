@@ -5,8 +5,8 @@ import { execa } from 'execa';
 import { z } from 'zod';
 
 import { getIssueflowPath } from '../core/session-state.js';
-import type { RepoRef } from '../workflow/state-store.js';
-import type { GhRunner } from '../workflow/state-store.js';
+import type { RepoRef } from '../core/types.js';
+import type { GhRunner } from '../core/gh.js';
 import {
   MergeReadinessError,
   type MergeLabelStatus,

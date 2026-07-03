@@ -13,7 +13,7 @@ import {
 } from '../state/watcher-store.js';
 import type { WatcherIntakeMode, WatcherSource } from '../config/types.js';
 import type { WorkflowState } from '../workflow/state-machine.js';
-import type { RepoRef } from '../workflow/state-store.js';
+import type { RepoRef } from '../core/types.js';
 import type { WatchIssue, PollResult } from './poll.js';
 import type { TickResult } from '../workflow/engine.js';
 

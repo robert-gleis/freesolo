@@ -20,16 +20,9 @@ export interface WatcherConfig {
   trigger_label: string;
 }
 
-export const STATE_BACKENDS = ['local', 'github-labels'] as const;
-export type StateBackend = (typeof STATE_BACKENDS)[number];
-export function isStateBackend(value: string): value is StateBackend {
-  return (STATE_BACKENDS as readonly string[]).includes(value);
-}
-
 export interface IssueflowConfig {
   watcher: WatcherConfig;
   autonomous_mode: boolean;
-  state_backend: StateBackend;
 }
 
 export const DEFAULT_WATCHER_CONFIG: WatcherConfig = {
@@ -42,8 +35,7 @@ export const DEFAULT_WATCHER_CONFIG: WatcherConfig = {
 
 export const DEFAULT_CONFIG: IssueflowConfig = {
   watcher: DEFAULT_WATCHER_CONFIG,
-  autonomous_mode: false,
-  state_backend: 'local'
+  autonomous_mode: false
 };
 
 export const MIN_INTERVAL_SECONDS = 5;

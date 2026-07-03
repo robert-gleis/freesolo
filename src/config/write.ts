@@ -2,11 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 const CONFIG_TEMPLATE = `# All fields are optional - defaults are shown below.
-
-# Where workflow state is persisted.
-#   local (default) - stores state in ~/.issueflow/state/<owner>/<repo>/<issue-number>
-#   github-labels - writes a state:* label to the GitHub issue on every transition.
-state_backend: local
+# Workflow state is persisted locally in ~/.issueflow/state/<owner>/<repo>/<issue-number>
 
 # Autonomous watcher defaults (used by \`issueflow watch\`).
 watcher:
