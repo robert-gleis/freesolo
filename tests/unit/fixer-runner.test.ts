@@ -111,6 +111,12 @@ describe('runFixerAgent', () => {
     // A real adapter with a fake invoker that never resolves until its signal
     // aborts — mirroring a host-agent process that keeps editing the tree. This
     // proves the timeout actually reaches the child rather than leaking it.
+    //
+    // The adapter is PRE-STARTED so runOwnedAgentSession skips start()'s real
+    // fs.access — otherwise a 0.01s timeout can win the race against that pre-send
+    // I/O, send() never runs, and seenSignal stays undefined (a flake). With no
+    // pre-send I/O the invoker captures the signal synchronously before the
+    // timeout can fire.
     let seenSignal: AbortSignal | undefined;
     const invoker: CodexInvoker = ({ signal }) =>
       new Promise((_resolve, reject) => {
@@ -118,6 +124,7 @@ describe('runFixerAgent', () => {
         signal?.addEventListener('abort', () => reject(new Error('cancelled')), { once: true });
       });
     const adapter = new CodexAgentAdapter({ invoker });
+    await adapter.start({ workingDirectory: process.cwd() });
 
     const result = await runFixerAgent({
       adapter,
@@ -132,24 +139,29 @@ describe('runFixerAgent', () => {
   });
 
   it('cancels the spawned subprocess when an external abort fires', async () => {
+    // Drive the abort from INSIDE the invoker (once send is entered and the
+    // signal captured) rather than a wall-clock setTimeout, so the assertion
+    // cannot race the pre-send status()/start() I/O and flake with seenSignal
+    // === undefined.
     let seenSignal: AbortSignal | undefined;
+    const external = new AbortController();
     const invoker: CodexInvoker = ({ signal }) =>
       new Promise((_resolve, reject) => {
         seenSignal = signal;
         signal?.addEventListener('abort', () => reject(new Error('cancelled')), { once: true });
+        external.abort();
       });
     const adapter = new CodexAgentAdapter({ invoker });
-    const controller = new AbortController();
-    setTimeout(() => controller.abort(), 5);
 
     const result = await runFixerAgent({
       adapter,
       prompt: 'fix',
       cwd: process.cwd(),
-      abortSignal: controller.signal
+      abortSignal: external.signal
     });
 
     expect(result.ok).toBe(false);
+    expect(seenSignal).toBeInstanceOf(AbortSignal);
     expect(seenSignal!.aborted).toBe(true);
   });
 

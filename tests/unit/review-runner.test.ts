@@ -137,6 +137,12 @@ describe('runReviewAgent', () => {
     // A real adapter with a fake invoker that never resolves until its signal
     // aborts. Proves the review timeout terminates the child rather than leaking
     // a process that keeps running after the check recorded fail.
+    //
+    // The adapter is PRE-STARTED so runOwnedAgentSession skips start()'s real
+    // fs.access — otherwise a 0.01s timeout can win the race against that pre-send
+    // I/O, send() never runs, and seenSignal stays undefined (a flake). With no
+    // pre-send I/O the invoker captures the signal synchronously before the
+    // timeout can fire.
     let seenSignal: AbortSignal | undefined;
     const invoker: CodexInvoker = ({ signal }) =>
       new Promise((_resolve, reject) => {
@@ -144,6 +150,7 @@ describe('runReviewAgent', () => {
         signal?.addEventListener('abort', () => reject(new Error('cancelled')), { once: true });
       });
     const adapter = new CodexAgentAdapter({ invoker });
+    await adapter.start({ workingDirectory: process.cwd() });
 
     const result = await runReviewAgent({
       adapter,
@@ -158,24 +165,29 @@ describe('runReviewAgent', () => {
   });
 
   it('cancels the spawned subprocess when an external abort fires', async () => {
+    // Drive the abort from INSIDE the invoker (once send is entered and the
+    // signal captured) rather than a wall-clock setTimeout, so the assertion
+    // cannot race the pre-send status()/start() I/O and flake with seenSignal
+    // === undefined.
     let seenSignal: AbortSignal | undefined;
+    const external = new AbortController();
     const invoker: CodexInvoker = ({ signal }) =>
       new Promise((_resolve, reject) => {
         seenSignal = signal;
         signal?.addEventListener('abort', () => reject(new Error('cancelled')), { once: true });
+        external.abort();
       });
     const adapter = new CodexAgentAdapter({ invoker });
-    const controller = new AbortController();
-    setTimeout(() => controller.abort(), 5);
 
     const result = await runReviewAgent({
       adapter,
       prompt: 'review',
       cwd: process.cwd(),
-      abortSignal: controller.signal
+      abortSignal: external.signal
     });
 
     expect(result.verdict).toBe('fail');
+    expect(seenSignal).toBeInstanceOf(AbortSignal);
     expect(seenSignal!.aborted).toBe(true);
   });
 
