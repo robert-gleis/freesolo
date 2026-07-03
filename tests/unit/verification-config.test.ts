@@ -105,4 +105,36 @@ describe('loadVerificationConfig', () => {
 
     await expect(loadVerificationConfig(repoRoot)).rejects.toBeInstanceOf(VerificationConfigError);
   });
+
+  it('rejects an agent-review check with an unknown promptPreset', async () => {
+    const repoRoot = await makeRepo();
+    const config = validGateRoute();
+    config.verification.gateRoute.checks[1].promptPreset = 'no-such-preset';
+    await writeConfig(repoRoot, config);
+
+    await expect(loadVerificationConfig(repoRoot)).rejects.toBeInstanceOf(VerificationConfigError);
+    await expect(loadVerificationConfig(repoRoot)).rejects.toThrow(/no-such-preset/);
+    await expect(loadVerificationConfig(repoRoot)).rejects.toThrow(/unknown prompt preset/i);
+  });
+
+  it('rejects a fixer with an unknown promptPreset', async () => {
+    const repoRoot = await makeRepo();
+    const config = validGateRoute();
+    config.verification.gateRoute.fixer.promptPreset = 'no-such-fixer';
+    await writeConfig(repoRoot, config);
+
+    await expect(loadVerificationConfig(repoRoot)).rejects.toBeInstanceOf(VerificationConfigError);
+    await expect(loadVerificationConfig(repoRoot)).rejects.toThrow(/no-such-fixer/);
+  });
+
+  it('accepts a config whose checks and fixer use known presets', async () => {
+    const repoRoot = await makeRepo();
+    await writeConfig(repoRoot, validGateRoute());
+
+    const config = await loadVerificationConfig(repoRoot);
+
+    expect(config.verification.gateRoute.fixer.promptPreset).toBe('gate-fixer');
+    const review = config.verification.gateRoute.checks.find((c) => c.kind === 'agent-review');
+    expect(review?.promptPreset).toBe('thermonuclear-review');
+  });
 });

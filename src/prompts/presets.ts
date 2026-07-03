@@ -173,3 +173,11 @@ export function getPromptPreset<T = ReviewPromptContext>(name: string): (context
   }
   return builder as (context: T) => string;
 }
+
+/** The preset names known to the registry. */
+export const KNOWN_PRESETS: readonly string[] = Object.keys(PRESETS);
+
+/** True when `name` resolves to a registered preset builder. */
+export function hasPreset(name: string): boolean {
+  return Object.prototype.hasOwnProperty.call(PRESETS, name);
+}
