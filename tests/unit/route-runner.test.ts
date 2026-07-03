@@ -453,20 +453,33 @@ describe('defaultGateRouteDeps stubs', () => {
     expect(artifact.verdict).toBe('fail');
   });
 
-  it('runFixer default reports a clear not-implemented failure', async () => {
+  it('runFixer default delegates to the real fixer (no longer a not-implemented stub)', async () => {
+    const runDirectory = await makeRunDir();
     const { defaultGateRouteDeps } = await import('../../src/verification/route-runner.js');
+    // repoRoot points at a non-git temp dir, so context assembly (getBranchDiff)
+    // fails; the real fixer must fail SOFT (fail status), never throw, and never
+    // emit the old "not implemented" text.
     const result = await defaultGateRouteDeps.runFixer({
       attempt: 1,
-      repoRoot: '/repo',
+      repoRoot: runDirectory,
       issueNumber: 7,
       candidateBranch: 'candidate/7',
       fixer: { host: 'codex', promptPreset: 'gate-fixer' },
-      failedChecks: [],
-      logPath: '/tmp/fixer.log',
-      runDirectory: '/tmp'
+      failedChecks: [
+        {
+          name: 'build',
+          kind: 'shell',
+          command: 'npm run build',
+          exitCode: 2,
+          logPath: path.join(runDirectory, 'attempt-1-build.log'),
+          reviewFindings: null
+        }
+      ],
+      logPath: path.join(runDirectory, 'fixer-attempt-1.log'),
+      runDirectory
     });
     expect(result.status).toBe('fail');
-    expect(result.detail).toContain('not implemented');
+    expect(result.detail).not.toContain('not implemented');
   });
 
   it('writeRun default IS the canonical store writer, not a reimplementation', async () => {

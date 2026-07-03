@@ -1,6 +1,7 @@
 import path from 'node:path';
 
 import { runAgentReviewCheck } from './agent-review-check.js';
+import { runFixerCheck } from './fixer-check.js';
 import { writeRun } from './store.js';
 import {
   defaultExecCheck,
@@ -93,13 +94,15 @@ export const defaultGateRouteDeps: GateRouteDeps = {
   // tests still inject a fake runAgentReview; the real impl is tested directly in
   // agent-review-check.test.ts with a ScriptedAgentAdapter.
   runAgentReview: (request) => runAgentReviewCheck(request),
-  // ponytail: fixer is an injected seam. Default fails so a route that needs a
-  // fix cannot succeed until the real Fixer Agent lands in A3.
-  runFixer: async () => ({
-    status: 'fail',
-    detail: 'fixer not implemented yet (A3)',
-    log: ''
-  }),
+  // fixer is an injected seam. The default runs a fresh host agent via the real
+  // fixer impl (fixer-check.ts): it assembles the Failure Context, builds the
+  // 'gate-fixer' prompt, lets the agent change code, and fails soft on any
+  // assembly/adapter/timeout/abort error so a broken fixer fails the route
+  // rather than throwing. The fixer never decides success — route-runner reruns
+  // the whole route after a passing fixer. Route-runner tests still inject a fake
+  // runFixer; the real impl is tested directly in fixer-check.test.ts with a
+  // ScriptedAgentAdapter.
+  runFixer: (context) => runFixerCheck(context),
   // ponytail: the canonical run-writer is store.writeRun. GateRouteRun extends
   // VerificationRun, so store.writeRun (typed for VerificationRun) is assignable
   // here — no wrapper needed. Reused instead of reimplemented per the shared-helper rule.
@@ -294,7 +297,10 @@ export async function runGateRoute(
     }
 
     // Attempts remain: build a structured Failure Context and run the fixer.
-    const fixerLogPath = path.join(input.runDirectory, `attempt-${attempt}-fixer.log`);
+    // Named `fixer-attempt-N.log` (per the design) rather than `attempt-N-fixer.log`
+    // so it is NOT swept into the next attempt's review prior-logs, which match
+    // `attempt-{attempt}-*.log`.
+    const fixerLogPath = path.join(input.runDirectory, `fixer-attempt-${attempt}.log`);
     const failureContext: FailureContext = {
       attempt,
       repoRoot: input.repoRoot,

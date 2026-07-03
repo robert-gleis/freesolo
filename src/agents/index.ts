@@ -51,6 +51,9 @@ export type { InMemoryPiTransport, PiAgentAdapterOptions, PiTransportFactory } f
 export { runReviewAgent, reviewVerdictSchema, reviewFindingSchema } from './review-runner.js';
 export type { ReviewVerdict, ReviewFinding, RunReviewAgentInput } from './review-runner.js';
 
+export { runFixerAgent } from './fixer-runner.js';
+export type { RunFixerAgentInput, FixerAgentResult } from './fixer-runner.js';
+
 import type { HostTool } from '../core/types.js';
 import type { AgentAdapter } from './types.js';
 import { ClaudeCodeAgentAdapter } from './claude-code.js';

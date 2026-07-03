@@ -1,11 +1,10 @@
 /**
  * Prompt presets for agent-backed Gate Route checks.
  *
- * A preset is a pure builder: it takes a {@link ReviewPromptContext} and returns
- * the full prompt string handed to a fresh host agent. The map stays a plain
- * one-entry lookup, not a plugin system.
- *
- * A3 will add a 'gate-fixer' preset (with its own Fixer context shape) here.
+ * A preset is a pure builder: it takes a context and returns the full prompt
+ * string handed to a fresh host agent. Review presets take a
+ * {@link ReviewPromptContext}; the fixer preset takes a {@link FixerPromptContext}.
+ * The map stays a plain lookup, not a plugin system.
  */
 
 export interface ReviewPromptContext {
@@ -24,6 +23,35 @@ export interface ReviewPromptContext {
 }
 
 export type PromptBuilder = (context: ReviewPromptContext) => string;
+
+/** A single failed check as handed to the {@link FixerPromptContext}. */
+export interface FixerFailedCheck {
+  name: string;
+  kind: 'shell' | 'agent-review';
+  /** Shell command that failed, or null for non-shell checks. */
+  command: string | null;
+  /** Process exit code, or null when not a process (e.g. agent-review). */
+  exitCode: number | null;
+  /** Path to this check's per-check log. */
+  logPath: string;
+  /** A short summary/tail of the failing check's log, or '' when none. */
+  logSummary: string;
+  /** Review findings when the failed check was an agent-review, else null. */
+  reviewFindings: string | null;
+}
+
+export interface FixerPromptContext {
+  issueNumber: number;
+  candidateBranch: string | null;
+  /** The candidate diff (HEAD vs merge-base with the base branch). */
+  diff: string;
+  /** Issue or spec body, when available. */
+  issueBody: string | null;
+  /** The checks that failed this attempt, distilled for the fixer. */
+  failedChecks: FixerFailedCheck[];
+}
+
+export type FixerPromptBuilder = (context: FixerPromptContext) => string;
 
 /** Renders an optional context block, collapsing empty values to a placeholder. */
 function section(title: string, body: string | null | undefined): string {
@@ -72,17 +100,76 @@ const buildThermonuclearReview: PromptBuilder = (context) => {
   ].join('\n');
 };
 
-const PRESETS: Record<string, PromptBuilder> = {
-  'thermonuclear-review': buildThermonuclearReview
-  // A3 adds 'gate-fixer' here.
+/** Renders one failed check as a bullet block for the fixer prompt. */
+function renderFailedCheck(check: FixerFailedCheck): string {
+  const lines = [`### ${check.name} (${check.kind})`];
+  if (check.command) {
+    lines.push(`- command: ${check.command}`);
+  }
+  if (check.exitCode !== null) {
+    lines.push(`- exit code: ${check.exitCode}`);
+  }
+  lines.push(`- log: ${check.logPath}`);
+  const summary = check.logSummary.trim();
+  if (summary !== '') {
+    lines.push('- log summary:', '', '```', summary, '```');
+  }
+  const findings = (check.reviewFindings ?? '').trim();
+  if (findings !== '') {
+    lines.push('- review findings:', '', findings);
+  }
+  return lines.join('\n');
+}
+
+const buildGateFixer: FixerPromptBuilder = (context) => {
+  const branch = context.candidateBranch ?? '_unknown_';
+  const failed = context.failedChecks.map(renderFailedCheck).join('\n\n');
+
+  return [
+    'You are a Fixer Agent for a deterministic pre-PR gate. The Gate Route ran',
+    'and at least one check FAILED. Make the MINIMAL code change that makes the',
+    'failing checks pass on the next run.',
+    '',
+    `Issue number: ${context.issueNumber}`,
+    `Candidate branch: ${branch}`,
+    '',
+    '## Failed checks',
+    '',
+    failed === '' ? '_none provided_' : failed,
+    '',
+    section('Issue / Spec', context.issueBody),
+    '',
+    section('Candidate diff', context.diff),
+    '',
+    '## Rules',
+    '',
+    '- Make the smallest change that fixes the failing checks. Do NOT touch',
+    '  unrelated code, refactor broadly, or fix pre-existing issues that are not',
+    '  causing a failure above.',
+    '- Do NOT edit the route config: leave issueflow.config.json and the',
+    '  `verification.gateRoute` block (checks, fixer, maxAttempts, bail) untouched.',
+    '  Weakening or disabling a check is not a fix.',
+    '- Do NOT declare the route fixed or claim success. You do not decide whether',
+    '  the route passes — the gate reruns the COMPLETE route from the first check',
+    '  after you finish, and that rerun is the sole arbiter of success. Just make',
+    '  the change and stop.'
+  ].join('\n');
 };
 
-export function getPromptPreset(name: string): PromptBuilder {
+// Review and fixer builders take different context shapes but share the same
+// lookup. The map stays a plain entry list; getPromptPreset is generic over the
+// context type so each caller resolves the concrete builder it expects.
+const PRESETS: Record<string, PromptBuilder | FixerPromptBuilder> = {
+  'thermonuclear-review': buildThermonuclearReview,
+  'gate-fixer': buildGateFixer
+};
+
+export function getPromptPreset<T = ReviewPromptContext>(name: string): (context: T) => string {
   const builder = PRESETS[name];
   if (!builder) {
     throw new Error(
       `unknown prompt preset: ${name} (known: ${Object.keys(PRESETS).join(', ')})`
     );
   }
-  return builder;
+  return builder as (context: T) => string;
 }

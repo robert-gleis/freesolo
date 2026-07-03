@@ -2,6 +2,12 @@ import { z } from 'zod';
 
 import { extractJson } from '../planner/extract.js';
 import type { AgentAdapter } from './types.js';
+import {
+  buildAgentSignal,
+  errorMessage,
+  isAbortError,
+  sendWithSignal
+} from './agent-lifecycle.js';
 
 export const reviewFindingSchema = z.object({
   severity: z.string().optional(),
@@ -34,12 +40,13 @@ export interface RunReviewAgentInput {
  *
  * ponytail: mirrors runPlanner's lifecycle (start-if-owned, extractJson +
  * zod safeParse, retry once on invalid output, stop-in-finally) rather than
- * extracting a shared helper — the two differ in a load-bearing way: the
- * planner THROWS on unusable output, but a review check must never throw past
- * the gate; every failure path (timeout, abort, unparseable, schema-invalid)
- * collapses to a `fail` verdict so the route stays the sole authority and never
- * silently passes. Unifying them would push that fail-soft policy into the
- * planner. The duplicated shape is intentional; keep them parallel.
+ * extracting a shared helper WITH the planner — the two differ in a load-bearing
+ * way: the planner THROWS on unusable output, but a review check must never
+ * throw past the gate; every failure path (timeout, abort, unparseable,
+ * schema-invalid) collapses to a `fail` verdict so the route stays the sole
+ * authority and never silently passes. The semantics-neutral abort/timeout/send
+ * plumbing IS shared with runFixerAgent via agent-lifecycle.ts; only the result
+ * mapping (verdict vs ok/fail) stays per-runner.
  */
 export async function runReviewAgent(input: RunReviewAgentInput): Promise<ReviewVerdict> {
   const { adapter, prompt, cwd } = input;
@@ -48,7 +55,7 @@ export async function runReviewAgent(input: RunReviewAgentInput): Promise<Review
   const shouldStart = status.state === 'idle' || status.state === 'stopped';
   let ownsAdapter = false;
 
-  const signal = buildSignal(input.timeoutSeconds, input.abortSignal);
+  const signal = buildAgentSignal(input.timeoutSeconds, input.abortSignal);
 
   try {
     if (shouldStart) {
@@ -114,57 +121,6 @@ function failVerdict(message: string): ReviewVerdict {
   return { verdict: 'fail', findings: [{ severity: 'blocker', message }] };
 }
 
-/** Combines a timeout signal with an optional caller signal. */
-function buildSignal(
-  timeoutSeconds: number | undefined,
-  abortSignal: AbortSignal | undefined
-): AbortSignal | undefined {
-  const timeout =
-    timeoutSeconds === undefined ? undefined : AbortSignal.timeout(timeoutSeconds * 1000);
-  if (timeout && abortSignal) return AbortSignal.any([abortSignal, timeout]);
-  return timeout ?? abortSignal;
-}
-
-/**
- * The AgentAdapter protocol has no built-in cancellation, so enforce the
- * combined signal by racing send() against an abort. A losing send() keeps
- * running to completion in the background; the owned adapter is stopped in the
- * finally block regardless.
- */
-async function sendWithSignal(
-  adapter: AgentAdapter,
-  prompt: string,
-  signal: AbortSignal | undefined
-): Promise<string> {
-  if (!signal) {
-    const { output } = await adapter.send(prompt);
-    return output;
-  }
-  if (signal.aborted) {
-    throw signal.reason ?? new DOMException('Aborted', 'AbortError');
-  }
-  return new Promise<string>((resolve, reject) => {
-    const onAbort = () => reject(signal.reason ?? new DOMException('Aborted', 'AbortError'));
-    signal.addEventListener('abort', onAbort, { once: true });
-    adapter.send(prompt).then(
-      ({ output }) => {
-        signal.removeEventListener('abort', onAbort);
-        resolve(output);
-      },
-      (err) => {
-        signal.removeEventListener('abort', onAbort);
-        reject(err);
-      }
-    );
-  });
-}
-
-function isAbortError(err: unknown): boolean {
-  if (err instanceof DOMException) return err.name === 'AbortError' || err.name === 'TimeoutError';
-  if (err instanceof Error) return err.name === 'AbortError' || err.name === 'TimeoutError';
-  return false;
-}
-
 function abortMessage(
   timeoutSeconds: number | undefined,
   abortSignal: AbortSignal | undefined
@@ -174,9 +130,4 @@ function abortMessage(
     return `review agent timed out after ${timeoutSeconds}s before returning a verdict`;
   }
   return 'review agent aborted before returning a verdict';
-}
-
-function errorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  return String(err);
 }
