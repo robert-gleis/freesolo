@@ -3,8 +3,7 @@ import { Command, InvalidArgumentError, Option } from 'commander';
 import { openEventLog } from '../event-log/index.js';
 import { buildTimeline, renderTimelineJson, renderTimelineText } from '../timeline/index.js';
 import type { EventLog } from '../event-log/types.js';
-
-export type WriteChannel = 'stdout' | 'stderr';
+import { defaultSetExitCode, defaultWrite, parseIssueNumber, type WriteChannel } from './shared.js';
 
 export interface TimelineCommandDeps {
   openEventLog: () => EventLog;
@@ -14,25 +13,9 @@ export interface TimelineCommandDeps {
 
 const defaultDeps: TimelineCommandDeps = {
   openEventLog,
-  write: (channel, message) => {
-    if (channel === 'stdout') {
-      process.stdout.write(message);
-    } else {
-      process.stderr.write(message);
-    }
-  },
-  setExitCode: (code) => {
-    process.exitCode = code;
-  }
+  write: defaultWrite,
+  setExitCode: defaultSetExitCode
 };
-
-function parseIssueNumber(value: string): number {
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0 || String(parsed) !== value.trim()) {
-    throw new InvalidArgumentError('Issue number must be a positive integer');
-  }
-  return parsed;
-}
 
 function parseLimit(value: string): number {
   const parsed = Number.parseInt(value, 10);

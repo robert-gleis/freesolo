@@ -1,8 +1,9 @@
-import os from 'node:os';
 import path from 'node:path';
 
+import { issueflowHome } from '../core/paths.js';
+
 function homeDir(): string {
-  return process.env.ISSUEFLOW_HOME ?? path.join(os.homedir(), '.issueflow');
+  return issueflowHome();
 }
 
 function timestampSegment(date: Date): string {

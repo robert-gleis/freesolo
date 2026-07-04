@@ -1,5 +1,11 @@
 import { execa } from 'execa';
 
+import type { RepoRef } from './types.js';
+
+export function repoSlug(repo: RepoRef): string {
+  return `${repo.owner}/${repo.repo}`;
+}
+
 export interface GhResult {
   stdout: string;
   stderr: string;

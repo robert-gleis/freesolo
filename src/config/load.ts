@@ -1,5 +1,4 @@
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 
 import {
@@ -10,6 +9,7 @@ import {
   type IssueflowConfig,
   type WatcherConfig
 } from './types.js';
+import { issueflowHome } from '../core/paths.js';
 import { isNonTerminalWorkflowState } from '../workflow/state-machine.js';
 
 export type ConfigOrigin = 'default' | 'global' | 'repo';
@@ -40,7 +40,7 @@ interface RawWatcherConfig {
 }
 
 export function defaultConfigPath(): string {
-  return process.env.ISSUEFLOW_CONFIG ?? path.join(os.homedir(), '.issueflow', 'config.yaml');
+  return process.env.ISSUEFLOW_CONFIG ?? path.join(issueflowHome(), 'config.yaml');
 }
 
 export function repoConfigPath(repoRoot: string): string {
@@ -128,7 +128,6 @@ function validateWatcher(configPath: string, watcher: RawWatcherConfig): Watcher
 function buildWatcher(
   globalRaw: RawConfig,
   repoRaw: RawConfig,
-  globalContent: string | null,
   globalPath: string,
   repoRoot: string | undefined
 ): WatcherConfig {
@@ -164,7 +163,6 @@ function parseRawConfig(content: string, configPath: string): RawConfig {
 interface RawLayers {
   globalRaw: RawConfig;
   repoRaw: RawConfig;
-  globalContent: string | null;
 }
 
 async function loadRawLayers(
@@ -181,30 +179,23 @@ async function loadRawLayers(
     if (repoContent) repoRaw = parseRawConfig(repoContent, repoPath);
   }
 
-  return { globalRaw, repoRaw, globalContent };
+  return { globalRaw, repoRaw };
 }
 
 export async function loadConfig(
   globalPath = defaultConfigPath(),
   repoRoot?: string
 ): Promise<IssueflowConfig> {
-  const { globalRaw, repoRaw, globalContent } = await loadRawLayers(globalPath, repoRoot);
-
-  const watcher = buildWatcher(globalRaw, repoRaw, globalContent, globalPath, repoRoot);
-
-  return {
-    watcher,
-    autonomous_mode: repoRaw.autonomous_mode ?? globalRaw.autonomous_mode ?? DEFAULT_CONFIG.autonomous_mode
-  };
+  return (await loadConfigWithOrigins(globalPath, repoRoot)).config;
 }
 
 export async function loadConfigWithOrigins(
   globalPath = defaultConfigPath(),
   repoRoot?: string
 ): Promise<ConfigWithOrigins> {
-  const { globalRaw, repoRaw, globalContent } = await loadRawLayers(globalPath, repoRoot);
+  const { globalRaw, repoRaw } = await loadRawLayers(globalPath, repoRoot);
 
-  const watcher = buildWatcher(globalRaw, repoRaw, globalContent, globalPath, repoRoot);
+  const watcher = buildWatcher(globalRaw, repoRaw, globalPath, repoRoot);
 
   const config: IssueflowConfig = {
     watcher,

@@ -1,6 +1,20 @@
 import { execa } from 'execa';
 
-import type { RepoContext } from './types.js';
+import type { RepoContext, RepoRef } from './types.js';
+
+export class NotAGitRepositoryError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'NotAGitRepositoryError';
+  }
+}
+
+export class MissingOriginRemoteError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'MissingOriginRemoteError';
+  }
+}
 
 export function parseGitHubRemote(remoteUrl: string): RepoContext | null {
   const sshMatch = remoteUrl.match(/^git@([^:]+):([^/]+)\/(.+)\.git$/);
@@ -33,7 +47,7 @@ export async function resolveRepoRoot(cwd: string): Promise<string> {
     const { stdout } = await execa('git', ['rev-parse', '--show-toplevel'], { cwd });
     return stdout.trim();
   } catch {
-    throw new Error('issueflow must be started inside a git repository');
+    throw new NotAGitRepositoryError('issueflow must be started inside a git repository');
   }
 }
 
@@ -42,8 +56,18 @@ export async function readOriginRemote(cwd: string): Promise<string> {
     const { stdout } = await execa('git', ['remote', 'get-url', 'origin'], { cwd });
     return stdout.trim();
   } catch {
-    throw new Error('issueflow requires an origin remote that points at GitHub');
+    throw new MissingOriginRemoteError('issueflow requires an origin remote that points at GitHub');
   }
+}
+
+export async function resolveRepoRef(cwd: string): Promise<RepoRef> {
+  const repoRoot = await resolveRepoRoot(cwd);
+  const remoteUrl = await readOriginRemote(repoRoot);
+  const parsed = parseGitHubRemote(remoteUrl);
+  if (!parsed) {
+    throw new Error('origin is not a supported GitHub remote');
+  }
+  return { owner: parsed.owner, repo: parsed.repo };
 }
 
 /** Runs `git <args>` in `cwd` and returns raw stdout. Injectable for tests. */

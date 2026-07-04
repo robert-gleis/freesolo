@@ -1,10 +1,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { execa } from 'execa';
-
+import { gitIssueflowPath } from '../core/session-state.js';
 import type { RepoRef } from '../core/types.js';
-import type { GhRunner } from '../core/gh.js';
+import { defaultRunner, repoSlug, type GhRunner } from '../core/gh.js';
 
 export const VERDICT_LABEL_PREFIX = 'verification:';
 
@@ -38,10 +37,6 @@ export class MultipleVerdictLabelsError extends Error {
   }
 }
 
-function repoSlug(repo: RepoRef): string {
-  return `${repo.owner}/${repo.repo}`;
-}
-
 function verdictLabelFor(status: VerdictStatus): string {
   return `${VERDICT_LABEL_PREFIX}${status}`;
 }
@@ -53,23 +48,6 @@ interface IssueLabelsResponse {
 const VERDICT_LABEL_COLORS: Record<VerdictStatus, string> = {
   pass: '0E8A16',
   fail: 'B60205'
-};
-
-const defaultRunner: GhRunner = async (args) => {
-  try {
-    const result = await execa('gh', args);
-    return {
-      stdout: result.stdout ?? '',
-      stderr: result.stderr ?? '',
-      exitCode: result.exitCode ?? 0
-    };
-  } catch (error) {
-    const e = error as { exitCode?: number; stdout?: string; stderr?: string };
-    if (e?.exitCode === undefined) {
-      throw new Error('issueflow requires GitHub CLI access. Run `gh auth status` and retry.');
-    }
-    return { stdout: e.stdout ?? '', stderr: e.stderr ?? '', exitCode: e.exitCode };
-  }
 };
 
 async function createVerdictLabel(repo: RepoRef, status: VerdictStatus, gh: GhRunner): Promise<void> {
@@ -170,13 +148,6 @@ export async function writeVerdict(
       `Failed to swap verdict labels on issue #${issueNumber}: ${result.stderr.trim() || 'gh exited non-zero'}`
     );
   }
-}
-
-async function gitIssueflowPath(repoRoot: string, ...segments: string[]): Promise<string> {
-  const joined = ['issueflow', ...segments].join('/');
-  const { stdout } = await execa('git', ['rev-parse', '--git-path', joined], { cwd: repoRoot });
-  const resolved = stdout.trim();
-  return path.isAbsolute(resolved) ? resolved : path.join(repoRoot, resolved);
 }
 
 async function getGateVerdictPath(repoRoot: string, issueNumber: number): Promise<string> {

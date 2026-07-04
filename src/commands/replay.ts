@@ -1,4 +1,4 @@
-import { Command, InvalidArgumentError } from 'commander';
+import { Command } from 'commander';
 
 import {
   buildWorkflowReplay,
@@ -8,8 +8,7 @@ import {
 } from '../replay/index.js';
 import { openAgentLogStore } from '../replay/log-store.js';
 import { openEventLog } from '../event-log/store.js';
-
-export type WriteChannel = 'stdout' | 'stderr';
+import { defaultSetExitCode, defaultWrite, parseIssueNumber, type WriteChannel } from './shared.js';
 
 export interface ReplayCommandDeps {
   buildWorkflowReplay: typeof buildWorkflowReplay;
@@ -19,25 +18,9 @@ export interface ReplayCommandDeps {
 
 const defaultDeps: ReplayCommandDeps = {
   buildWorkflowReplay,
-  write: (channel, message) => {
-    if (channel === 'stdout') {
-      process.stdout.write(message);
-    } else {
-      process.stderr.write(message);
-    }
-  },
-  setExitCode: (code) => {
-    process.exitCode = code;
-  }
+  write: defaultWrite,
+  setExitCode: defaultSetExitCode
 };
-
-function parseIssueNumber(value: string): number {
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0 || String(parsed) !== value.trim()) {
-    throw new InvalidArgumentError('Issue number must be a positive integer');
-  }
-  return parsed;
-}
 
 export async function showAction(
   options: { issue: number; format?: string; db?: string },

@@ -1,5 +1,6 @@
 import type { z } from 'zod';
 
+import { errorMessage } from '../core/errors.js';
 import { PlannerError } from './errors.js';
 import { extractJson } from './extract.js';
 import { buildDecompositionPrompt } from './prompts/decomposition.js';
@@ -117,11 +118,6 @@ function schemaForTask(task: PlannerTask): z.ZodType<TeamDefinition | Decomposit
 function wrapResult(task: PlannerTask, data: TeamDefinition | DecompositionPlan): PlannerResult {
   if (task === 'team') return { task: 'team', data: data as TeamDefinition };
   return { task: 'decomposition', data: data as DecompositionPlan };
-}
-
-function errorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  return String(err);
 }
 
 export async function planTeam(

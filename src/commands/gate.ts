@@ -1,6 +1,9 @@
-import { Command, InvalidArgumentError, Option } from 'commander';
+import { Command, Option } from 'commander';
 
-import { parseGitHubRemote, readOriginRemote, resolveRepoRoot as defaultResolveRepoRoot } from '../core/git.js';
+import {
+  resolveRepoRef as defaultResolveRepoRef,
+  resolveRepoRoot as defaultResolveRepoRoot
+} from '../core/git.js';
 import { resolveIssueNumber as defaultResolveIssueNumber } from '../core/issue-id.js';
 import { evaluateGate } from '../verification/gate.js';
 import { loadLatestRun as defaultLoadLatestRun } from '../verification/store.js';
@@ -19,8 +22,7 @@ import {
   readState as defaultReadState,
   writeState as defaultWriteState
 } from '../workflow/local-state-store.js';
-
-export type WriteChannel = 'stdout' | 'stderr';
+import { defaultSetExitCode, defaultWrite, parseIssueNumber, type WriteChannel } from './shared.js';
 
 export interface GateCommandDeps {
   resolveRepoRoot: (cwd: string) => Promise<string>;
@@ -52,16 +54,6 @@ export interface GateCommandDeps {
   now: () => Date;
 }
 
-async function defaultResolveRepoRef(cwd: string): Promise<RepoRef> {
-  const repoRoot = await defaultResolveRepoRoot(cwd);
-  const remoteUrl = await readOriginRemote(repoRoot);
-  const parsed = parseGitHubRemote(remoteUrl);
-  if (!parsed) {
-    throw new Error('origin is not a supported GitHub remote');
-  }
-  return { owner: parsed.owner, repo: parsed.repo };
-}
-
 const defaultDeps: GateCommandDeps = {
   resolveRepoRoot: defaultResolveRepoRoot,
   resolveRepoRef: defaultResolveRepoRef,
@@ -73,26 +65,10 @@ const defaultDeps: GateCommandDeps = {
   loadLatestRun: defaultLoadLatestRun,
   writeGateVerdictRecord: defaultWriteGateVerdictRecord,
   env: process.env,
-  write: (channel, message) => {
-    if (channel === 'stdout') {
-      process.stdout.write(message);
-    } else {
-      process.stderr.write(message);
-    }
-  },
-  setExitCode: (code) => {
-    process.exitCode = code;
-  },
+  write: defaultWrite,
+  setExitCode: defaultSetExitCode,
   now: () => new Date()
 };
-
-function parseIssueNumber(value: string): number {
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0 || String(parsed) !== value.trim()) {
-    throw new InvalidArgumentError('Issue number must be a positive integer');
-  }
-  return parsed;
-}
 
 export async function gateEvaluateAction(
   options: { issue?: number },

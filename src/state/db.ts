@@ -1,15 +1,15 @@
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
+import { issueflowHome } from '../core/paths.js';
 import { MIGRATION_001_SQL } from './migrations/001-watcher.js';
 import { MIGRATION_002_SQL } from './migrations/002-watcher-ignored.js';
 
 export type StateDb = DatabaseSync;
 
 export function defaultStateDbPath(): string {
-  return process.env.ISSUEFLOW_STATE_DB ?? path.join(os.homedir(), '.issueflow', 'state.db');
+  return process.env.ISSUEFLOW_STATE_DB ?? path.join(issueflowHome(), 'state.db');
 }
 
 const MIGRATIONS = [
@@ -43,6 +43,8 @@ export async function openStateDb(dbPath = defaultStateDbPath()): Promise<StateD
   await fs.mkdir(path.dirname(dbPath), { recursive: true });
   const db = new DatabaseSync(dbPath);
   db.exec('PRAGMA journal_mode=WAL');
+  db.exec('PRAGMA synchronous=NORMAL');
+  db.exec('PRAGMA busy_timeout=5000');
   runMigrations(db);
   return db;
 }

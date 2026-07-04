@@ -229,7 +229,7 @@ function toCancelledResult(error: unknown): CancelledResult | null {
     return null;
   }
 
-  if (error.name !== 'ExitPromptError' && error.message !== 'User force closed the prompt with SIGINT') {
+  if (error.name !== 'ExitPromptError') {
     return null;
   }
 

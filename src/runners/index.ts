@@ -1,3 +1,5 @@
+// Staged, not yet wired: no production caller imports this module. The Runner
+// abstraction is groundwork for issue #27 (Docker Runner); see CONTEXT.md "Runner".
 export type {
   LogOptions,
   LogSnapshot,

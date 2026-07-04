@@ -3,7 +3,10 @@ import fs from 'node:fs/promises';
 import { Command, InvalidArgumentError, Option } from 'commander';
 
 import { IssueIdError } from '../core/issue-id.js';
-import { parseGitHubRemote, readOriginRemote, resolveRepoRoot as defaultResolveRepoRoot } from '../core/git.js';
+import {
+  resolveRepoRef as defaultResolveRepoRef,
+  resolveRepoRoot as defaultResolveRepoRoot
+} from '../core/git.js';
 import {
   createPullRequest as defaultCreatePullRequest,
   defaultRunGh,
@@ -24,8 +27,7 @@ import type { VerificationRun } from '../verification/types.js';
 import { readState as defaultReadState } from '../workflow/local-state-store.js';
 import type { RepoRef } from '../core/types.js';
 import type { WorkflowState } from '../workflow/state-machine.js';
-
-export type WriteChannel = 'stdout' | 'stderr';
+import { defaultSetExitCode, defaultWrite, parseIssueNumber, type WriteChannel } from './shared.js';
 
 export interface PrCommandDeps {
   resolveRepoRoot: (cwd: string) => Promise<string>;
@@ -96,16 +98,6 @@ export function assertPrGate(input: PrGateInput): PrGateResult {
   return { ok: true };
 }
 
-async function defaultResolveRepoRef(cwd: string): Promise<RepoRef> {
-  const repoRoot = await defaultResolveRepoRoot(cwd);
-  const remoteUrl = await readOriginRemote(repoRoot);
-  const parsed = parseGitHubRemote(remoteUrl);
-  if (!parsed) {
-    throw new Error('origin is not a supported GitHub remote');
-  }
-  return { owner: parsed.owner, repo: parsed.repo };
-}
-
 const defaultDeps: PrCommandDeps = {
   resolveRepoRoot: defaultResolveRepoRoot,
   resolveRepoRef: defaultResolveRepoRef,
@@ -121,25 +113,9 @@ const defaultDeps: PrCommandDeps = {
   readPullRequestRecord: defaultReadPullRequestRecord,
   runGh: defaultRunGh,
   runGit: defaultRunGit,
-  write: (channel, message) => {
-    if (channel === 'stdout') {
-      process.stdout.write(message);
-    } else {
-      process.stderr.write(message);
-    }
-  },
-  setExitCode: (code) => {
-    process.exitCode = code;
-  }
+  write: defaultWrite,
+  setExitCode: defaultSetExitCode
 };
-
-function parseIssueNumber(value: string): number {
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0 || String(parsed) !== value.trim()) {
-    throw new InvalidArgumentError('Issue number must be a positive integer');
-  }
-  return parsed;
-}
 
 function mapPullRequestError(error: PullRequestError): number {
   switch (error.code) {

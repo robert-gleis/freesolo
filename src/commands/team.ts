@@ -1,6 +1,6 @@
-import { Command, InvalidArgumentError, Option } from 'commander';
+import { Command, Option } from 'commander';
 
-import { parseGitHubRemote, readOriginRemote, resolveRepoRoot } from '../core/git.js';
+import { resolveRepoRef, resolveRepoRoot } from '../core/git.js';
 import { IssueIdError, resolveIssueNumber } from '../core/issue-id.js';
 import type { AppendEventInput } from '../event-log/types.js';
 import { ScriptedAgentAdapter } from '../agents/scripted.js';
@@ -23,8 +23,7 @@ import {
   readState as defaultReadState,
   writeState as defaultWriteState
 } from '../workflow/local-state-store.js';
-
-export type WriteChannel = 'stdout' | 'stderr';
+import { defaultSetExitCode, defaultWrite, parseIssueNumber, type WriteChannel } from './shared.js';
 
 export interface TeamCommandDeps {
   resolveRepoRoot: (cwd: string) => Promise<string>;
@@ -48,24 +47,6 @@ export interface TeamCommandDeps {
   env: NodeJS.ProcessEnv;
   write: (channel: WriteChannel, message: string) => void;
   setExitCode: (code: number) => void;
-}
-
-async function defaultResolveRepoRef(cwd: string): Promise<RepoRef> {
-  const repoRoot = await resolveRepoRoot(cwd);
-  const remoteUrl = await readOriginRemote(repoRoot);
-  const parsed = parseGitHubRemote(remoteUrl);
-  if (!parsed) {
-    throw new Error('origin is not a supported GitHub remote');
-  }
-  return { owner: parsed.owner, repo: parsed.repo };
-}
-
-function parseIssueNumber(value: string): number {
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0 || String(parsed) !== value.trim()) {
-    throw new InvalidArgumentError('Issue number must be a positive integer');
-  }
-  return parsed;
 }
 
 function requireEngineGate(subcommand: string, deps: TeamCommandDeps): boolean {
@@ -170,7 +151,7 @@ function defaultCreateTeamManager(input: {
 
 const defaultDeps: TeamCommandDeps = {
   resolveRepoRoot,
-  resolveRepoRef: defaultResolveRepoRef,
+  resolveRepoRef,
   resolveIssueNumber: (worktreePath, override) => resolveIssueNumber(worktreePath, override),
   readState: defaultReadState,
   writeState: defaultWriteState,
@@ -182,16 +163,8 @@ const defaultDeps: TeamCommandDeps = {
     getDefaultEventLog().append(input);
   },
   env: process.env,
-  write: (channel, message) => {
-    if (channel === 'stdout') {
-      process.stdout.write(message);
-    } else {
-      process.stderr.write(message);
-    }
-  },
-  setExitCode: (code) => {
-    process.exitCode = code;
-  }
+  write: defaultWrite,
+  setExitCode: defaultSetExitCode
 };
 
 export function registerTeamCommands(program: Command, deps: TeamCommandDeps = defaultDeps): Command {
