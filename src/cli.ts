@@ -17,6 +17,7 @@ import { registerStateCommands } from './commands/state.js';
 import { startAction } from './commands/start.js';
 import { registerTimelineCommands } from './commands/timeline.js';
 import { registerWatchCommands } from './commands/watch.js';
+import { registerWorkCommand } from './commands/work.js';
 import { registerWorktreesCommands } from './commands/worktrees.js';
 import { verifyAction } from './commands/verify.js';
 
@@ -66,7 +67,8 @@ Worktree setup:
   registerPrCommands(program);
   registerMergeCommands(program);
   const plan = registerPlanCommands(program);
-  registerOrchestrateCommands(program, plan);
+  registerOrchestrateCommands(plan);
+  registerWorkCommand(program);
   registerDecompositionCommands(program);
   registerTeamCommands(program);
   registerWatchCommands(program);

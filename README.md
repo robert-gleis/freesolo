@@ -51,12 +51,16 @@ freesolo --help
 As a human you only need two commands. Everything else in the reference below is plumbing for agents and the engine.
 
 ```bash
-freesolo plan 42          # initialise → generate team plan → approve (add --edit to review in $EDITOR first)
-freesolo work 42          # team → verify → gate → candidate → PR → merge readiness
-freesolo work 42 --merge  # same, and merge the PR once readiness is green
+freesolo plan 42                # initialise → generate team plan → approve (add --edit to review in $EDITOR first)
+freesolo work 42 --tool claude  # worktree + branch → autonomous worker in tmux → review/lint/test gate → PR
 ```
 
-`freesolo work` runs until the PR is ready (or merged with `--merge`). While agents own a state (implementing/reviewing) or CI is still red, it waits and polls (`--poll <seconds>`, default 30). Watch progress from another terminal with `freesolo agents list`.
+`freesolo work` runs one issue end-to-end:
+
+1. Creates (or reuses) a dedicated worktree and `issue/<n>-<slug>` branch via Worktrunk.
+2. Starts the worker agent in a detached tmux session named `freesolo-<n>` — attach any time with `tmux attach -t freesolo-<n>`, or just let it run.
+3. When the worker exits, runs the gate route from `freesolo.config.json`: a fresh review agent, then lint/test shell checks; every red attempt spawns a fresh fixer agent and reruns the route, up to `maxAttempts` (set it to 5). Fresh context per agent, by design.
+4. Still red after the cap → it stops and tells you manual input is required (with the run artifacts). Green → pushes the branch and opens the PR.
 
 Alternatively, pick up the next assigned issue and launch your preferred host in a dedicated worktree:
 
