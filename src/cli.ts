@@ -1,5 +1,6 @@
 import { Command, InvalidArgumentError, Option } from 'commander';
 
+import { registerAgentsCommands } from './commands/agents.js';
 import { registerCandidateCommands } from './commands/candidate.js';
 import { registerConfigCommands } from './commands/config.js';
 import { registerDecompositionCommands } from './commands/decomposition.js';
@@ -68,6 +69,7 @@ Worktree setup:
   registerTeamCommands(program);
   registerWatchCommands(program);
   registerWorktreesCommands(program);
+  registerAgentsCommands(program);
   registerCandidateCommands(program);
   registerReportsCommands(program);
   registerTimelineCommands(program);
