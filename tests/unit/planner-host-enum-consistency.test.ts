@@ -17,7 +17,6 @@ describe('host enum consistency', () => {
   });
 
   it('PLANNER_HOSTS may be a superset (allowed by design)', () => {
-    // PLANNER_HOSTS includes 'pi' which is not yet in HOST_TOOLS — that is intentional.
     // The forward containment is what the planner needs to guarantee.
     expect(PLANNER_HOSTS.length).toBeGreaterThanOrEqual(HOST_TOOLS.length);
   });

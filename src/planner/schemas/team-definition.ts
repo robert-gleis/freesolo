@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const PLANNER_HOSTS = ['pi', 'claude', 'codex', 'cursor'] as const;
+export const PLANNER_HOSTS = ['claude', 'codex', 'cursor'] as const;
 export type PlannerHost = (typeof PLANNER_HOSTS)[number];
 
 export const teamRoleSchema = z.object({

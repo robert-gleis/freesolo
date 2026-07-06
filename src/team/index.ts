@@ -3,7 +3,6 @@ export type { AgentRoleAssignment, RoleContextProfile, TeamAgentSpawnSpec } from
 export { buildAgentId, slugifyRoleName } from './agent-id.js';
 export { buildRolePrompt } from './prompt.js';
 export { formatAgentSpawnLog } from './log.js';
-export { expandTeamPlan, type ExpandTeamPlanInput } from './expand.js';
 export {
   buildAgentStoppedPayload,
   buildDefaultImplementerRole,

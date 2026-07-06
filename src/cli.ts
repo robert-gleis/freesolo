@@ -1,11 +1,13 @@
 import { Command, InvalidArgumentError, Option } from 'commander';
 
+import { registerAgentsCommands } from './commands/agents.js';
 import { registerCandidateCommands } from './commands/candidate.js';
 import { registerConfigCommands } from './commands/config.js';
 import { registerDecompositionCommands } from './commands/decomposition.js';
 import { registerEngineCommands } from './commands/engine.js';
 import { registerGateCommands } from './commands/gate.js';
 import { registerMergeCommands } from './commands/merge.js';
+import { registerOrchestrateCommands } from './commands/orchestrate.js';
 import { registerPlanCommands } from './commands/plan.js';
 import { registerPrCommands } from './commands/pr.js';
 import { registerReplayCommands } from './commands/replay.js';
@@ -15,6 +17,7 @@ import { registerStateCommands } from './commands/state.js';
 import { startAction } from './commands/start.js';
 import { registerTimelineCommands } from './commands/timeline.js';
 import { registerWatchCommands } from './commands/watch.js';
+import { registerWorkCommand } from './commands/work.js';
 import { registerWorktreesCommands } from './commands/worktrees.js';
 import { verifyAction } from './commands/verify.js';
 
@@ -63,11 +66,14 @@ Worktree setup:
   registerGateCommands(program);
   registerPrCommands(program);
   registerMergeCommands(program);
-  registerPlanCommands(program);
+  const plan = registerPlanCommands(program);
+  registerOrchestrateCommands(plan);
+  registerWorkCommand(program);
   registerDecompositionCommands(program);
   registerTeamCommands(program);
   registerWatchCommands(program);
   registerWorktreesCommands(program);
+  registerAgentsCommands(program);
   registerCandidateCommands(program);
   registerReportsCommands(program);
   registerTimelineCommands(program);
