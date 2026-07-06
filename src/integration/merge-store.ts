@@ -1,12 +1,11 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { execa } from 'execa';
 import { z } from 'zod';
 
 import { getIssueflowPath } from '../core/session-state.js';
 import type { RepoRef } from '../core/types.js';
-import type { GhRunner } from '../core/gh.js';
+import { defaultRunner, repoSlug, type GhRunner } from '../core/gh.js';
 import {
   MergeReadinessError,
   type MergeLabelStatus,
@@ -55,30 +54,9 @@ const mergeReadinessRecordSchema = z.object({
   mergedAt: z.string().optional()
 });
 
-function repoSlug(repo: RepoRef): string {
-  return `${repo.owner}/${repo.repo}`;
-}
-
 function mergeLabelFor(status: MergeLabelStatus): string {
   return `${MERGE_LABEL_PREFIX}${status}`;
 }
-
-const defaultRunner: GhRunner = async (args) => {
-  try {
-    const result = await execa('gh', args);
-    return {
-      stdout: result.stdout ?? '',
-      stderr: result.stderr ?? '',
-      exitCode: result.exitCode ?? 0
-    };
-  } catch (error) {
-    const e = error as { exitCode?: number; stdout?: string; stderr?: string };
-    if (e?.exitCode === undefined) {
-      throw new Error('issueflow requires GitHub CLI access. Run `gh auth status` and retry.');
-    }
-    return { stdout: e.stdout ?? '', stderr: e.stderr ?? '', exitCode: e.exitCode };
-  }
-};
 
 export interface MergeStoreDeps {
   gh?: GhRunner;

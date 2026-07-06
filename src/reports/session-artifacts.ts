@@ -1,5 +1,4 @@
 import fs from 'node:fs/promises';
-import path from 'node:path';
 
 import { getIssueflowPath, sessionStateSchema, writeSessionState } from '../core/session-state.js';
 

@@ -65,15 +65,19 @@ export const sessionStateSchema = z.object({
 
 export type SessionState = z.infer<typeof sessionStateSchema>;
 
+export async function gitIssueflowPath(repoRoot: string, ...segments: string[]): Promise<string> {
+  const joined = ['issueflow', ...segments].join('/');
+  const { stdout } = await execa('git', ['rev-parse', '--git-path', joined], { cwd: repoRoot });
+  const resolved = stdout.trim();
+  return path.isAbsolute(resolved) ? resolved : path.join(repoRoot, resolved);
+}
+
 export async function getIssueflowDir(worktreePath: string): Promise<string> {
-  const { stdout } = await execa('git', ['rev-parse', '--git-path', 'issueflow'], { cwd: worktreePath });
-  return stdout.trim();
+  return gitIssueflowPath(worktreePath);
 }
 
 export async function getIssueflowPath(worktreePath: string, filename: string): Promise<string> {
-  const issueflowDir = await getIssueflowDir(worktreePath);
-  const joined = path.join(issueflowDir, filename);
-  return path.isAbsolute(joined) ? joined : path.join(worktreePath, joined);
+  return gitIssueflowPath(worktreePath, filename);
 }
 
 export async function writeSessionState(worktreePath: string, state: SessionState): Promise<void> {

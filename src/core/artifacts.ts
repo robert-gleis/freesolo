@@ -1,8 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { execa } from 'execa';
-
+import { gitIssueflowPath } from './session-state.js';
 import type { IssueArtifactPaths } from './types.js';
 
 type ReviewArtifactKind = 'plan' | 'implementation';
@@ -62,13 +61,6 @@ async function findLatestReviewArtifact(repoRoot: string, issueNumber: number, k
     .at(-1);
 
   return legacyReview ? path.join(absoluteDir, legacyReview) : null;
-}
-
-async function gitIssueflowPath(repoRoot: string, ...segments: string[]): Promise<string> {
-  const joined = ['issueflow', ...segments].join('/');
-  const { stdout } = await execa('git', ['rev-parse', '--git-path', joined], { cwd: repoRoot });
-  const resolved = stdout.trim();
-  return path.isAbsolute(resolved) ? resolved : path.join(repoRoot, resolved);
 }
 
 async function findReportArtifact(

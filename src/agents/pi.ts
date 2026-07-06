@@ -1,3 +1,5 @@
+// Staged, not yet wired: getAgentAdapter has no 'pi' mapping, so no production
+// caller reaches this adapter yet (PLANNER_HOSTS already lists 'pi' for later wiring).
 import fs from 'node:fs/promises';
 
 import type { AgentLogOptions, AgentLogSnapshot } from './log-snapshot.js';

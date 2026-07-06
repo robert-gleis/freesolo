@@ -2,13 +2,13 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-import { Command, InvalidArgumentError, Option } from 'commander';
+import { Command, Option } from 'commander';
 import { execa } from 'execa';
 
 import type { AgentAdapter } from '../agents/index.js';
-import type { AppendEventInput } from '../event-log/types.js';
+import type { AppendEventInput, EventLog } from '../event-log/types.js';
 import { openEventLog } from '../event-log/index.js';
-import { parseGitHubRemote, readOriginRemote, resolveRepoRoot } from '../core/git.js';
+import { resolveRepoRef, resolveRepoRoot } from '../core/git.js';
 import { IssueIdError, resolveIssueNumber } from '../core/issue-id.js';
 import { getIssueflowPath } from '../core/session-state.js';
 import {
@@ -30,8 +30,7 @@ import {
   readState as defaultReadState,
   writeState as defaultWriteState
 } from '../workflow/local-state-store.js';
-
-export type WriteChannel = 'stdout' | 'stderr';
+import { defaultSetExitCode, defaultWrite, parseIssueNumber, type WriteChannel } from './shared.js';
 
 export interface PlanCommandDeps {
   resolveRepoRoot: (cwd: string) => Promise<string>;
@@ -56,16 +55,6 @@ export interface PlanCommandDeps {
   env: NodeJS.ProcessEnv;
   write: (channel: WriteChannel, message: string) => void;
   setExitCode: (code: number) => void;
-}
-
-async function defaultResolveRepoRef(cwd: string): Promise<RepoRef> {
-  const repoRoot = await resolveRepoRoot(cwd);
-  const remoteUrl = await readOriginRemote(repoRoot);
-  const parsed = parseGitHubRemote(remoteUrl);
-  if (!parsed) {
-    throw new Error('origin is not a supported GitHub remote');
-  }
-  return { owner: parsed.owner, repo: parsed.repo };
 }
 
 async function defaultFetchIssue(
@@ -123,9 +112,18 @@ async function defaultOpenEditor(filePath: string, env: NodeJS.ProcessEnv): Prom
   return result.exitCode ?? 1;
 }
 
+let defaultEventLog: EventLog | undefined;
+
+function getDefaultEventLog(): EventLog {
+  if (!defaultEventLog) {
+    defaultEventLog = openEventLog();
+  }
+  return defaultEventLog;
+}
+
 const defaultDeps: PlanCommandDeps = {
   resolveRepoRoot,
-  resolveRepoRef: defaultResolveRepoRef,
+  resolveRepoRef,
   resolveIssueNumber: (worktreePath, override) => resolveIssueNumber(worktreePath, override),
   readState: defaultReadState,
   writeState: defaultWriteState,
@@ -138,28 +136,12 @@ const defaultDeps: PlanCommandDeps = {
   openEditor: defaultOpenEditor,
   maybeAutoApproveTeamPlan,
   appendEvent: (input) => {
-    openEventLog().append(input);
+    getDefaultEventLog().append(input);
   },
   env: process.env,
-  write: (channel, message) => {
-    if (channel === 'stdout') {
-      process.stdout.write(message);
-    } else {
-      process.stderr.write(message);
-    }
-  },
-  setExitCode: (code) => {
-    process.exitCode = code;
-  }
+  write: defaultWrite,
+  setExitCode: defaultSetExitCode
 };
-
-function parseIssueNumber(value: string): number {
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0 || String(parsed) !== value.trim()) {
-    throw new InvalidArgumentError('Issue number must be a positive integer');
-  }
-  return parsed;
-}
 
 function requireEngineGate(subcommand: string, deps: PlanCommandDeps): boolean {
   if (deps.env.ISSUEFLOW_ENGINE === '1') {

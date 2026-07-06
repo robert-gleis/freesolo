@@ -1,16 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { execa } from 'execa';
-
+import { gitIssueflowPath } from '../core/session-state.js';
 import type { VerificationRun } from './types.js';
-
-async function gitIssueflowPath(repoRoot: string, ...segments: string[]): Promise<string> {
-  const joined = ['issueflow', ...segments].join('/');
-  const { stdout } = await execa('git', ['rev-parse', '--git-path', joined], { cwd: repoRoot });
-  const resolved = stdout.trim();
-  return path.isAbsolute(resolved) ? resolved : path.join(repoRoot, resolved);
-}
 
 export async function getIssueVerificationsDir(repoRoot: string, issueNumber: number): Promise<string> {
   return gitIssueflowPath(repoRoot, 'verifications', `issue-${issueNumber}`);

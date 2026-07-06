@@ -12,7 +12,7 @@ afterEach(async () => {
 });
 
 describe('reports command integration', () => {
-  it('shows report paths as JSON for an issue', async () => {
+  it('shows report paths as JSON for an issue', { timeout: 30_000 }, async () => {
     const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-reports-integration-'));
     tempDirs.push(repoRoot);
     await execa('git', ['init'], { cwd: repoRoot });

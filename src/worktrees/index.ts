@@ -1,3 +1,5 @@
+// Staged, not yet wired: no production caller imports this module. The WorktreeManager
+// interface is spec-only groundwork; production worktree persistence lives in src/worktree-metadata.
 export {
   WorktreeManagerError
 } from './types.js';

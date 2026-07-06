@@ -1,7 +1,10 @@
 import { Command, InvalidArgumentError, Option } from 'commander';
 
 import { findIssueArtifacts } from '../core/artifacts.js';
-import { parseGitHubRemote, readOriginRemote, resolveRepoRoot as defaultResolveRepoRoot } from '../core/git.js';
+import {
+  resolveRepoRef as defaultResolveRepoRef,
+  resolveRepoRoot as defaultResolveRepoRoot
+} from '../core/git.js';
 import { IssueIdError, resolveIssueNumber as defaultResolveIssueNumber } from '../core/issue-id.js';
 import {
   evaluateAndPersistMergeReadiness,
@@ -31,28 +34,16 @@ import {
   readGateVerdictRecord as defaultReadGateVerdictRecord,
   readVerdict as defaultReadVerdict
 } from '../verification/verdict-store.js';
-import type { RepoRef } from '../core/types.js';
 import {
   readState as defaultReadState,
   writeState as defaultWriteState
 } from '../workflow/local-state-store.js';
-
-export type WriteChannel = 'stdout' | 'stderr';
+import { defaultSetExitCode, defaultWrite, parseIssueNumber, type WriteChannel } from './shared.js';
 
 export interface MergeCommandDeps extends MergeExecutorDeps {
   env: NodeJS.ProcessEnv;
   write: (channel: WriteChannel, message: string) => void;
   setExitCode: (code: number) => void;
-}
-
-async function defaultResolveRepoRef(cwd: string): Promise<RepoRef> {
-  const repoRoot = await defaultResolveRepoRoot(cwd);
-  const remoteUrl = await readOriginRemote(repoRoot);
-  const parsed = parseGitHubRemote(remoteUrl);
-  if (!parsed) {
-    throw new Error('origin is not a supported GitHub remote');
-  }
-  return { owner: parsed.owner, repo: parsed.repo };
 }
 
 const defaultDeps: MergeCommandDeps = {
@@ -73,25 +64,9 @@ const defaultDeps: MergeCommandDeps = {
   writeMergeLabelVerdict: defaultWriteMergeLabelVerdict,
   runGh: defaultRunGh,
   env: process.env,
-  write: (channel, message) => {
-    if (channel === 'stdout') {
-      process.stdout.write(message);
-    } else {
-      process.stderr.write(message);
-    }
-  },
-  setExitCode: (code) => {
-    process.exitCode = code;
-  }
+  write: defaultWrite,
+  setExitCode: defaultSetExitCode
 };
-
-function parseIssueNumber(value: string): number {
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0 || String(parsed) !== value.trim()) {
-    throw new InvalidArgumentError('Issue number must be a positive integer');
-  }
-  return parsed;
-}
 
 function parseMergeMethod(value: string): MergeMethod {
   if (value === 'merge' || value === 'squash' || value === 'rebase') {

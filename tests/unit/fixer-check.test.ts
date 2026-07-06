@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { ScriptedAgentAdapter } from '../../src/agents/scripted.js';
 import type { AgentAdapter } from '../../src/agents/types.js';
+import { DIFF_MAX_CHARS } from '../../src/verification/context-deps.js';
 import { runFixerCheck, type FixerCheckDeps } from '../../src/verification/fixer-check.js';
 import type { FailureContext } from '../../src/verification/route-runner.js';
 
@@ -97,6 +98,28 @@ describe('runFixerCheck (default runFixer)', () => {
     // Failed check identity is present.
     expect(capturedPrompt).toContain('build');
     expect(capturedPrompt).toContain('npm run build');
+  });
+
+  it('caps an oversized diff before it enters the prompt', async () => {
+    const runDirectory = await makeRunDir();
+
+    let capturedPrompt = '';
+    const adapter = new ScriptedAgentAdapter({ steps: [{ match: /.*/, output: 'ok' }] });
+    const original = adapter.send.bind(adapter);
+    adapter.send = async (input: string) => {
+      capturedPrompt = input;
+      return original(input);
+    };
+
+    await runFixerCheck(
+      makeContext(runDirectory),
+      makeDeps(adapter, {
+        getBranchDiff: async () => 'x'.repeat(DIFF_MAX_CHARS + 1024)
+      })
+    );
+
+    expect(capturedPrompt).toContain('[diff truncated: showing first');
+    expect(capturedPrompt.length).toBeLessThan(DIFF_MAX_CHARS + 8 * 1024);
   });
 
   it('threads review findings into the prompt when the failed check was an agent-review', async () => {

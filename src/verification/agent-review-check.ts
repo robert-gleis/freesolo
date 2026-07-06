@@ -4,13 +4,14 @@ import path from 'node:path';
 import { getAgentAdapter, runReviewAgent } from '../agents/index.js';
 import type { AgentAdapter } from '../agents/types.js';
 import type { ReviewVerdict, RunReviewAgentInput } from '../agents/review-runner.js';
+import { errorMessage } from '../core/errors.js';
 import type { HostTool } from '../core/types.js';
 import { formatKnowledgeSection, loadKnowledgeEntries } from '../knowledge/loader.js';
 import type { KnowledgeEntry } from '../knowledge/loader.js';
 import { listAdrs } from '../memory/adrs.js';
 import type { AdrRecord } from '../memory/adrs.js';
 import { getPromptPreset } from '../prompts/presets.js';
-import { getCandidateBranchDiff, resolveIssueBodyFromRepo } from './context-deps.js';
+import { getCandidateBranchDiff, resolveIssueBodyFromRepo, truncateDiff } from './context-deps.js';
 import { readLogTail } from './log-tail.js';
 import type { AgentReviewRequest, AgentReviewResult } from './route-runner.js';
 
@@ -151,7 +152,7 @@ async function computeVerdict(
     prompt = getPromptPreset(check.promptPreset)({
       issueNumber,
       candidateBranch,
-      diff,
+      diff: truncateDiff(diff),
       issueBody,
       adrs: adrs.map((adr) => adr.content).join('\n\n'),
       knowledge: formatKnowledgeSection(knowledge),
@@ -182,8 +183,4 @@ async function computeVerdict(
 async function writeArtifact(artifactPath: string, verdict: ReviewVerdict): Promise<void> {
   await fs.mkdir(path.dirname(artifactPath), { recursive: true });
   await fs.writeFile(artifactPath, JSON.stringify(verdict, null, 2));
-}
-
-function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
 }

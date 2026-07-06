@@ -4,10 +4,9 @@ import { findIssueArtifacts } from '../core/artifacts.js';
 import { loadLatestRun } from '../verification/store.js';
 import {
   readGateVerdictRecord,
-  readVerdict,
   type VerdictStatus
 } from '../verification/verdict-store.js';
-import { readState, writeState } from '../workflow/local-state-store.js';
+import { repoSlug } from '../core/gh.js';
 import type { RepoRef } from '../core/types.js';
 import type { WorkflowState } from '../workflow/state-machine.js';
 import { buildMergeReadinessComment } from './merge-comment.js';
@@ -68,10 +67,6 @@ export async function defaultRunGh(
     stderr: result.stderr,
     exitCode: result.exitCode ?? 1
   };
-}
-
-function repoSlug(repo: RepoRef): string {
-  return `${repo.owner}/${repo.repo}`;
 }
 
 async function fetchPrState(

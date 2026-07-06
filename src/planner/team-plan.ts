@@ -27,7 +27,7 @@ const defaultPlannerResponse = JSON.stringify({
   ]
 });
 
-export function createDefaultPlannerAgent(issue: PlannerIssue): ScriptedAgentAdapter {
+export function createDefaultPlannerAgent(_issue: PlannerIssue): ScriptedAgentAdapter {
   return new ScriptedAgentAdapter({
     steps: [{ match: /.*/, output: defaultPlannerResponse }]
   });

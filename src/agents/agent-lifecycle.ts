@@ -1,3 +1,4 @@
+import { errorMessage } from '../core/errors.js';
 import type { AgentAdapter } from './types.js';
 
 /**
@@ -130,7 +131,4 @@ export function isAbortError(err: unknown): boolean {
   return false;
 }
 
-export function errorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  return String(err);
-}
+export { errorMessage };

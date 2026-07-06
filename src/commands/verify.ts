@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { resolveRepoRoot } from '../core/git.js';
+import { NotAGitRepositoryError, resolveRepoRoot } from '../core/git.js';
 import { IssueIdError, resolveIssueNumber } from '../core/issue-id.js';
 import { readCandidateBranchRecord } from '../integration/store.js';
 import { updateSessionReportArtifact } from '../reports/session-artifacts.js';
@@ -152,7 +152,7 @@ export async function createVerifyPlan(
       return { mode: 'error', message: error.message, exitCode: 2 };
     }
 
-    if (error instanceof Error && error.message.startsWith('issueflow must be started inside a git repository')) {
+    if (error instanceof NotAGitRepositoryError) {
       return { mode: 'error', message: error.message, exitCode: 2 };
     }
 

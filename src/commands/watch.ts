@@ -11,7 +11,7 @@ import {
   type WatcherIntakeMode,
   type WatcherSource
 } from '../config/types.js';
-import { parseGitHubRemote, readOriginRemote, resolveRepoRoot } from '../core/git.js';
+import { resolveRepoRef } from '../core/git.js';
 import { defaultStateDbPath, openStateDb as defaultOpenStateDb, type StateDb } from '../state/db.js';
 import { pollIssues } from '../watcher/poll.js';
 import { runWatchCycle as defaultRunWatchCycle, runWatchLoop as defaultRunWatchLoop } from '../watcher/runner.js';
@@ -30,8 +30,7 @@ import {
 } from '../workflow/local-state-store.js';
 import type { WorkflowState } from '../workflow/state-machine.js';
 import type { WatchIssue } from '../watcher/poll.js';
-
-export type WriteChannel = 'stdout' | 'stderr';
+import { defaultSetExitCode, defaultWrite, type WriteChannel } from './shared.js';
 
 export interface WatchCommandDeps {
   resolveRepoRef: (cwd: string) => Promise<RepoRef>;
@@ -45,16 +44,6 @@ export interface WatchCommandDeps {
   setExitCode: (code: number) => void;
 }
 
-async function defaultResolveRepoRef(cwd: string): Promise<RepoRef> {
-  const repoRoot = await resolveRepoRoot(cwd);
-  const remoteUrl = await readOriginRemote(repoRoot);
-  const parsed = parseGitHubRemote(remoteUrl);
-  if (!parsed) {
-    throw new Error('origin is not a supported GitHub remote');
-  }
-  return { owner: parsed.owner, repo: parsed.repo };
-}
-
 const defaultEngineDeps: WorkflowEngineDeps = {
   readState: defaultReadState,
   writeState: defaultWriteState,
@@ -62,7 +51,7 @@ const defaultEngineDeps: WorkflowEngineDeps = {
 };
 
 const defaultDeps: WatchCommandDeps = {
-  resolveRepoRef: defaultResolveRepoRef,
+  resolveRepoRef,
   loadConfig: defaultLoadConfig,
   openStateDb: defaultOpenStateDb,
   runWatchCycle: defaultRunWatchCycle,
@@ -70,16 +59,8 @@ const defaultDeps: WatchCommandDeps = {
   confirmIntake: (issue) =>
     confirm({ message: `Start issue #${issue.number} "${issue.title}"?`, default: false }),
   env: process.env,
-  write: (channel, message) => {
-    if (channel === 'stdout') {
-      process.stdout.write(message);
-    } else {
-      process.stderr.write(message);
-    }
-  },
-  setExitCode: (code) => {
-    process.exitCode = code;
-  }
+  write: defaultWrite,
+  setExitCode: defaultSetExitCode
 };
 
 function parseIntervalSeconds(value: string): number {

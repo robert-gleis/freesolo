@@ -5,8 +5,7 @@ import { Command, InvalidArgumentError } from 'commander';
 import { findIssueArtifacts } from '../core/artifacts.js';
 import { resolveRepoRoot } from '../core/git.js';
 import { IssueIdError, resolveIssueNumber } from '../core/issue-id.js';
-
-export type WriteChannel = 'stdout' | 'stderr';
+import { defaultSetExitCode, defaultWrite, type WriteChannel } from './shared.js';
 
 export interface ReportSummary {
   path: string;
@@ -33,16 +32,8 @@ const defaultDeps: ReportsCommandDeps = {
   resolveIssueNumber: (repoRoot, override) => resolveIssueNumber(repoRoot, override),
   findIssueArtifacts,
   readFile: (filePath) => fs.readFile(filePath, 'utf8'),
-  write: (channel, message) => {
-    if (channel === 'stdout') {
-      process.stdout.write(message);
-    } else {
-      process.stderr.write(message);
-    }
-  },
-  setExitCode: (code) => {
-    process.exitCode = code;
-  }
+  write: defaultWrite,
+  setExitCode: defaultSetExitCode
 };
 
 function parseFrontmatter(markdown: string): Record<string, string | number> {

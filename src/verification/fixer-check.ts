@@ -4,9 +4,10 @@ import path from 'node:path';
 import { getAgentAdapter } from '../agents/index.js';
 import { runFixerAgent, type FixerAgentResult } from '../agents/fixer-runner.js';
 import type { AgentAdapter } from '../agents/types.js';
+import { errorMessage } from '../core/errors.js';
 import type { HostTool } from '../core/types.js';
 import { getPromptPreset, type FixerFailedCheck, type FixerPromptContext } from '../prompts/presets.js';
-import { getCandidateBranchDiff, resolveIssueBodyFromRepo } from './context-deps.js';
+import { getCandidateBranchDiff, resolveIssueBodyFromRepo, truncateDiff } from './context-deps.js';
 import { readLogTail } from './log-tail.js';
 import type { FailureContext, FixerResult } from './route-runner.js';
 
@@ -88,7 +89,7 @@ async function buildFixerPrompt(context: FailureContext, deps: FixerCheckDeps): 
   const promptContext: FixerPromptContext = {
     issueNumber: context.issueNumber,
     candidateBranch: context.candidateBranch,
-    diff,
+    diff: truncateDiff(diff),
     issueBody,
     failedChecks
   };
@@ -103,8 +104,4 @@ async function writeFixerLog(logPath: string, content: string): Promise<void> {
   } catch {
     // best-effort evidence: a failed log write must not change the fixer result
   }
-}
-
-function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
 }

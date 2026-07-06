@@ -1,12 +1,9 @@
+import { slugify } from '../core/slug.js';
 import type { TeamDefinition } from '../planner/schemas/team-definition.js';
 import type { TeamMemberSpec } from './types.js';
 
 export function slugRoleName(roleName: string): string {
-  return roleName
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/-{2,}/g, '-');
+  return slugify(roleName);
 }
 
 export function expandTeamDefinition(definition: TeamDefinition): TeamMemberSpec[] {

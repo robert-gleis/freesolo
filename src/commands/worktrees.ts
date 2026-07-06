@@ -9,8 +9,7 @@ import {
   type WorktreeDriftReport,
   type WorktreeRecord
 } from '../worktree-metadata/index.js';
-
-export type WriteChannel = 'stdout' | 'stderr';
+import { defaultSetExitCode, defaultWrite, type WriteChannel } from './shared.js';
 
 export interface WorktreesCommandDeps {
   getWorktreeStore: typeof getWorktreeStore;
@@ -36,16 +35,8 @@ const defaultDeps: WorktreesCommandDeps = {
     }
   },
   env: process.env,
-  write: (channel, message) => {
-    if (channel === 'stdout') {
-      process.stdout.write(message);
-    } else {
-      process.stderr.write(message);
-    }
-  },
-  setExitCode: (code) => {
-    process.exitCode = code;
-  }
+  write: defaultWrite,
+  setExitCode: defaultSetExitCode
 };
 
 function formatListTable(rows: WorktreeRecord[]): string {

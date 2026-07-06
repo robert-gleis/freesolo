@@ -14,8 +14,7 @@ import {
   type CandidateBranchSource,
   CandidateBranchError
 } from '../integration/index.js';
-
-export type WriteChannel = 'stdout' | 'stderr';
+import { defaultSetExitCode, defaultWrite, type WriteChannel } from './shared.js';
 
 export interface CandidateCommandDeps {
   resolveRepoRoot: (cwd: string) => Promise<string>;
@@ -35,16 +34,8 @@ const defaultDeps: CandidateCommandDeps = {
   createCandidateBranch,
   readCandidateBranchRecord,
   runGit: defaultRunGit,
-  write: (channel, message) => {
-    if (channel === 'stdout') {
-      process.stdout.write(message);
-    } else {
-      process.stderr.write(message);
-    }
-  },
-  setExitCode: (code) => {
-    process.exitCode = code;
-  }
+  write: defaultWrite,
+  setExitCode: defaultSetExitCode
 };
 
 export async function resolveIssueSlug(worktreePath: string, issueNumber: number): Promise<string> {

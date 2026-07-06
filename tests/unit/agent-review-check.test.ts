@@ -10,6 +10,7 @@ import {
   runAgentReviewCheck,
   type AgentReviewDeps
 } from '../../src/verification/agent-review-check.js';
+import { DIFF_MAX_CHARS } from '../../src/verification/context-deps.js';
 import type { AgentReviewRequest } from '../../src/verification/route-runner.js';
 
 const tempDirs: string[] = [];
@@ -75,6 +76,26 @@ describe('runAgentReviewCheck', () => {
     const artifact = JSON.parse(await fs.readFile(artifactPath, 'utf8'));
     expect(artifact.verdict).toBe('pass');
     expect(artifact.findings).toEqual([]);
+  });
+
+  it('caps an oversized branch diff before it enters the prompt', async () => {
+    const runDirectory = await makeRunDir();
+    const adapter = new ScriptedAgentAdapter({ steps: [{ match: /.*/, output: PASS_JSON }] });
+
+    let capturedPrompt = '';
+    const deps = makeDeps(adapter, {
+      getBranchDiff: async () => 'x'.repeat(DIFF_MAX_CHARS + 1024),
+      runReviewAgent: async (input) => {
+        capturedPrompt = input.prompt;
+        return { verdict: 'pass', findings: [] };
+      }
+    });
+
+    const result = await runAgentReviewCheck(makeRequest(runDirectory), deps);
+
+    expect(result.status).toBe('pass');
+    expect(capturedPrompt).toContain('[diff truncated: showing first');
+    expect(capturedPrompt.length).toBeLessThan(DIFF_MAX_CHARS + 8 * 1024);
   });
 
   it('scopes the artifact filename by attempt so a later attempt cannot clobber an earlier one', async () => {
