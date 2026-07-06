@@ -23,7 +23,7 @@ export function buildReviewLoopInstructions(): string {
   return `Review/fix loop rules for both review gates:
 - Run each review gate for up to 5 rounds.
 - For each round, spawn a fresh reviewer agent.
-- The reviewer writes a round-specific artifact under docs/issueflow/reviews using -round-<round>.md in the filename.
+- The reviewer writes a round-specific artifact under docs/freesolo/reviews using -round-<round>.md in the filename.
 - If the reviewer passes with no findings, mark the gate as pass and continue.
 - If the reviewer reports findings, mark the gate as pass_with_findings, spawn a separate fixer agent with the review artifact as input, apply the fixes, then start the next round with a fresh reviewer agent.
 - Do not proceed after round 5 if findings remain; mark the gate as block and ask the user how to proceed.`.trim();
@@ -78,7 +78,7 @@ ${formatAdrSection(input.adrs ?? [])}`.trim();
 }
 
 export function buildWorkflowKernel(input: WorkflowKernelInput): string {
-  return `Continue the issueflow workflow for issue #${input.issueNumber}.
+  return `Continue the freesolo workflow for issue #${input.issueNumber}.
 
 Required stage order:
 1. Issue Intake
@@ -93,6 +93,6 @@ Required stage order:
 
 ${buildReviewLoopInstructions()}
 
-Use \`git rev-parse --git-path issueflow/current-issue.md\` as the issue packet path and \`git rev-parse --git-path issueflow/session.json\` as the persisted state path.
+Use \`git rev-parse --git-path freesolo/current-issue.md\` as the issue packet path and \`git rev-parse --git-path freesolo/session.json\` as the persisted state path.
 Never skip the two review/fix loops.`.trim();
 }

@@ -42,7 +42,7 @@ function reviewDepsWith(output: string): AgentReviewDeps {
 const tempDirs: string[] = [];
 
 async function makeRunDir(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-route-runner-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-route-runner-'));
   tempDirs.push(dir);
   return dir;
 }
@@ -70,7 +70,7 @@ function makeConfig(overrides: Partial<GateRouteConfig> = {}): GateRouteConfig {
 function makeInput(config: GateRouteConfig, runDirectory: string): GateRouteInput {
   return {
     config,
-    routeConfigPath: '/repo/issueflow.config.json',
+    routeConfigPath: '/repo/freesolo.config.json',
     repoRoot: '/repo',
     issueNumber: 7,
     candidateBranch: 'candidate/7',

@@ -146,7 +146,7 @@ const buildGateFixer: FixerPromptBuilder = (context) => {
     '- Make the smallest change that fixes the failing checks. Do NOT touch',
     '  unrelated code, refactor broadly, or fix pre-existing issues that are not',
     '  causing a failure above.',
-    '- Do NOT edit the route config: leave issueflow.config.json and the',
+    '- Do NOT edit the route config: leave freesolo.config.json and the',
     '  `verification.gateRoute` block (checks, fixer, maxAttempts, bail) untouched.',
     '  Weakening or disabling a check is not a fix.',
     '- Do NOT declare the route fixed or claim success. You do not decide whether',

@@ -18,7 +18,7 @@ function passRun(): VerificationRun {
     runId: 'run-1',
     issueNumber: 44,
     repoRoot: '/repo',
-    configPath: '/repo/issueflow.config.json',
+    configPath: '/repo/freesolo.config.json',
     startedAt: '2026-06-08T08:00:00.000Z',
     finishedAt: '2026-06-08T08:01:00.000Z',
     status: 'pass',
@@ -77,7 +77,7 @@ function makeDeps(overrides: Partial<MergeCommandDeps> = {}): MergeCommandDeps {
       updatedAt: '2026-06-08T08:00:00.000Z'
     }),
     readMergeReadinessRecord: async () => null,
-    writeMergeReadinessRecord: vi.fn(async () => '/repo/.git/issueflow/merge-readiness.json'),
+    writeMergeReadinessRecord: vi.fn(async () => '/repo/.git/freesolo/merge-readiness.json'),
     readMergeLabelStatus: async () => null,
     writeMergeLabelVerdict: vi.fn(async () => {}),
     runGh: async (args) => {
@@ -89,7 +89,7 @@ function makeDeps(overrides: Partial<MergeCommandDeps> = {}): MergeCommandDeps {
       }
       return { stdout: '12345', stderr: '', exitCode: 0 };
     },
-    env: { ISSUEFLOW_ENGINE: '1' },
+    env: { FREESOLO_ENGINE: '1' },
     write: () => {},
     setExitCode: () => {},
     now: () => new Date('2026-06-08T08:02:00.000Z'),
@@ -173,7 +173,7 @@ describe('mergeEvaluateAction', () => {
 });
 
 describe('mergeExecuteAction', () => {
-  it('exits 3 without ISSUEFLOW_ENGINE when state is pr-ready', async () => {
+  it('exits 3 without FREESOLO_ENGINE when state is pr-ready', async () => {
     let exitCode = 0;
     await mergeExecuteAction(
       {},

@@ -18,7 +18,7 @@ function passRun(): VerificationRun {
     runId: 'run-1',
     issueNumber: 44,
     repoRoot: '/repo',
-    configPath: '/repo/issueflow.config.json',
+    configPath: '/repo/freesolo.config.json',
     startedAt: '2026-06-08T08:00:00.000Z',
     finishedAt: '2026-06-08T08:01:00.000Z',
     status: 'pass',
@@ -77,7 +77,7 @@ function makeDeps(overrides: Partial<MergeExecutorDeps> = {}): MergeExecutorDeps
       updatedAt: '2026-06-08T08:00:00.000Z'
     }),
     readMergeReadinessRecord: async () => null,
-    writeMergeReadinessRecord: vi.fn(async () => '/repo/.git/issueflow/merge-readiness.json'),
+    writeMergeReadinessRecord: vi.fn(async () => '/repo/.git/freesolo/merge-readiness.json'),
     readMergeLabelStatus: async () => null,
     writeMergeLabelVerdict: vi.fn(async () => {}),
     runGh: async (args) => {

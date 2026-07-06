@@ -12,13 +12,13 @@ import {
 } from '../../src/teams/store.js';
 
 async function makeRepo(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-team-store-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-team-store-'));
   await execa('git', ['init', '--quiet'], { cwd: dir });
   return dir;
 }
 
 describe('team runtime store', () => {
-  it('round-trips snapshot via git issueflow path', async () => {
+  it('round-trips snapshot via git freesolo path', async () => {
     const worktreePath = await makeRepo();
     const snapshot = { issueNumber: 41, phase: 'running' as const, members: [] };
     await writeTeamRuntimeSnapshot(worktreePath, snapshot);

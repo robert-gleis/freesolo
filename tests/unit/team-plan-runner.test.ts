@@ -12,7 +12,7 @@ import { createDefaultPlannerAgent, runTeamPlanner } from '../../src/planner/tea
 const worktrees: string[] = [];
 
 async function makeWorktree(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-team-plan-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-team-plan-'));
   worktrees.push(dir);
   await execa('git', ['init', '--quiet'], { cwd: dir });
   return dir;

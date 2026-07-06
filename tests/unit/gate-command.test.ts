@@ -14,7 +14,7 @@ function makePassRun(): VerificationRun {
     runId: '2026-06-01T08-00-00-000Z',
     issueNumber: 29,
     repoRoot: '/repo',
-    configPath: '/repo/issueflow.config.json',
+    configPath: '/repo/freesolo.config.json',
     startedAt: '2026-06-01T08:00:00.000Z',
     finishedAt: '2026-06-01T08:01:00.000Z',
     status: 'pass',
@@ -40,7 +40,7 @@ function makeRouteRun(status: RunStatus): GateRouteRun {
     runId: ROUTE_RUN_ID,
     issueNumber: 29,
     repoRoot: '/repo',
-    configPath: '/repo/issueflow.config.json',
+    configPath: '/repo/freesolo.config.json',
     startedAt: '2026-07-03T09:15:00.000Z',
     finishedAt: '2026-07-03T09:20:00.000Z',
     status,
@@ -57,11 +57,11 @@ function makeRouteRun(status: RunStatus): GateRouteRun {
         startedAt: '2026-07-03T09:15:00.000Z',
         finishedAt: '2026-07-03T09:16:00.000Z',
         durationMs: 60000,
-        logPath: '/repo/.git/issueflow/verifications/issue-29/attempt-1-build.log'
+        logPath: '/repo/.git/freesolo/verifications/issue-29/attempt-1-build.log'
       }
     ],
     candidateBranch: 'candidate/29-native-gate-route',
-    routeConfigPath: '/repo/issueflow.config.json',
+    routeConfigPath: '/repo/freesolo.config.json',
     maxAttempts: 3,
     attemptsUsed: 1,
     attempts: [
@@ -79,7 +79,7 @@ function makeRouteRun(status: RunStatus): GateRouteRun {
             startedAt: '2026-07-03T09:15:00.000Z',
             finishedAt: '2026-07-03T09:16:00.000Z',
             durationMs: 60000,
-            logPath: '/repo/.git/issueflow/verifications/issue-29/attempt-1-build.log'
+            logPath: '/repo/.git/freesolo/verifications/issue-29/attempt-1-build.log'
           }
         ]
       }
@@ -100,7 +100,7 @@ function makeDeps(overrides: Partial<GateCommandDeps> = {}): GateCommandDeps {
     writeVerdict: async () => {},
     loadLatestRun: async () => makePassRun(),
     writeGateVerdictRecord: async () => {},
-    env: { ISSUEFLOW_ENGINE: '1' },
+    env: { FREESOLO_ENGINE: '1' },
     write: () => {},
     setExitCode: () => {},
     now: () => new Date('2026-06-01T08:02:00.000Z'),
@@ -109,7 +109,7 @@ function makeDeps(overrides: Partial<GateCommandDeps> = {}): GateCommandDeps {
 }
 
 describe('gateEvaluateAction', () => {
-  it('exits 3 when ISSUEFLOW_ENGINE is not set', async () => {
+  it('exits 3 when FREESOLO_ENGINE is not set', async () => {
     let exitCode = 0;
     const output: string[] = [];
 
@@ -232,7 +232,7 @@ describe('gateEvaluateAction', () => {
     expect(capturedTo).toBe('implementing');
     expect(capturedVerdict).toBe('fail');
     expect(exitCode).toBe(1);
-    expect(stderr.join('')).toContain('issueflow verify');
+    expect(stderr.join('')).toContain('freesolo verify');
   });
 
   it('records the ROUTE run id and transitions to pr-ready on a passing GateRouteRun', async () => {

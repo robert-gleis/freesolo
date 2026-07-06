@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add up-to-5-round review/fix loops to both issueflow review gates.
+**Goal:** Add up-to-5-round review/fix loops to both freesolo review gates.
 
-**Architecture:** Keep issueflow as an instruction-injection launcher rather than a runtime orchestrator, but move deterministic loop bookkeeping into a shared issueflow skill script usable by Codex and Claude Code. The CLI will initialize loop state, discover numbered review artifacts, and inject explicit loop instructions that tell the host agent to use the script before spawning fresh reviewer agents and separate fixer agents until a clean pass or round 5 block.
+**Architecture:** Keep freesolo as an instruction-injection launcher rather than a runtime orchestrator, but move deterministic loop bookkeeping into a shared freesolo skill script usable by Codex and Claude Code. The CLI will initialize loop state, discover numbered review artifacts, and inject explicit loop instructions that tell the host agent to use the script before spawning fresh reviewer agents and separate fixer agents until a clean pass or round 5 block.
 
 **Tech Stack:** TypeScript, Node.js 20, Zod, Vitest, markdown host integration assets.
 
@@ -17,11 +17,11 @@
 - Modify `src/core/artifacts.ts`: prefer latest numbered review artifacts while preserving old names.
 - Modify `src/workflow/kernel.ts`: replace single-pass gate language with shared review/fix loop instructions.
 - Modify `src/commands/start.ts`: initialize loop state in new sessions.
-- Create `integrations/skills/issueflow-workflow/scripts/review-loop.mjs`: provide the shared skill-local loop driver for round state, artifact paths, and reviewer/fixer handoff text.
+- Create `integrations/skills/freesolo-workflow/scripts/review-loop.mjs`: provide the shared skill-local loop driver for round state, artifact paths, and reviewer/fixer handoff text.
 - Create `tests/unit/review-loop-script.test.ts`: verify the skill script behavior through Node.
-- Move and modify `integrations/codex/issueflow-workflow/SKILL.md` to `integrations/skills/issueflow-workflow/SKILL.md`: make the workflow skill canonical for Codex and Claude Code.
-- Modify `integrations/claude/commands/issueflow.md`: mirror loop workflow for Claude.
-- Modify `integrations/cursor/commands/issueflow.md`: mirror loop workflow for Cursor.
+- Move and modify `integrations/codex/freesolo-workflow/SKILL.md` to `integrations/skills/freesolo-workflow/SKILL.md`: make the workflow skill canonical for Codex and Claude Code.
+- Modify `integrations/claude/commands/freesolo.md`: mirror loop workflow for Claude.
+- Modify `integrations/cursor/commands/freesolo.md`: mirror loop workflow for Cursor.
 - Modify `README.md` and `docs/host-integrations.md`: document the shared skill path.
 - Modify `tests/unit/session-state.test.ts`: cover new state and legacy defaults.
 - Modify `tests/unit/artifacts.test.ts`: cover round-specific artifact discovery.
@@ -47,10 +47,10 @@ import { sessionStateSchema } from '../../src/core/session-state.js';
 
 const baseState = {
   issueNumber: 12,
-  issueSlug: 'ship-issueflow-start',
+  issueSlug: 'ship-freesolo-start',
   repoRoot: '/repo',
-  branchName: 'issue/12-ship-issueflow-start',
-  worktreePath: '/tmp/issueflow-12-ship-issueflow-start',
+  branchName: 'issue/12-ship-freesolo-start',
+  worktreePath: '/tmp/freesolo-12-ship-freesolo-start',
   chosenHost: 'codex',
   currentStage: 'brainstorming',
   reviewGates: {
@@ -68,7 +68,7 @@ const baseState = {
 };
 
 describe('sessionStateSchema', () => {
-  it('accepts the persisted issueflow state shape with review loops', () => {
+  it('accepts the persisted freesolo state shape with review loops', () => {
     const parsed = sessionStateSchema.parse({
       ...baseState,
       reviewLoops: {
@@ -194,14 +194,14 @@ Add these tests to `tests/unit/artifacts.test.ts`:
 
 ```ts
   it('prefers the latest numbered plan review artifact', async () => {
-    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-artifacts-'));
+    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-artifacts-'));
     tempDirs.push(repoRoot);
 
-    await fs.mkdir(path.join(repoRoot, 'docs/issueflow/reviews'), { recursive: true });
+    await fs.mkdir(path.join(repoRoot, 'docs/freesolo/reviews'), { recursive: true });
 
-    const oldPlanReviewPath = path.join(repoRoot, 'docs/issueflow/reviews/2026-04-21-issue-12-plan-review.md');
-    const roundOnePath = path.join(repoRoot, 'docs/issueflow/reviews/2026-04-22-issue-12-plan-review-round-1.md');
-    const roundTwoPath = path.join(repoRoot, 'docs/issueflow/reviews/2026-04-22-issue-12-plan-review-round-2.md');
+    const oldPlanReviewPath = path.join(repoRoot, 'docs/freesolo/reviews/2026-04-21-issue-12-plan-review.md');
+    const roundOnePath = path.join(repoRoot, 'docs/freesolo/reviews/2026-04-22-issue-12-plan-review-round-1.md');
+    const roundTwoPath = path.join(repoRoot, 'docs/freesolo/reviews/2026-04-22-issue-12-plan-review-round-2.md');
 
     await fs.writeFile(oldPlanReviewPath, '# old review');
     await fs.writeFile(roundOnePath, '# round 1');
@@ -213,13 +213,13 @@ Add these tests to `tests/unit/artifacts.test.ts`:
   });
 
   it('prefers the latest numbered implementation review artifact', async () => {
-    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-artifacts-'));
+    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-artifacts-'));
     tempDirs.push(repoRoot);
 
-    await fs.mkdir(path.join(repoRoot, 'docs/issueflow/reviews'), { recursive: true });
+    await fs.mkdir(path.join(repoRoot, 'docs/freesolo/reviews'), { recursive: true });
 
-    const roundThreePath = path.join(repoRoot, 'docs/issueflow/reviews/2026-04-23-issue-12-implementation-review-round-3.md');
-    const roundFourPath = path.join(repoRoot, 'docs/issueflow/reviews/2026-04-23-issue-12-implementation-review-round-4.md');
+    const roundThreePath = path.join(repoRoot, 'docs/freesolo/reviews/2026-04-23-issue-12-implementation-review-round-3.md');
+    const roundFourPath = path.join(repoRoot, 'docs/freesolo/reviews/2026-04-23-issue-12-implementation-review-round-4.md');
 
     await fs.writeFile(roundThreePath, '# round 3');
     await fs.writeFile(roundFourPath, '# round 4');
@@ -230,13 +230,13 @@ Add these tests to `tests/unit/artifacts.test.ts`:
   });
 
   it('keeps reading old unnumbered review artifact names', async () => {
-    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-artifacts-'));
+    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-artifacts-'));
     tempDirs.push(repoRoot);
 
-    await fs.mkdir(path.join(repoRoot, 'docs/issueflow/reviews'), { recursive: true });
+    await fs.mkdir(path.join(repoRoot, 'docs/freesolo/reviews'), { recursive: true });
 
-    const planReviewPath = path.join(repoRoot, 'docs/issueflow/reviews/2026-04-21-issue-12-plan-review.md');
-    const implementationReviewPath = path.join(repoRoot, 'docs/issueflow/reviews/2026-04-22-issue-12-implementation-review.md');
+    const planReviewPath = path.join(repoRoot, 'docs/freesolo/reviews/2026-04-21-issue-12-plan-review.md');
+    const implementationReviewPath = path.join(repoRoot, 'docs/freesolo/reviews/2026-04-22-issue-12-implementation-review.md');
 
     await fs.writeFile(planReviewPath, '# plan review');
     await fs.writeFile(implementationReviewPath, '# implementation review');
@@ -299,7 +299,7 @@ Add the numbered review finder:
 
 ```ts
 async function findLatestReviewArtifact(repoRoot: string, issueNumber: number, kind: ReviewArtifactKind): Promise<string | null> {
-  const absoluteDir = path.join(repoRoot, 'docs', 'issueflow', 'reviews');
+  const absoluteDir = path.join(repoRoot, 'docs', 'freesolo', 'reviews');
   const entries = await readDirectoryEntries(absoluteDir);
 
   if (!entries) {
@@ -331,8 +331,8 @@ Update `findIssueArtifacts`:
 
 ```ts
   const [spec, plan, planReview, implementationReview] = await Promise.all([
-    findLatestArtifact(repoRoot, ['docs', 'issueflow', 'specs'], issueNumber, '-design.md'),
-    findLatestArtifact(repoRoot, ['docs', 'issueflow', 'plans'], issueNumber, '-plan.md'),
+    findLatestArtifact(repoRoot, ['docs', 'freesolo', 'specs'], issueNumber, '-design.md'),
+    findLatestArtifact(repoRoot, ['docs', 'freesolo', 'plans'], issueNumber, '-plan.md'),
     findLatestReviewArtifact(repoRoot, issueNumber, 'plan'),
     findLatestReviewArtifact(repoRoot, issueNumber, 'implementation')
   ]);
@@ -388,7 +388,7 @@ export function buildReviewLoopInstructions(): string {
   return `Review/fix loop rules for both review gates:
 - Run each review gate for up to 5 rounds.
 - For each round, spawn a fresh reviewer agent.
-- The reviewer writes a round-specific artifact under docs/issueflow/reviews using -round-<round>.md in the filename.
+- The reviewer writes a round-specific artifact under docs/freesolo/reviews using -round-<round>.md in the filename.
 - If the reviewer passes with no findings, mark the gate as pass and continue.
 - If the reviewer reports findings, mark the gate as pass_with_findings, spawn a separate fixer agent with the review artifact as input, apply the fixes, then start the next round with a fresh reviewer agent.
 - Do not proceed after round 5 if findings remain; mark the gate as block and ask the user how to proceed.`.trim();
@@ -503,7 +503,7 @@ git commit -m "Initialize review loop state"
 ## Task 5: Shared Skill Review Loop Script
 
 **Files:**
-- Create: `integrations/skills/issueflow-workflow/scripts/review-loop.mjs`
+- Create: `integrations/skills/freesolo-workflow/scripts/review-loop.mjs`
 - Create: `tests/unit/review-loop-script.test.ts`
 
 - [ ] **Step 1: Write failing script tests**
@@ -519,24 +519,24 @@ import { execa } from 'execa';
 import { afterEach, describe, expect, it } from 'vitest';
 
 const tempDirs: string[] = [];
-const scriptPath = path.resolve('integrations/skills/issueflow-workflow/scripts/review-loop.mjs');
-const scriptEnv = { ISSUEFLOW_REVIEW_DATE: '2026-04-24' };
+const scriptPath = path.resolve('integrations/skills/freesolo-workflow/scripts/review-loop.mjs');
+const scriptEnv = { FREESOLO_REVIEW_DATE: '2026-04-24' };
 
 async function createRepo(): Promise<string> {
-  const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-review-loop-'));
+  const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-review-loop-'));
   tempDirs.push(repoRoot);
 
   await execa('git', ['init'], { cwd: repoRoot });
   const gitDir = path.join(repoRoot, '.git');
-  await fs.mkdir(path.join(gitDir, 'issueflow'), { recursive: true });
+  await fs.mkdir(path.join(gitDir, 'freesolo'), { recursive: true });
   await fs.writeFile(
-    path.join(gitDir, 'issueflow/session.json'),
+    path.join(gitDir, 'freesolo/session.json'),
     JSON.stringify(
       {
         issueNumber: 12,
-        issueSlug: 'ship-issueflow-start',
+        issueSlug: 'ship-freesolo-start',
         repoRoot,
-        branchName: 'issue/12-ship-issueflow-start',
+        branchName: 'issue/12-ship-freesolo-start',
         worktreePath: repoRoot,
         chosenHost: 'codex',
         currentStage: 'plan-review',
@@ -557,8 +557,8 @@ async function createRepo(): Promise<string> {
         createdAt: '2026-04-24T10:00:00.000Z',
         updatedAt: '2026-04-24T10:00:00.000Z',
         artifacts: {
-          spec: `${repoRoot}/docs/issueflow/specs/2026-04-20-issue-12-design.md`,
-          plan: `${repoRoot}/docs/issueflow/plans/2026-04-21-issue-12-plan.md`,
+          spec: `${repoRoot}/docs/freesolo/specs/2026-04-20-issue-12-design.md`,
+          plan: `${repoRoot}/docs/freesolo/plans/2026-04-21-issue-12-plan.md`,
           planReview: null,
           implementationReview: null
         }
@@ -584,7 +584,7 @@ describe('review-loop skill script', () => {
     expect(stdout).toContain('Gate: plan');
     expect(stdout).toContain('Round: 1/5');
     expect(stdout).toContain('fresh reviewer agent');
-    expect(stdout).toContain('docs/issueflow/reviews/2026-04-24-issue-12-plan-review-round-1.md');
+    expect(stdout).toContain('docs/freesolo/reviews/2026-04-24-issue-12-plan-review-round-1.md');
   });
 
   it('records findings and advances to the next round with fixer handoff details', async () => {
@@ -592,29 +592,29 @@ describe('review-loop skill script', () => {
 
     const { stdout } = await execa(
       'node',
-      [scriptPath, 'record-review', '--gate', 'plan', '--status', 'pass_with_findings', '--artifact', 'docs/issueflow/reviews/2026-04-24-issue-12-plan-review-round-1.md'],
+      [scriptPath, 'record-review', '--gate', 'plan', '--status', 'pass_with_findings', '--artifact', 'docs/freesolo/reviews/2026-04-24-issue-12-plan-review-round-1.md'],
       { cwd: repoRoot, env: scriptEnv }
     );
 
-    const session = JSON.parse(await fs.readFile(path.join(repoRoot, '.git/issueflow/session.json'), 'utf8'));
+    const session = JSON.parse(await fs.readFile(path.join(repoRoot, '.git/freesolo/session.json'), 'utf8'));
 
     expect(stdout).toContain('spawn a separate fixer agent');
     expect(stdout).toContain('Next review round: 2/5');
     expect(session.reviewGates.plan).toBe('pass_with_findings');
     expect(session.reviewLoops.plan.currentRound).toBe(2);
-    expect(session.artifacts.planReview).toBe(`${repoRoot}/docs/issueflow/reviews/2026-04-24-issue-12-plan-review-round-1.md`);
+    expect(session.artifacts.planReview).toBe(`${repoRoot}/docs/freesolo/reviews/2026-04-24-issue-12-plan-review-round-1.md`);
   });
 
   it('blocks the gate when findings remain at round 5', async () => {
     const repoRoot = await createRepo();
-    const sessionPath = path.join(repoRoot, '.git/issueflow/session.json');
+    const sessionPath = path.join(repoRoot, '.git/freesolo/session.json');
     const session = JSON.parse(await fs.readFile(sessionPath, 'utf8'));
     session.reviewLoops.plan.currentRound = 5;
     await fs.writeFile(sessionPath, JSON.stringify(session, null, 2));
 
     const { stdout } = await execa(
       'node',
-      [scriptPath, 'record-review', '--gate', 'plan', '--status', 'pass_with_findings', '--artifact', 'docs/issueflow/reviews/2026-04-24-issue-12-plan-review-round-5.md'],
+      [scriptPath, 'record-review', '--gate', 'plan', '--status', 'pass_with_findings', '--artifact', 'docs/freesolo/reviews/2026-04-24-issue-12-plan-review-round-5.md'],
       { cwd: repoRoot, env: scriptEnv }
     );
     const updatedSession = JSON.parse(await fs.readFile(sessionPath, 'utf8'));
@@ -629,14 +629,14 @@ describe('review-loop skill script', () => {
 
     const { stdout } = await execa(
       'node',
-      [scriptPath, 'record-review', '--gate', 'implementation', '--status', 'pass', '--artifact', 'docs/issueflow/reviews/2026-04-24-issue-12-implementation-review-round-1.md'],
+      [scriptPath, 'record-review', '--gate', 'implementation', '--status', 'pass', '--artifact', 'docs/freesolo/reviews/2026-04-24-issue-12-implementation-review-round-1.md'],
       { cwd: repoRoot, env: scriptEnv }
     );
-    const session = JSON.parse(await fs.readFile(path.join(repoRoot, '.git/issueflow/session.json'), 'utf8'));
+    const session = JSON.parse(await fs.readFile(path.join(repoRoot, '.git/freesolo/session.json'), 'utf8'));
 
     expect(stdout).toContain('Gate passed with no findings');
     expect(session.reviewGates.implementation).toBe('pass');
-    expect(session.artifacts.implementationReview).toBe(`${repoRoot}/docs/issueflow/reviews/2026-04-24-issue-12-implementation-review-round-1.md`);
+    expect(session.artifacts.implementationReview).toBe(`${repoRoot}/docs/freesolo/reviews/2026-04-24-issue-12-implementation-review-round-1.md`);
   });
 });
 ```
@@ -645,11 +645,11 @@ describe('review-loop skill script', () => {
 
 Run: `npm test -- tests/unit/review-loop-script.test.ts`
 
-Expected: FAIL because `integrations/skills/issueflow-workflow/scripts/review-loop.mjs` does not exist.
+Expected: FAIL because `integrations/skills/freesolo-workflow/scripts/review-loop.mjs` does not exist.
 
 - [ ] **Step 3: Implement the skill script**
 
-Create `integrations/skills/issueflow-workflow/scripts/review-loop.mjs`:
+Create `integrations/skills/freesolo-workflow/scripts/review-loop.mjs`:
 
 ```js
 #!/usr/bin/env node
@@ -694,7 +694,7 @@ function assertStatus(status) {
 }
 
 async function resolveGitPath(name) {
-  const { stdout } = await execFileAsync('git', ['rev-parse', '--git-path', `issueflow/${name}`]);
+  const { stdout } = await execFileAsync('git', ['rev-parse', '--git-path', `freesolo/${name}`]);
   return stdout.trim();
 }
 
@@ -721,9 +721,9 @@ function artifactKey(gate) {
 }
 
 function datedReviewArtifact(session, gate, round) {
-  const date = process.env.ISSUEFLOW_REVIEW_DATE ?? new Date().toISOString().slice(0, 10);
+  const date = process.env.FREESOLO_REVIEW_DATE ?? new Date().toISOString().slice(0, 10);
   const filename = `${date}-issue-${session.issueNumber}-${reviewKind(gate)}-review-round-${round}.md`;
-  return path.join(session.repoRoot, 'docs', 'issueflow', 'reviews', filename);
+  return path.join(session.repoRoot, 'docs', 'freesolo', 'reviews', filename);
 }
 
 async function writeSession(sessionPath, session) {
@@ -812,16 +812,16 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add integrations/skills/issueflow-workflow/scripts/review-loop.mjs tests/unit/review-loop-script.test.ts
+git add integrations/skills/freesolo-workflow/scripts/review-loop.mjs tests/unit/review-loop-script.test.ts
 git commit -m "Add shared review loop script"
 ```
 
 ## Task 6: Host Integration Assets
 
 **Files:**
-- Move: `integrations/codex/issueflow-workflow/SKILL.md` to `integrations/skills/issueflow-workflow/SKILL.md`
-- Modify: `integrations/claude/commands/issueflow.md`
-- Modify: `integrations/cursor/commands/issueflow.md`
+- Move: `integrations/codex/freesolo-workflow/SKILL.md` to `integrations/skills/freesolo-workflow/SKILL.md`
+- Modify: `integrations/claude/commands/freesolo.md`
+- Modify: `integrations/cursor/commands/freesolo.md`
 - Modify: `README.md`
 - Modify: `docs/host-integrations.md`
 - Test: `tests/unit/integrations.test.ts`
@@ -832,14 +832,14 @@ Update `requiredSnippets` in `tests/unit/integrations.test.ts`:
 
 ```ts
 const assetFiles = [
-  'integrations/skills/issueflow-workflow/SKILL.md',
-  'integrations/claude/commands/issueflow.md',
-  'integrations/cursor/commands/issueflow.md'
+  'integrations/skills/freesolo-workflow/SKILL.md',
+  'integrations/claude/commands/freesolo.md',
+  'integrations/cursor/commands/freesolo.md'
 ];
 
 const requiredSnippets = [
-  'git rev-parse --git-path issueflow/current-issue.md',
-  'git rev-parse --git-path issueflow/session.json',
+  'git rev-parse --git-path freesolo/current-issue.md',
+  'git rev-parse --git-path freesolo/session.json',
   'Issue Intake',
   'Brainstorming',
   'Spec',
@@ -881,7 +881,7 @@ Expected: FAIL because host assets still mention `Review Gate 1` and `Review Gat
 
 - [ ] **Step 3: Update Codex skill asset**
 
-Move `integrations/codex/issueflow-workflow/SKILL.md` to `integrations/skills/issueflow-workflow/SKILL.md`, then replace its stage list and gate language with:
+Move `integrations/codex/freesolo-workflow/SKILL.md` to `integrations/skills/freesolo-workflow/SKILL.md`, then replace its stage list and gate language with:
 
 ```md
 3. Continue the stage order exactly:
@@ -895,29 +895,29 @@ Move `integrations/codex/issueflow-workflow/SKILL.md` to `integrations/skills/is
    - Implementation Review/Fix Loop in separate reviewer and fixer agents, up to 5 rounds
    - Verification with `superpowers:verification-before-completion`
 4. For hosts that support skills, use the skill script for review loop bookkeeping:
-   - Run `node integrations/skills/issueflow-workflow/scripts/review-loop.mjs next-review --gate plan` before each plan review round.
-   - After a plan review with findings, run `node integrations/skills/issueflow-workflow/scripts/review-loop.mjs record-review --gate plan --status pass_with_findings --artifact docs/issueflow/reviews/2026-04-24-issue-12-plan-review-round-1.md`.
-   - After a clean plan review, run `node integrations/skills/issueflow-workflow/scripts/review-loop.mjs record-review --gate plan --status pass --artifact docs/issueflow/reviews/2026-04-24-issue-12-plan-review-round-1.md`.
-   - Run `node integrations/skills/issueflow-workflow/scripts/review-loop.mjs next-review --gate implementation` before each implementation review round.
-   - After an implementation review with findings, run `node integrations/skills/issueflow-workflow/scripts/review-loop.mjs record-review --gate implementation --status pass_with_findings --artifact docs/issueflow/reviews/2026-04-24-issue-12-implementation-review-round-1.md`.
-   - After a clean implementation review, run `node integrations/skills/issueflow-workflow/scripts/review-loop.mjs record-review --gate implementation --status pass --artifact docs/issueflow/reviews/2026-04-24-issue-12-implementation-review-round-1.md`.
+   - Run `node integrations/skills/freesolo-workflow/scripts/review-loop.mjs next-review --gate plan` before each plan review round.
+   - After a plan review with findings, run `node integrations/skills/freesolo-workflow/scripts/review-loop.mjs record-review --gate plan --status pass_with_findings --artifact docs/freesolo/reviews/2026-04-24-issue-12-plan-review-round-1.md`.
+   - After a clean plan review, run `node integrations/skills/freesolo-workflow/scripts/review-loop.mjs record-review --gate plan --status pass --artifact docs/freesolo/reviews/2026-04-24-issue-12-plan-review-round-1.md`.
+   - Run `node integrations/skills/freesolo-workflow/scripts/review-loop.mjs next-review --gate implementation` before each implementation review round.
+   - After an implementation review with findings, run `node integrations/skills/freesolo-workflow/scripts/review-loop.mjs record-review --gate implementation --status pass_with_findings --artifact docs/freesolo/reviews/2026-04-24-issue-12-implementation-review-round-1.md`.
+   - After a clean implementation review, run `node integrations/skills/freesolo-workflow/scripts/review-loop.mjs record-review --gate implementation --status pass --artifact docs/freesolo/reviews/2026-04-24-issue-12-implementation-review-round-1.md`.
 5. Review/fix loop rules for both review gates:
    - Run each review gate for up to 5 rounds.
    - For each round, spawn a fresh reviewer agent.
-   - The reviewer writes a round-specific artifact under `docs/issueflow/reviews` using `-round-<round>.md` in the filename.
+   - The reviewer writes a round-specific artifact under `docs/freesolo/reviews` using `-round-<round>.md` in the filename.
    - If the reviewer passes with no findings, mark the gate as `pass` and continue.
    - If the reviewer reports findings, mark the gate as `pass_with_findings`, spawn a separate fixer agent with the review artifact as input, apply the fixes, then start the next round with a fresh reviewer agent.
    - Do not proceed after round 5 if findings remain; mark the gate as `block` and ask the user how to proceed.
 6. Never skip the two review/fix loops.
-7. If the issue packet is missing, stop and ask the user to run `issueflow start`.
+7. If the issue packet is missing, stop and ask the user to run `freesolo start`.
 ```
 
 - [ ] **Step 4: Update Claude command asset**
 
-Replace the task stage list and gate language in `integrations/claude/commands/issueflow.md` with:
+Replace the task stage list and gate language in `integrations/claude/commands/freesolo.md` with:
 
 ```md
-Continue the issueflow workflow in this order:
+Continue the freesolo workflow in this order:
 1. Issue Intake
 2. Brainstorming with `superpowers:brainstorming`
 3. Spec
@@ -931,7 +931,7 @@ Continue the issueflow workflow in this order:
 Review/fix loop rules for both review gates:
 - Run each review gate for up to 5 rounds.
 - For each round, spawn a fresh reviewer agent.
-- The reviewer writes a round-specific artifact under `docs/issueflow/reviews` using `-round-<round>.md` in the filename.
+- The reviewer writes a round-specific artifact under `docs/freesolo/reviews` using `-round-<round>.md` in the filename.
 - If the reviewer passes with no findings, mark the gate as `pass` and continue.
 - If the reviewer reports findings, mark the gate as `pass_with_findings`, spawn a separate fixer agent with the review artifact as input, apply the fixes, then start the next round with a fresh reviewer agent.
 - Do not proceed after round 5 if findings remain; mark the gate as `block` and ask the user how to proceed.
@@ -941,20 +941,20 @@ Never skip the two review/fix loops.
 
 - [ ] **Step 5: Update Cursor command asset**
 
-Replace the stage list and gate language in `integrations/cursor/commands/issueflow.md` with the same stage order and review/fix loop rules used in the Claude command asset.
+Replace the stage list and gate language in `integrations/cursor/commands/freesolo.md` with the same stage order and review/fix loop rules used in the Claude command asset.
 
 - [ ] **Step 6: Update shared skill documentation**
 
 In `README.md`, replace the Codex-specific reusable asset bullet:
 
 ```md
-- `integrations/skills/issueflow-workflow/SKILL.md`
+- `integrations/skills/freesolo-workflow/SKILL.md`
 ```
 
-In `docs/host-integrations.md`, update the skill path references from `integrations/codex/issueflow-workflow/SKILL.md` to:
+In `docs/host-integrations.md`, update the skill path references from `integrations/codex/freesolo-workflow/SKILL.md` to:
 
 ```md
-integrations/skills/issueflow-workflow/SKILL.md
+integrations/skills/freesolo-workflow/SKILL.md
 ```
 
 Expected: documentation points at the shared skill directory for hosts that support skills.
@@ -968,7 +968,7 @@ Expected: PASS.
 - [ ] **Step 8: Commit**
 
 ```bash
-git add README.md docs/host-integrations.md integrations/codex/issueflow-workflow/SKILL.md integrations/skills/issueflow-workflow/SKILL.md integrations/claude/commands/issueflow.md integrations/cursor/commands/issueflow.md tests/unit/integrations.test.ts
+git add README.md docs/host-integrations.md integrations/codex/freesolo-workflow/SKILL.md integrations/skills/freesolo-workflow/SKILL.md integrations/claude/commands/freesolo.md integrations/cursor/commands/freesolo.md tests/unit/integrations.test.ts
 git commit -m "Update host assets for review loops"
 ```
 
@@ -1012,4 +1012,4 @@ Expected: no commit is needed when Tasks 1-6 were implemented exactly and tests/
 
 - Spec coverage: Tasks cover loop instructions, max rounds, fresh reviewers, separate fixers, block after round 5, numbered artifacts, backwards-compatible artifact discovery, session defaults, the shared skill script, host assets, documentation, and tests.
 - Type consistency: `reviewLoops.plan.currentRound`, `reviewLoops.plan.maxRounds`, `reviewLoops.implementation.currentRound`, and `reviewLoops.implementation.maxRounds` are used consistently.
-- Scope: The plan intentionally avoids runtime host-specific agent orchestration. That belongs in a later CLI-orchestrated agents design if issueflow should spawn agents itself.
+- Scope: The plan intentionally avoids runtime host-specific agent orchestration. That belongs in a later CLI-orchestrated agents design if freesolo should spawn agents itself.

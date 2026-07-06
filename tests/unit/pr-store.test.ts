@@ -16,7 +16,7 @@ import type { PullRequestRecord } from '../../src/integration/pr-types.js';
 const worktrees: string[] = [];
 
 async function makeWorktree(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-pr-store-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-pr-store-'));
   worktrees.push(dir);
   await execa('git', ['init', '--quiet'], { cwd: dir });
   return dir;
@@ -31,8 +31,8 @@ const sampleRecord: PullRequestRecord = {
   headBranch: 'candidate/43-automated-pull-request-creation',
   baseBranch: 'main',
   verificationRunId: '20260608-120000',
-  implementationReviewPath: '/repo/docs/issueflow/reviews/review.md',
-  specPath: '/repo/docs/issueflow/specs/spec.md',
+  implementationReviewPath: '/repo/docs/freesolo/reviews/review.md',
+  specPath: '/repo/docs/freesolo/specs/spec.md',
   createdAt: '2026-06-08T00:00:00.000Z'
 };
 

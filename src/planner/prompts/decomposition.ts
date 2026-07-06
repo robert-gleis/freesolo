@@ -16,7 +16,7 @@ const SCHEMA_DESCRIPTION = `Schema:
 export function buildDecompositionPrompt(issue: PlannerIssue): string {
   const sections: string[] = [];
 
-  sections.push('You are a planner agent for the IssueFlow factory.');
+  sections.push('You are a planner agent for the FreeSolo factory.');
   sections.push(
     'Your job is to decompose the GitHub issue below into smaller, independently-executable child issues.'
   );

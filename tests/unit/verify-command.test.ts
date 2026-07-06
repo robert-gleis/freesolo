@@ -80,7 +80,7 @@ function makeDeps(overrides: Partial<VerifyPlanDeps> = {}): VerifyPlanDeps {
     loadVerificationConfig: async () => makeConfig(),
     resolveCandidateBranch: async () => ({ branchName: 'candidate/20', baseBranch: 'main' }),
     getRunDirectory: async (_repoRoot, issueNumber, runId) =>
-      `/repo/.git/issueflow/verifications/issue-${issueNumber}/${runId}`,
+      `/repo/.git/freesolo/verifications/issue-${issueNumber}/${runId}`,
     runRoute: async (input) => buildRun(input),
     now: () => new Date('2026-06-01T10:00:00.000Z'),
     newRunId: () => '2026-06-01T10-00-00-000Z',
@@ -186,7 +186,7 @@ describe('createVerifyPlan', () => {
       { cwd: '/cwd', options: {} },
       makeDeps({
         loadVerificationConfig: async () => {
-          throw new VerificationConfigError('config missing', '/repo/issueflow.config.json');
+          throw new VerificationConfigError('config missing', '/repo/freesolo.config.json');
         }
       })
     );
@@ -235,7 +235,7 @@ describe('createVerifyPlan', () => {
       makeDeps({
         writeTestReport: async (run) => {
           calls.push(run.runId);
-          return '/repo/.git/issueflow/reports/issue-20/TEST_REPORT.md';
+          return '/repo/.git/freesolo/reports/issue-20/TEST_REPORT.md';
         }
       })
     );

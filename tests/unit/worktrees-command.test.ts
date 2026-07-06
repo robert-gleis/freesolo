@@ -65,11 +65,11 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('issueflow worktrees list', () => {
+describe('freesolo worktrees list', () => {
   it('prints rows from the store', async () => {
     const { program, io } = buildHarness();
 
-    await program.parseAsync(['node', 'issueflow', 'worktrees', 'list']);
+    await program.parseAsync(['node', 'freesolo', 'worktrees', 'list']);
 
     expect(io.stdout.join('')).toContain('/repo/.worktrees/wt-a');
     expect(io.exitCode).toBeNull();
@@ -78,7 +78,7 @@ describe('issueflow worktrees list', () => {
   it('prints JSON when --json is set', async () => {
     const { program, io } = buildHarness();
 
-    await program.parseAsync(['node', 'issueflow', 'worktrees', 'list', '--json']);
+    await program.parseAsync(['node', 'freesolo', 'worktrees', 'list', '--json']);
 
     expect(JSON.parse(io.stdout.join(''))).toEqual(sampleRows);
   });
@@ -97,11 +97,11 @@ describe('issueflow worktrees list', () => {
   });
 });
 
-describe('issueflow worktrees drift', () => {
+describe('freesolo worktrees drift', () => {
   it('exits 0 when no drift is found', async () => {
     const { program, io } = buildHarness();
 
-    await program.parseAsync(['node', 'issueflow', 'worktrees', 'drift']);
+    await program.parseAsync(['node', 'freesolo', 'worktrees', 'drift']);
 
     expect(io.stdout.join('')).toContain('No worktree metadata drift detected');
     expect(io.exitCode).toBeNull();
@@ -114,7 +114,7 @@ describe('issueflow worktrees drift', () => {
       ])
     });
 
-    await program.parseAsync(['node', 'issueflow', 'worktrees', 'drift']);
+    await program.parseAsync(['node', 'freesolo', 'worktrees', 'drift']);
 
     expect(io.stdout.join('')).toContain('On disk only');
     expect(io.exitCode).toBe(1);
@@ -127,7 +127,7 @@ describe('issueflow worktrees drift', () => {
       ])
     });
 
-    await program.parseAsync(['node', 'issueflow', 'worktrees', 'drift', '--json']);
+    await program.parseAsync(['node', 'freesolo', 'worktrees', 'drift', '--json']);
 
     const report = JSON.parse(io.stdout.join(''));
     expect(report.onDiskOnly).toHaveLength(1);

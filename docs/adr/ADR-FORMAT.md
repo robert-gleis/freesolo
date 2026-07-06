@@ -1,6 +1,6 @@
 # ADR Format
 
-Mirrored from [mattpocock/skills — grill-with-docs/ADR-FORMAT.md](https://github.com/mattpocock/skills/blob/main/skills/engineering/grill-with-docs/ADR-FORMAT.md). Adopted as the IssueFlow standard.
+Mirrored from [mattpocock/skills — grill-with-docs/ADR-FORMAT.md](https://github.com/mattpocock/skills/blob/main/skills/engineering/grill-with-docs/ADR-FORMAT.md). Adopted as the FreeSolo standard.
 
 See [README.md](./README.md) for what does **not** belong in ADRs (review findings, agent audit events).
 

@@ -59,7 +59,7 @@ export function assertPrGate(input: PrGateInput): PrGateResult {
     return {
       ok: false,
       reason: `Issue must be in state "pr-ready" to create a PR (current: ${input.state ?? 'none'}).`,
-      nextAction: 'Run `issueflow gate evaluate` to advance state.'
+      nextAction: 'Run `freesolo gate evaluate` to advance state.'
     };
   }
 
@@ -67,7 +67,7 @@ export function assertPrGate(input: PrGateInput): PrGateResult {
     return {
       ok: false,
       reason: `Verification verdict must be "pass" (current: ${input.verdict ?? 'none'}).`,
-      nextAction: 'Run `issueflow verify` then `issueflow gate evaluate`.'
+      nextAction: 'Run `freesolo verify` then `freesolo gate evaluate`.'
     };
   }
 
@@ -75,7 +75,7 @@ export function assertPrGate(input: PrGateInput): PrGateResult {
     return {
       ok: false,
       reason: `Latest verification run did not pass (status: ${input.latestRun?.status ?? 'none'}).`,
-      nextAction: 'Run `issueflow verify` then `issueflow gate evaluate`.'
+      nextAction: 'Run `freesolo verify` then `freesolo gate evaluate`.'
     };
   }
 
@@ -83,7 +83,7 @@ export function assertPrGate(input: PrGateInput): PrGateResult {
     return {
       ok: false,
       reason: 'No local gate verdict record exists for this issue.',
-      nextAction: 'Run `issueflow gate evaluate` to record a verdict.'
+      nextAction: 'Run `freesolo gate evaluate` to record a verdict.'
     };
   }
 
@@ -91,7 +91,7 @@ export function assertPrGate(input: PrGateInput): PrGateResult {
     return {
       ok: false,
       reason: `Stale verdict: gate was evaluated for run ${input.storedRunId} but latest run is ${input.latestRun.runId}.`,
-      nextAction: 'Run `issueflow gate evaluate` to refresh the verdict.'
+      nextAction: 'Run `freesolo gate evaluate` to refresh the verdict.'
     };
   }
 

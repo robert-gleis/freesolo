@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Show the GitHub Project `Status` in the interactive issue picker for `issueflow start` and sort open assigned issues by status group.
+**Goal:** Show the GitHub Project `Status` in the interactive issue picker for `freesolo start` and sort open assigned issues by status group.
 
 **Architecture:** Keep `gh issue list` as the repo-scoped source of open assigned issues, then enrich those issues with Project `Status` values through a focused GraphQL lookup keyed by issue node IDs. Build a small status-lookup helper in the GitHub core layer, normalize the lookup into `IssueSummary`, sort there, and render the picker label from a small formatting helper in the start command.
 

@@ -68,7 +68,7 @@ describe('merge store', () => {
   it('throws invalid-record on malformed JSON', async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'merge-store-'));
     await execa('git', ['init'], { cwd: tmpDir });
-    const recordPath = path.join(tmpDir, '.git', 'issueflow', 'merge-readiness.json');
+    const recordPath = path.join(tmpDir, '.git', 'freesolo', 'merge-readiness.json');
     await fs.mkdir(path.dirname(recordPath), { recursive: true });
     await fs.writeFile(recordPath, '{not-json');
 

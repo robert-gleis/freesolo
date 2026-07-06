@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { z } from 'zod';
 
-import { getIssueflowPath } from '../core/session-state.js';
+import { getFreesoloPath } from '../core/session-state.js';
 import { CandidateBranchError, type CandidateBranchRecord } from './types.js';
 
 const candidateBranchSourceSchema = z.object({
@@ -26,7 +26,7 @@ export const candidateBranchRecordSchema = z.object({
 });
 
 export async function getCandidateBranchPath(worktreePath: string): Promise<string> {
-  const rawPath = await getIssueflowPath(worktreePath, 'candidate-branch.json');
+  const rawPath = await getFreesoloPath(worktreePath, 'candidate-branch.json');
   return path.isAbsolute(rawPath) ? rawPath : path.join(worktreePath, rawPath);
 }
 

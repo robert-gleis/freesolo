@@ -22,7 +22,7 @@ export function buildCli(): Command {
   const program = new Command();
 
   program
-    .name('issueflow')
+    .name('freesolo')
     .description('Start focused issue sessions from the current repository');
 
   program
@@ -39,7 +39,7 @@ export function buildCli(): Command {
       `
 
 Worktree setup:
-  After creating or attaching a worktree, issueflow runs scripts/setup-new-worktree.sh
+  After creating or attaching a worktree, freesolo runs scripts/setup-new-worktree.sh
   from that worktree when it exists. The hook receives MAIN_REPO_ROOT pointing at
   the source checkout. Existing reused worktrees skip this hook.`
     )

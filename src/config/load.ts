@@ -6,16 +6,16 @@ import {
   MIN_INTERVAL_SECONDS,
   isWatcherIntakeMode,
   isWatcherSource,
-  type IssueflowConfig,
+  type FreesoloConfig,
   type WatcherConfig
 } from './types.js';
-import { issueflowHome } from '../core/paths.js';
+import { freesoloHome } from '../core/paths.js';
 import { isNonTerminalWorkflowState } from '../workflow/state-machine.js';
 
 export type ConfigOrigin = 'default' | 'global' | 'repo';
 
 export interface ConfigWithOrigins {
-  config: IssueflowConfig;
+  config: FreesoloConfig;
   origins: {
     autonomous_mode: ConfigOrigin;
     'watcher.interval_seconds': ConfigOrigin;
@@ -40,11 +40,11 @@ interface RawWatcherConfig {
 }
 
 export function defaultConfigPath(): string {
-  return process.env.ISSUEFLOW_CONFIG ?? path.join(issueflowHome(), 'config.yaml');
+  return process.env.FREESOLO_CONFIG ?? path.join(freesoloHome(), 'config.yaml');
 }
 
 export function repoConfigPath(repoRoot: string): string {
-  return path.join(repoRoot, '.issueflow', 'config.yaml');
+  return path.join(repoRoot, '.freesolo', 'config.yaml');
 }
 
 function parseWatcherBlock(lines: string[]): Partial<RawWatcherConfig> {
@@ -185,7 +185,7 @@ async function loadRawLayers(
 export async function loadConfig(
   globalPath = defaultConfigPath(),
   repoRoot?: string
-): Promise<IssueflowConfig> {
+): Promise<FreesoloConfig> {
   return (await loadConfigWithOrigins(globalPath, repoRoot)).config;
 }
 
@@ -197,7 +197,7 @@ export async function loadConfigWithOrigins(
 
   const watcher = buildWatcher(globalRaw, repoRaw, globalPath, repoRoot);
 
-  const config: IssueflowConfig = {
+  const config: FreesoloConfig = {
     watcher,
     autonomous_mode: repoRaw.autonomous_mode ?? globalRaw.autonomous_mode ?? DEFAULT_CONFIG.autonomous_mode
   };

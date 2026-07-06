@@ -28,7 +28,7 @@ export interface Migration {
 }
 
 export interface StateStoreOptions {
-  /** Override the database path. Defaults to `<ISSUEFLOW_HOME>/state.db` (typically `~/.issueflow/state.db`). */
+  /** Override the database path. Defaults to `<FREESOLO_HOME>/state.db` (typically `~/.freesolo/state.db`). */
   path?: string;
   /** Override the migration list. Defaults to `BASE_MIGRATIONS`. */
   migrations?: readonly Migration[];

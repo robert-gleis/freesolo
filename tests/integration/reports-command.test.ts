@@ -13,11 +13,11 @@ afterEach(async () => {
 
 describe('reports command integration', () => {
   it('shows report paths as JSON for an issue', { timeout: 30_000 }, async () => {
-    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-reports-integration-'));
+    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-reports-integration-'));
     tempDirs.push(repoRoot);
     await execa('git', ['init'], { cwd: repoRoot });
 
-    const reportsDir = path.join(repoRoot, '.git', 'issueflow', 'reports', 'issue-99');
+    const reportsDir = path.join(repoRoot, '.git', 'freesolo', 'reports', 'issue-99');
     await fs.mkdir(reportsDir, { recursive: true });
 
     const testReportPath = path.join(reportsDir, 'TEST_REPORT.md');

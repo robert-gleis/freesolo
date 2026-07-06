@@ -6,14 +6,14 @@ import { buildTestReportMarkdown, formatDurationMs } from '../../src/reports/tes
 import type { VerificationRun } from '../../src/verification/types.js';
 
 function makeRun(overrides: Partial<VerificationRun> = {}): VerificationRun {
-  const runDirectory = '/repo/.git/issueflow/verifications/issue-30/2026-06-08T12-00-00-000Z';
+  const runDirectory = '/repo/.git/freesolo/verifications/issue-30/2026-06-08T12-00-00-000Z';
 
   return {
     schemaVersion: 1,
     runId: '2026-06-08T12-00-00-000Z',
     issueNumber: 30,
     repoRoot: '/repo',
-    configPath: '/repo/issueflow.config.json',
+    configPath: '/repo/freesolo.config.json',
     startedAt: '2026-06-08T12:00:00.000Z',
     finishedAt: '2026-06-08T12:05:00.000Z',
     status: 'fail',
@@ -101,7 +101,7 @@ describe('buildTestReportMarkdown', () => {
           startedAt: '2026-06-08T12:00:00.000Z',
           finishedAt: '2026-06-08T12:00:30.000Z',
           durationMs: 30000,
-          logPath: '/repo/.git/issueflow/verifications/issue-30/run/lint.log'
+          logPath: '/repo/.git/freesolo/verifications/issue-30/run/lint.log'
         },
         {
           name: 'typecheck',
@@ -114,7 +114,7 @@ describe('buildTestReportMarkdown', () => {
           startedAt: '2026-06-08T12:00:30.000Z',
           finishedAt: '2026-06-08T12:00:30.000Z',
           durationMs: 0,
-          logPath: '/repo/.git/issueflow/verifications/issue-30/run/typecheck.log'
+          logPath: '/repo/.git/freesolo/verifications/issue-30/run/typecheck.log'
         }
       ]
     });

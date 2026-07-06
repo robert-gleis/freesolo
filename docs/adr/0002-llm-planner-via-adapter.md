@@ -11,5 +11,5 @@ Autonomous workflow decisions (issue decomposition, team composition, agent-back
 ## Consequences
 
 - The planner produces a structured `TeamDefinition` / `DecompositionPlan` JSON consumable by the Team Lifecycle Manager. Schemas are owned by the Planner ticket.
-- Planner output is treated as a *proposal*. Human override happens at the `planned → approved` state transition (see CLI commands `issueflow plan show/edit/approve`). Autonomous mode skips the human step but the approval is recorded in the Event Log as a `team.planned` event.
+- Planner output is treated as a *proposal*. Human override happens at the `planned → approved` state transition (see CLI commands `freesolo plan show/edit/approve`). Autonomous mode skips the human step but the approval is recorded in the Event Log as a `team.planned` event.
 - The planner is replaceable: any AgentAdapter-conformant host (Pi, Claude Code, Codex, Cursor) can drive it.

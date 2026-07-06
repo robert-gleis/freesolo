@@ -34,7 +34,7 @@ const issue = { number: 34, title: 'Team Planner', body: 'Build it' };
 const worktrees: string[] = [];
 
 async function makeWorktree(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-plan-cmd-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-plan-cmd-'));
   worktrees.push(dir);
   await execa('git', ['init', '--quiet'], { cwd: dir });
   return dir;
@@ -57,7 +57,7 @@ function buildHarness(
     writeState: vi.fn().mockResolvedValue(undefined),
     runTeamPlanner: vi.fn().mockResolvedValue({
       definition,
-      teamPlanPath: '/repo/.git/issueflow/team-plan.json'
+      teamPlanPath: '/repo/.git/freesolo/team-plan.json'
     }),
     createPlannerAgent: vi.fn().mockReturnValue({}),
     fetchIssue: vi.fn().mockResolvedValue(issue),
@@ -67,7 +67,7 @@ function buildHarness(
     openEditor: vi.fn().mockResolvedValue(0),
     maybeAutoApproveTeamPlan: vi.fn().mockResolvedValue({ status: 'skipped' }),
     appendEvent: vi.fn(),
-    env: { ISSUEFLOW_ENGINE: '1' },
+    env: { FREESOLO_ENGINE: '1' },
     write: (channel, message) => {
       io[channel].push(message);
     },
@@ -87,13 +87,13 @@ afterEach(async () => {
   await Promise.all(worktrees.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })));
 });
 
-describe('issueflow plan show', () => {
+describe('freesolo plan show', () => {
   it('prints pretty JSON when a team plan exists', async () => {
     const worktreePath = await makeWorktree();
     await writeTeamPlan(worktreePath, definition);
     const { program, io } = buildHarness(worktreePath);
 
-    await program.parseAsync(['node', 'issueflow', 'plan', 'show', '--issue', '34']);
+    await program.parseAsync(['node', 'freesolo', 'plan', 'show', '--issue', '34']);
 
     expect(JSON.parse(io.stdout.join(''))).toEqual(definition);
     expect(io.exitCode).toBeNull();
@@ -105,7 +105,7 @@ describe('issueflow plan show', () => {
       readTeamPlan: vi.fn().mockRejectedValue(new TeamPlanNotFoundError('/missing'))
     });
 
-    await program.parseAsync(['node', 'issueflow', 'plan', 'show', '--issue', '34']);
+    await program.parseAsync(['node', 'freesolo', 'plan', 'show', '--issue', '34']);
 
     expect(io.stderr.join('')).toContain('team plan not found');
     expect(io.exitCode).toBe(1);
@@ -117,21 +117,21 @@ describe('issueflow plan show', () => {
       resolveIssueNumber: vi.fn().mockRejectedValue(new IssueIdError('no issue'))
     });
 
-    await program.parseAsync(['node', 'issueflow', 'plan', 'show']);
+    await program.parseAsync(['node', 'freesolo', 'plan', 'show']);
 
     expect(io.stderr.join('')).toContain('no issue');
     expect(io.exitCode).toBe(2);
   });
 });
 
-describe('issueflow plan generate', () => {
-  it('requires ISSUEFLOW_ENGINE=1', async () => {
+describe('freesolo plan generate', () => {
+  it('requires FREESOLO_ENGINE=1', async () => {
     const worktreePath = await makeWorktree();
     const { program, io } = buildHarness(worktreePath, { env: {} });
 
-    await program.parseAsync(['node', 'issueflow', 'plan', 'generate', '--issue', '34']);
+    await program.parseAsync(['node', 'freesolo', 'plan', 'generate', '--issue', '34']);
 
-    expect(io.stderr.join('')).toContain('ISSUEFLOW_ENGINE=1');
+    expect(io.stderr.join('')).toContain('FREESOLO_ENGINE=1');
     expect(io.exitCode).toBe(3);
   });
 
@@ -141,7 +141,7 @@ describe('issueflow plan generate', () => {
       readState: vi.fn().mockResolvedValue('triaged')
     });
 
-    await program.parseAsync(['node', 'issueflow', 'plan', 'generate', '--issue', '34']);
+    await program.parseAsync(['node', 'freesolo', 'plan', 'generate', '--issue', '34']);
 
     expect(deps.runTeamPlanner).toHaveBeenCalled();
     expect(deps.writeState).toHaveBeenCalledWith(
@@ -160,7 +160,7 @@ describe('issueflow plan generate', () => {
       readState: vi.fn().mockResolvedValue('planned')
     });
 
-    await program.parseAsync(['node', 'issueflow', 'plan', 'generate', '--issue', '34']);
+    await program.parseAsync(['node', 'freesolo', 'plan', 'generate', '--issue', '34']);
 
     expect(io.stderr.join('')).toContain('triaged');
     expect(io.exitCode).toBe(1);
@@ -172,7 +172,7 @@ describe('issueflow plan generate', () => {
       readState: vi.fn().mockResolvedValue(null)
     });
 
-    await program.parseAsync(['node', 'issueflow', 'plan', 'generate', '--issue', '34']);
+    await program.parseAsync(['node', 'freesolo', 'plan', 'generate', '--issue', '34']);
 
     expect(io.stderr.join('')).toContain('no current workflow state');
     expect(io.exitCode).toBe(1);
@@ -184,7 +184,7 @@ describe('issueflow plan generate', () => {
       readState: vi.fn().mockRejectedValue(new MalformedStateError(34, 'bogus'))
     });
 
-    await program.parseAsync(['node', 'issueflow', 'plan', 'generate', '--issue', '34']);
+    await program.parseAsync(['node', 'freesolo', 'plan', 'generate', '--issue', '34']);
 
     expect(io.stderr.join('')).toContain('unrecognised state');
     expect(io.exitCode).toBe(4);
@@ -197,7 +197,7 @@ describe('issueflow plan generate', () => {
       maybeAutoApproveTeamPlan: vi.fn().mockResolvedValue({ status: 'skipped' })
     });
 
-    await program.parseAsync(['node', 'issueflow', 'plan', 'generate', '--issue', '34']);
+    await program.parseAsync(['node', 'freesolo', 'plan', 'generate', '--issue', '34']);
 
     expect(io.stdout.join('')).toContain('team plan written:');
     expect(io.stdout.join('')).not.toContain('autonomous');
@@ -209,11 +209,11 @@ describe('issueflow plan generate', () => {
       readState: vi.fn().mockResolvedValue('triaged'),
       maybeAutoApproveTeamPlan: vi.fn().mockResolvedValue({
         status: 'approved',
-        teamPlanPath: '/repo/.git/issueflow/team-plan.json'
+        teamPlanPath: '/repo/.git/freesolo/team-plan.json'
       })
     });
 
-    await program.parseAsync(['node', 'issueflow', 'plan', 'generate', '--issue', '34']);
+    await program.parseAsync(['node', 'freesolo', 'plan', 'generate', '--issue', '34']);
 
     expect(deps.maybeAutoApproveTeamPlan).toHaveBeenCalled();
     expect(io.stdout.join('')).toContain('planned -> approved (autonomous)');
@@ -226,7 +226,7 @@ describe('issueflow plan generate', () => {
       maybeAutoApproveTeamPlan: vi.fn().mockRejectedValue(new Error('auto-approve failed'))
     });
 
-    await program.parseAsync(['node', 'issueflow', 'plan', 'generate', '--issue', '34']);
+    await program.parseAsync(['node', 'freesolo', 'plan', 'generate', '--issue', '34']);
 
     expect(io.stderr.join('')).toContain('auto-approve failed');
     expect(io.exitCode).toBe(1);
@@ -253,7 +253,7 @@ describe('issueflow plan generate', () => {
       runTeamPlanner: vi.fn().mockResolvedValue({ definition, teamPlanPath })
     });
 
-    await program.parseAsync(['node', 'issueflow', 'plan', 'generate', '--issue', '34']);
+    await program.parseAsync(['node', 'freesolo', 'plan', 'generate', '--issue', '34']);
 
     expect(writeState).toHaveBeenCalledTimes(2);
     expect(writeState).toHaveBeenNthCalledWith(
@@ -279,7 +279,7 @@ describe('issueflow plan generate', () => {
   });
 });
 
-describe('issueflow plan edit', () => {
+describe('freesolo plan edit', () => {
   it('writes validated editor output back to team-plan.json', async () => {
     const worktreePath = await makeWorktree();
     await writeTeamPlan(worktreePath, definition);
@@ -293,7 +293,7 @@ describe('issueflow plan edit', () => {
       })
     });
 
-    await program.parseAsync(['node', 'issueflow', 'plan', 'edit', '--issue', '34']);
+    await program.parseAsync(['node', 'freesolo', 'plan', 'edit', '--issue', '34']);
 
     expect(deps.openEditor).toHaveBeenCalled();
     expect(await readTeamPlan(worktreePath)).toEqual(updated);
@@ -305,7 +305,7 @@ describe('issueflow plan edit', () => {
     const worktreePath = await makeWorktree();
     const { program, io } = buildHarness(worktreePath);
 
-    await program.parseAsync(['node', 'issueflow', 'plan', 'edit', '--issue', '34']);
+    await program.parseAsync(['node', 'freesolo', 'plan', 'edit', '--issue', '34']);
 
     expect(io.stderr.join('')).toContain('team plan not found');
     expect(io.exitCode).toBe(1);
@@ -321,7 +321,7 @@ describe('issueflow plan edit', () => {
       })
     });
 
-    await program.parseAsync(['node', 'issueflow', 'plan', 'edit', '--issue', '34']);
+    await program.parseAsync(['node', 'freesolo', 'plan', 'edit', '--issue', '34']);
 
     expect(await readTeamPlan(worktreePath)).toEqual(definition);
     expect(io.stderr.join('')).toMatch(/roles/i);
@@ -329,14 +329,14 @@ describe('issueflow plan edit', () => {
   });
 });
 
-describe('issueflow plan approve', () => {
-  it('requires ISSUEFLOW_ENGINE=1', async () => {
+describe('freesolo plan approve', () => {
+  it('requires FREESOLO_ENGINE=1', async () => {
     const worktreePath = await makeWorktree();
     const { program, io } = buildHarness(worktreePath, { env: {} });
 
-    await program.parseAsync(['node', 'issueflow', 'plan', 'approve', '--issue', '34']);
+    await program.parseAsync(['node', 'freesolo', 'plan', 'approve', '--issue', '34']);
 
-    expect(io.stderr.join('')).toContain('ISSUEFLOW_ENGINE=1');
+    expect(io.stderr.join('')).toContain('FREESOLO_ENGINE=1');
     expect(io.exitCode).toBe(3);
   });
 
@@ -347,7 +347,7 @@ describe('issueflow plan approve', () => {
       readState: vi.fn().mockResolvedValue('planned')
     });
 
-    await program.parseAsync(['node', 'issueflow', 'plan', 'approve', '--issue', '34']);
+    await program.parseAsync(['node', 'freesolo', 'plan', 'approve', '--issue', '34']);
 
     expect(deps.writeState).toHaveBeenCalledWith(
       { owner: 'acme', repo: 'widgets' },
@@ -365,7 +365,7 @@ describe('issueflow plan approve', () => {
       readState: vi.fn().mockResolvedValue('triaged')
     });
 
-    await program.parseAsync(['node', 'issueflow', 'plan', 'approve', '--issue', '34']);
+    await program.parseAsync(['node', 'freesolo', 'plan', 'approve', '--issue', '34']);
 
     expect(io.stderr.join('')).toContain('planned');
     expect(io.exitCode).toBe(1);
@@ -378,7 +378,7 @@ describe('issueflow plan approve', () => {
       readTeamPlan: vi.fn().mockRejectedValue(new TeamPlanValidationError('invalid'))
     });
 
-    await program.parseAsync(['node', 'issueflow', 'plan', 'approve', '--issue', '34']);
+    await program.parseAsync(['node', 'freesolo', 'plan', 'approve', '--issue', '34']);
 
     expect(io.stderr.join('')).toContain('invalid');
     expect(io.exitCode).toBe(1);
@@ -390,7 +390,7 @@ describe('issueflow plan approve', () => {
       readState: vi.fn().mockRejectedValue(new MalformedStateError(34, 'bogus'))
     });
 
-    await program.parseAsync(['node', 'issueflow', 'plan', 'approve', '--issue', '34']);
+    await program.parseAsync(['node', 'freesolo', 'plan', 'approve', '--issue', '34']);
 
     expect(io.stderr.join('')).toContain('unrecognised state');
     expect(io.exitCode).toBe(4);

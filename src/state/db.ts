@@ -2,14 +2,14 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-import { issueflowHome } from '../core/paths.js';
+import { freesoloHome } from '../core/paths.js';
 import { MIGRATION_001_SQL } from './migrations/001-watcher.js';
 import { MIGRATION_002_SQL } from './migrations/002-watcher-ignored.js';
 
 export type StateDb = DatabaseSync;
 
 export function defaultStateDbPath(): string {
-  return process.env.ISSUEFLOW_STATE_DB ?? path.join(issueflowHome(), 'state.db');
+  return process.env.FREESOLO_STATE_DB ?? path.join(freesoloHome(), 'state.db');
 }
 
 const MIGRATIONS = [

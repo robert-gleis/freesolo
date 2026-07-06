@@ -38,7 +38,7 @@ export async function listReviewRoundArtifacts(
   issueNumber: number,
   kind: 'plan' | 'implementation'
 ): Promise<ReviewRoundArtifact[]> {
-  const reviewsDir = path.join(repoRoot, 'docs', 'issueflow', 'reviews');
+  const reviewsDir = path.join(repoRoot, 'docs', 'freesolo', 'reviews');
   let entries: string[];
 
   try {
@@ -62,7 +62,7 @@ export async function listReviewRoundArtifacts(
         ? null
         : {
             round,
-            relativePath: path.join('docs', 'issueflow', 'reviews', entry),
+            relativePath: path.join('docs', 'freesolo', 'reviews', entry),
             absolutePath: path.join(reviewsDir, entry)
           };
     })
@@ -117,7 +117,7 @@ async function collectReviewRoundArtifacts(
     ...artifacts,
     {
       round,
-      relativePath: path.join('docs', 'issueflow', 'reviews', basename),
+      relativePath: path.join('docs', 'freesolo', 'reviews', basename),
       absolutePath: sessionArtifact
     }
   ].sort((left, right) => left.round - right.round);

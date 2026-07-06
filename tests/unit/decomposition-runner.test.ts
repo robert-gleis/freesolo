@@ -16,7 +16,7 @@ import { PlannerError } from '../../src/planner/errors.js';
 const worktrees: string[] = [];
 
 async function makeWorktree(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-decomp-run-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-decomp-run-'));
   worktrees.push(dir);
   await execa('git', ['init', '--quiet'], { cwd: dir });
   return dir;

@@ -6,7 +6,7 @@ import {
   MIN_INTERVAL_SECONDS,
   isWatcherIntakeMode,
   isWatcherSource,
-  type IssueflowConfig,
+  type FreesoloConfig,
   type WatcherConfig,
   type WatcherIntakeMode,
   type WatcherSource
@@ -34,7 +34,7 @@ import { defaultSetExitCode, defaultWrite, type WriteChannel } from './shared.js
 
 export interface WatchCommandDeps {
   resolveRepoRef: (cwd: string) => Promise<RepoRef>;
-  loadConfig: (configPath?: string) => Promise<IssueflowConfig>;
+  loadConfig: (configPath?: string) => Promise<FreesoloConfig>;
   openStateDb: (dbPath?: string) => Promise<StateDb>;
   runWatchCycle: typeof defaultRunWatchCycle;
   runWatchLoop: typeof defaultRunWatchLoop;
@@ -91,7 +91,7 @@ interface WatcherOverrideOptions {
   triggerLabel?: string;
 }
 
-function resolveWatcherConfig(config: IssueflowConfig, options: WatcherOverrideOptions): WatcherConfig {
+function resolveWatcherConfig(config: FreesoloConfig, options: WatcherOverrideOptions): WatcherConfig {
   // Passing --trigger-label without an explicit --source implies the 'label' source.
   return {
     ...config.watcher,
@@ -177,10 +177,10 @@ export function registerWatchCommands(
     .addOption(new Option('--intake-mode <mode>', 'Intake mode override').argParser(parseIntakeMode))
     .addOption(new Option('--trigger-label <label>', 'Trigger label override'))
     .action(async (options: WatcherOverrideOptions & { interval?: number }) => {
-      if (deps.env.ISSUEFLOW_ENGINE !== '1') {
+      if (deps.env.FREESOLO_ENGINE !== '1') {
         deps.write(
           'stderr',
-          'issueflow watch run is engine-only. Set ISSUEFLOW_ENGINE=1 to authorise the call.\n'
+          'freesolo watch run is engine-only. Set FREESOLO_ENGINE=1 to authorise the call.\n'
         );
         deps.setExitCode(3);
         return;

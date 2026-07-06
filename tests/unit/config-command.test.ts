@@ -34,8 +34,8 @@ function buildHarness(overrides: Partial<ConfigCommandDeps> = {}): Harness {
     setConfigKey: vi.fn().mockResolvedValue(undefined),
     initConfigFile: vi.fn().mockResolvedValue(undefined),
     tryResolveRepoRoot: vi.fn().mockResolvedValue('/repo/root'),
-    globalConfigPath: () => '/home/user/.issueflow/config.yaml',
-    repoConfigPath: (root: string) => `${root}/.issueflow/config.yaml`,
+    globalConfigPath: () => '/home/user/.freesolo/config.yaml',
+    repoConfigPath: (root: string) => `${root}/.freesolo/config.yaml`,
     write: (msg) => io.stdout.push(msg),
     writeError: (msg) => io.stderr.push(msg),
     setExitCode: (code) => { io.exitCode = code; },
@@ -71,7 +71,7 @@ describe('config set', () => {
     const { program, deps } = buildHarness();
     await program.parseAsync(['config', 'set', 'autonomous_mode', 'true'], { from: 'user' });
     expect(deps.setConfigKey).toHaveBeenCalledWith(
-      '/home/user/.issueflow/config.yaml',
+      '/home/user/.freesolo/config.yaml',
       'autonomous_mode',
       'true'
     );
@@ -81,7 +81,7 @@ describe('config set', () => {
     const { program, deps } = buildHarness();
     await program.parseAsync(['config', 'set', 'autonomous_mode', 'true', '--repo'], { from: 'user' });
     expect(deps.setConfigKey).toHaveBeenCalledWith(
-      '/repo/root/.issueflow/config.yaml',
+      '/repo/root/.freesolo/config.yaml',
       'autonomous_mode',
       'true'
     );
@@ -121,7 +121,7 @@ describe('config set', () => {
     const { program, deps } = buildHarness();
     await program.parseAsync(['config', 'set', 'watcher.source', 'label'], { from: 'user' });
     expect(deps.setConfigKey).toHaveBeenCalledWith(
-      '/home/user/.issueflow/config.yaml',
+      '/home/user/.freesolo/config.yaml',
       'watcher.source',
       'label'
     );
@@ -173,13 +173,13 @@ describe('config init', () => {
   it('calls initConfigFile with the global path by default', async () => {
     const { program, deps } = buildHarness();
     await program.parseAsync(['config', 'init'], { from: 'user' });
-    expect(deps.initConfigFile).toHaveBeenCalledWith('/home/user/.issueflow/config.yaml');
+    expect(deps.initConfigFile).toHaveBeenCalledWith('/home/user/.freesolo/config.yaml');
   });
 
   it('calls initConfigFile with the repo path when --repo is given', async () => {
     const { program, deps } = buildHarness();
     await program.parseAsync(['config', 'init', '--repo'], { from: 'user' });
-    expect(deps.initConfigFile).toHaveBeenCalledWith('/repo/root/.issueflow/config.yaml');
+    expect(deps.initConfigFile).toHaveBeenCalledWith('/repo/root/.freesolo/config.yaml');
   });
 
   it('sets exit code 1 for --repo when not in a git repo', async () => {

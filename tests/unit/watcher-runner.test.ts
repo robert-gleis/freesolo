@@ -26,7 +26,7 @@ let db: StateDb;
 const tempDbs: string[] = [];
 
 beforeEach(async () => {
-  const dbPath = path.join(os.tmpdir(), `issueflow-runner-${Date.now()}.db`);
+  const dbPath = path.join(os.tmpdir(), `freesolo-runner-${Date.now()}.db`);
   tempDbs.push(dbPath);
   db = await openStateDb(dbPath);
 });

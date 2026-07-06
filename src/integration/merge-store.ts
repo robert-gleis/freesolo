@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { z } from 'zod';
 
-import { getIssueflowPath } from '../core/session-state.js';
+import { getFreesoloPath } from '../core/session-state.js';
 import type { RepoRef } from '../core/types.js';
 import { defaultRunner, repoSlug, type GhRunner } from '../core/gh.js';
 import {
@@ -63,7 +63,7 @@ export interface MergeStoreDeps {
 }
 
 export async function getMergeReadinessPath(worktreePath: string): Promise<string> {
-  const rawPath = await getIssueflowPath(worktreePath, 'merge-readiness.json');
+  const rawPath = await getFreesoloPath(worktreePath, 'merge-readiness.json');
   return path.isAbsolute(rawPath) ? rawPath : path.join(worktreePath, rawPath);
 }
 
@@ -178,7 +178,7 @@ async function createMergeLabel(
     '--color',
     MERGE_LABEL_COLORS[status],
     '--description',
-    `IssueFlow merge readiness: ${status}`,
+    `FreeSolo merge readiness: ${status}`,
     '--force'
   ]);
 

@@ -5,16 +5,16 @@
 
 ## Overview
 
-Change the watcher from "find issues with an IssueFlow state label" to "find issues assigned to the current GitHub user, then let IssueFlow decide whether to take them into its local workflow".
+Change the watcher from "find issues with an FreeSolo state label" to "find issues assigned to the current GitHub user, then let FreeSolo decide whether to take them into its local workflow".
 
-GitHub remains the source for issue discovery and assignment. IssueFlow workflow state becomes local by default. A user should not need `state:*` labels in GitHub before `issueflow watch` can be useful.
+GitHub remains the source for issue discovery and assignment. FreeSolo workflow state becomes local by default. A user should not need `state:*` labels in GitHub before `freesolo watch` can be useful.
 
 ## Product Behavior
 
 Default watcher behavior:
 
 1. Poll open GitHub issues assigned to the authenticated `gh` user.
-2. For each issue with no local IssueFlow intake decision, ask whether IssueFlow should start it.
+2. For each issue with no local FreeSolo intake decision, ask whether FreeSolo should start it.
 3. If accepted, initialize local workflow state to `triaged` and run one engine tick.
 4. If rejected, record the issue as ignored locally so it is not prompted again on every poll.
 5. For already accepted issues, continue draining them through the engine based on local workflow state.
@@ -26,7 +26,7 @@ This keeps the first-run experience conservative while still enabling automation
 Resolved config keeps the existing global-then-repo layering:
 
 ```
-DEFAULT_CONFIG -> global (~/.issueflow/config.yaml) -> repo (.issueflow/config.yaml)
+DEFAULT_CONFIG -> global (~/.freesolo/config.yaml) -> repo (.freesolo/config.yaml)
 ```
 
 New defaults:
@@ -45,11 +45,11 @@ Example default template:
 
 ```yaml
 # Where workflow state is persisted.
-#   local (default) - stores state in ~/.issueflow/state/<owner>/<repo>/<issue-number>
+#   local (default) - stores state in ~/.freesolo/state/<owner>/<repo>/<issue-number>
 #   github-labels - writes a state:* label to the GitHub issue on every transition.
 state_backend: local
 
-# Autonomous watcher defaults (used by `issueflow watch`).
+# Autonomous watcher defaults (used by `freesolo watch`).
 watcher:
   interval_seconds: 60
   source: assigned-to-me
@@ -66,12 +66,12 @@ autonomous_mode: false
 
 ## CLI Behavior
 
-### `issueflow watch run`
+### `freesolo watch run`
 
 Default command:
 
 ```bash
-ISSUEFLOW_ENGINE=1 issueflow watch run
+FREESOLO_ENGINE=1 freesolo watch run
 ```
 
 With default config, this polls assigned open issues and prompts for new ones:
@@ -82,7 +82,7 @@ Start issue #27 "Docker Runner (Future)"? [y/N]
 
 Accepted issues are initialized locally and enqueued. Ignored issues are recorded locally and skipped in later cycles.
 
-### `issueflow watch once`
+### `freesolo watch once`
 
 `watch once` runs a single cycle with the same discovery and intake rules. In `confirm` mode, it may prompt. For non-interactive automation, users should set `watcher.intake_mode: auto` in config or pass `--intake-mode auto`.
 
@@ -91,10 +91,10 @@ Accepted issues are initialized locally and enqueued. Ignored issues are recorde
 Keep the existing interval override and add source/intake overrides:
 
 ```bash
-issueflow watch run --interval 30
-issueflow watch run --source assigned-to-me
-issueflow watch run --source label --trigger-label triaged
-issueflow watch run --intake-mode auto
+freesolo watch run --interval 30
+freesolo watch run --source assigned-to-me
+freesolo watch run --source label --trigger-label triaged
+freesolo watch run --intake-mode auto
 ```
 
 `--trigger-label` implies `--source label` only if `--source` is omitted.
@@ -177,7 +177,7 @@ The engine should read local state by default because `state_backend` defaults t
 
 - Existing configs with `state_backend: github-labels` continue to work.
 - Existing configs with `watcher.trigger_label` continue to parse.
-- Existing command `issueflow watch run --trigger-label state:triaged` still works and selects label-source behavior.
+- Existing command `freesolo watch run --trigger-label state:triaged` still works and selects label-source behavior.
 - Existing local state files remain valid.
 - Existing watcher cursor and queue tables remain valid; a new migration adds `watcher_intake`.
 
@@ -206,7 +206,7 @@ Add or update tests for:
 
 ## Non-Goals
 
-- No GitHub issue assignment mutation; IssueFlow only reads assignees.
+- No GitHub issue assignment mutation; FreeSolo only reads assignees.
 - No automatic un-ignore command in this slice. Ignored rows can be managed later through a dedicated CLI.
 - No full pagination beyond the existing `--limit 100` behavior.
 - No removal of `github-labels`; it remains available for users who want GitHub-visible workflow state.

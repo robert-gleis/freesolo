@@ -38,7 +38,7 @@ describe('ClaudeCodeAgentAdapter lifecycle', () => {
     });
 
     await expect(
-      adapter.start({ workingDirectory: '/path/that-does-not-exist-issueflow-39' })
+      adapter.start({ workingDirectory: '/path/that-does-not-exist-freesolo-39' })
     ).rejects.toMatchObject({
       name: 'AgentAdapterError',
       code: 'start-failed'

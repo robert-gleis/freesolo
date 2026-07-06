@@ -1,10 +1,10 @@
-# Worktrunk-Native Issueflow Implementation Plan
+# Worktrunk-Native Freesolo Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make `issueflow start` require Worktrunk and use `wt switch` as the only worktree creation and branch switching backend.
+**Goal:** Make `freesolo start` require Worktrunk and use `wt switch` as the only worktree creation and branch switching backend.
 
-**Architecture:** Keep issue selection, branch naming, reuse prompts, setup hooks, session files, and host adapters in issueflow. Move mutating workspace operations to Worktrunk helpers in `src/core/worktree.ts`, then resolve the actual checkout path from `git worktree list --porcelain` after `wt switch` completes. Print-only mode renders Worktrunk commands and avoids pretending to know Worktrunk's configured path for new checkouts.
+**Architecture:** Keep issue selection, branch naming, reuse prompts, setup hooks, session files, and host adapters in freesolo. Move mutating workspace operations to Worktrunk helpers in `src/core/worktree.ts`, then resolve the actual checkout path from `git worktree list --porcelain` after `wt switch` completes. Print-only mode renders Worktrunk commands and avoids pretending to know Worktrunk's configured path for new checkouts.
 
 **Tech Stack:** TypeScript, Node.js 20+, execa, commander, inquirer, Vitest, Worktrunk `wt` CLI, Git read-only worktree state queries.
 
@@ -76,14 +76,14 @@ describe('Worktrunk switch helpers', () => {
   it('creates a new issue workspace through wt switch --create', async () => {
     const calls: Array<{ command: string; args: string[]; cwd?: string }> = [];
 
-    await switchNewIssueWorktree('/repo', 'issue/12-ship-issueflow-start', async (command, args, options) => {
+    await switchNewIssueWorktree('/repo', 'issue/12-ship-freesolo-start', async (command, args, options) => {
       calls.push({ command, args, cwd: options?.cwd });
     });
 
     expect(calls).toEqual([
       {
         command: 'wt',
-        args: ['switch', '--create', 'issue/12-ship-issueflow-start'],
+        args: ['switch', '--create', 'issue/12-ship-freesolo-start'],
         cwd: '/repo'
       }
     ]);
@@ -92,14 +92,14 @@ describe('Worktrunk switch helpers', () => {
   it('switches an existing issue branch through wt switch', async () => {
     const calls: Array<{ command: string; args: string[]; cwd?: string }> = [];
 
-    await switchExistingIssueWorktree('/repo', 'issue/12-ship-issueflow-start', async (command, args, options) => {
+    await switchExistingIssueWorktree('/repo', 'issue/12-ship-freesolo-start', async (command, args, options) => {
       calls.push({ command, args, cwd: options?.cwd });
     });
 
     expect(calls).toEqual([
       {
         command: 'wt',
-        args: ['switch', 'issue/12-ship-issueflow-start'],
+        args: ['switch', 'issue/12-ship-freesolo-start'],
         cwd: '/repo'
       }
     ]);
@@ -108,24 +108,24 @@ describe('Worktrunk switch helpers', () => {
 
 describe('resolveBranchWorktreePath', () => {
   it('returns the worktree path for a branch', async () => {
-    const path = await resolveBranchWorktreePath('/repo', 'issue/12-ship-issueflow-start', async () => ({
+    const path = await resolveBranchWorktreePath('/repo', 'issue/12-ship-freesolo-start', async () => ({
       stdout: [
         'worktree /repo',
         'HEAD 1111111',
         'branch refs/heads/main',
         '',
-        'worktree /worktrees/issueflow/12',
+        'worktree /worktrees/freesolo/12',
         'HEAD 2222222',
-        'branch refs/heads/issue/12-ship-issueflow-start'
+        'branch refs/heads/issue/12-ship-freesolo-start'
       ].join('\n')
     }));
 
-    expect(path).toBe('/worktrees/issueflow/12');
+    expect(path).toBe('/worktrees/freesolo/12');
   });
 
   it('throws when the branch has no resolved worktree', async () => {
     await expect(
-      resolveBranchWorktreePath('/repo', 'issue/12-ship-issueflow-start', async () => ({
+      resolveBranchWorktreePath('/repo', 'issue/12-ship-freesolo-start', async () => ({
         stdout: ['worktree /repo', 'HEAD 1111111', 'branch refs/heads/main'].join('\n')
       }))
     ).rejects.toMatchObject({
@@ -172,7 +172,7 @@ const defaultStdoutRunner: StdoutCommandRunner = async (command, args, options) 
 
 export class WorktrunkMissingError extends Error {
   constructor() {
-    super('Worktrunk is required for issueflow start. Install wt from https://worktrunk.dev/worktrunk/ and try again.');
+    super('Worktrunk is required for freesolo start. Install wt from https://worktrunk.dev/worktrunk/ and try again.');
     this.name = 'WorktrunkMissingError';
   }
 }
@@ -297,7 +297,7 @@ Update the print-only test expectation:
 ```ts
 expect(result.workspacePlan.action).toBe('create-worktree');
 expect(result.workspacePlan.setupCommands).toEqual([
-  'wt switch --create issue/12-ship-issueflow-start',
+  'wt switch --create issue/12-ship-freesolo-start',
   'Worktree path will be resolved by Worktrunk when executed.'
 ]);
 expect(result.summaryLines).toContain('Worktree: resolved by Worktrunk');
@@ -318,7 +318,7 @@ it('fails before workspace mutation when Worktrunk is missing', async () => {
       },
       {
         resolveRepoRoot: async () => '/repo',
-        readOriginRemote: async () => 'git@github.com:robert-gleis/issueflow.git',
+        readOriginRemote: async () => 'git@github.com:robert-gleis/freesolo.git',
         ensureWorktrunkAvailable: async () => {
           throw new WorktrunkMissingError();
         },
@@ -365,10 +365,10 @@ Update the create flow test to expect calls:
 ```ts
 expect(calls).toEqual([
   'wt-check',
-  'switch-new:/repo:issue/12-ship-issueflow-start',
-  'resolve:/repo:issue/12-ship-issueflow-start',
-  'setup:/repo:/wt/issue-12-ship-issueflow-start',
-  'artifacts:/wt/issue-12-ship-issueflow-start'
+  'switch-new:/repo:issue/12-ship-freesolo-start',
+  'resolve:/repo:issue/12-ship-freesolo-start',
+  'setup:/repo:/wt/issue-12-ship-freesolo-start',
+  'artifacts:/wt/issue-12-ship-freesolo-start'
 ]);
 ```
 
@@ -523,7 +523,7 @@ Change prerequisites to:
 ```md
 - Node.js 20+
 - `gh` installed and authenticated
-- Worktrunk (`wt`) installed; issueflow delegates worktree creation and placement to Worktrunk
+- Worktrunk (`wt`) installed; freesolo delegates worktree creation and placement to Worktrunk
 - At least one supported host installed: Codex, Claude, or Cursor Agent (`cursor-agent`)
 ```
 
@@ -532,9 +532,9 @@ Change prerequisites to:
 Replace the first paragraph under `## Worktree setup hooks` with:
 
 ```md
-`issueflow start` uses Worktrunk (`wt`) to create or switch issue worktrees. Worktree paths follow your Worktrunk configuration rather than issueflow's own sibling-directory convention.
+`freesolo start` uses Worktrunk (`wt`) to create or switch issue worktrees. Worktree paths follow your Worktrunk configuration rather than freesolo's own sibling-directory convention.
 
-After Worktrunk creates or attaches a new worktree, `issueflow` runs `scripts/setup-new-worktree.sh` from that worktree when the script exists. The hook is optional; repositories that do not define it continue without setup. The hook receives `MAIN_REPO_ROOT` pointing at the source checkout so repo-specific scripts can reference files that should not be copied automatically.
+After Worktrunk creates or attaches a new worktree, `freesolo` runs `scripts/setup-new-worktree.sh` from that worktree when the script exists. The hook is optional; repositories that do not define it continue without setup. The hook receives `MAIN_REPO_ROOT` pointing at the source checkout so repo-specific scripts can reference files that should not be copied automatically.
 ```
 
 Update the print-only sentence:

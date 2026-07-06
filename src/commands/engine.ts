@@ -89,7 +89,7 @@ export function registerEngineCommands(
 ): Command {
   const engine = program
     .command('engine')
-    .description('Drive an issue through the IssueFlow workflow engine');
+    .description('Drive an issue through the FreeSolo workflow engine');
 
   engine
     .command('tick')
@@ -100,10 +100,10 @@ export function registerEngineCommands(
         .makeOptionMandatory()
     )
     .action(async (options: { issue: number }) => {
-      if (deps.env.ISSUEFLOW_ENGINE !== '1') {
+      if (deps.env.FREESOLO_ENGINE !== '1') {
         deps.write(
           'stderr',
-          'issueflow engine tick is engine-only. Set ISSUEFLOW_ENGINE=1 to authorise the call.\n'
+          'freesolo engine tick is engine-only. Set FREESOLO_ENGINE=1 to authorise the call.\n'
         );
         deps.setExitCode(3);
         return;

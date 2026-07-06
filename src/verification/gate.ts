@@ -15,7 +15,7 @@ export function evaluateGate(latestRun: VerificationRun | null): GateEvaluation 
       outcome: 'no-run',
       runId: null,
       reason: 'No verification run exists for this issue.',
-      nextAction: 'Run `issueflow verify` for this issue, then `issueflow gate evaluate`.'
+      nextAction: 'Run `freesolo verify` for this issue, then `freesolo gate evaluate`.'
     };
   }
 
@@ -24,7 +24,7 @@ export function evaluateGate(latestRun: VerificationRun | null): GateEvaluation 
       outcome: 'pass',
       runId: latestRun.runId,
       reason: `Verification run ${latestRun.runId} passed.`,
-      nextAction: 'Create a pull request with `issueflow pr create`.'
+      nextAction: 'Create a pull request with `freesolo pr create`.'
     };
   }
 
@@ -32,6 +32,6 @@ export function evaluateGate(latestRun: VerificationRun | null): GateEvaluation 
     outcome: 'fail',
     runId: latestRun.runId,
     reason: `Verification run ${latestRun.runId} failed.`,
-    nextAction: 'Fix failing checks, run `issueflow verify`, then `issueflow gate evaluate`.'
+    nextAction: 'Fix failing checks, run `freesolo verify`, then `freesolo gate evaluate`.'
   };
 }

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add repo-level config support and an `issueflow config` CLI (get/set/show/init) that merges global and repo configs with repo taking precedence.
+**Goal:** Add repo-level config support and an `freesolo config` CLI (get/set/show/init) that merges global and repo configs with repo taking precedence.
 
 **Architecture:** Extend `src/config/load.ts` to accept an optional `repoRoot` and merge a second config file; add `src/config/write.ts` for in-place YAML key replacement and template generation; add `src/commands/config.ts` with all four subcommands wired through a deps-injection object.
 
@@ -46,7 +46,7 @@ import { loadConfig, loadConfigWithOrigins, repoConfigPath } from '../../src/con
 const tempDirs: string[] = [];
 
 async function makeTempDir(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-config-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-config-'));
   tempDirs.push(dir);
   return dir;
 }
@@ -56,8 +56,8 @@ afterEach(async () => {
 });
 
 describe('repoConfigPath', () => {
-  it('returns .issueflow/config.yaml inside the given root', () => {
-    expect(repoConfigPath('/my/repo')).toBe('/my/repo/.issueflow/config.yaml');
+  it('returns .freesolo/config.yaml inside the given root', () => {
+    expect(repoConfigPath('/my/repo')).toBe('/my/repo/.freesolo/config.yaml');
   });
 });
 
@@ -76,8 +76,8 @@ describe('loadConfig with repoRoot', () => {
     const globalPath = path.join(dir, 'global.yaml');
     await fs.writeFile(globalPath, 'state_backend: local\nautonomous_mode: true\n');
     const repoDir = await makeTempDir();
-    await fs.mkdir(path.join(repoDir, '.issueflow'), { recursive: true });
-    await fs.writeFile(path.join(repoDir, '.issueflow', 'config.yaml'), 'state_backend: github-labels\n');
+    await fs.mkdir(path.join(repoDir, '.freesolo'), { recursive: true });
+    await fs.writeFile(path.join(repoDir, '.freesolo', 'config.yaml'), 'state_backend: github-labels\n');
     const config = await loadConfig(globalPath, repoDir);
     expect(config.state_backend).toBe('github-labels'); // repo wins
     expect(config.autonomous_mode).toBe(true);           // falls back to global
@@ -115,8 +115,8 @@ describe('loadConfigWithOrigins', () => {
   it('marks a key as repo when set in repo config', async () => {
     const dir = await makeTempDir();
     const repoDir = await makeTempDir();
-    await fs.mkdir(path.join(repoDir, '.issueflow'), { recursive: true });
-    await fs.writeFile(path.join(repoDir, '.issueflow', 'config.yaml'), 'autonomous_mode: true\n');
+    await fs.mkdir(path.join(repoDir, '.freesolo'), { recursive: true });
+    await fs.writeFile(path.join(repoDir, '.freesolo', 'config.yaml'), 'autonomous_mode: true\n');
     const { origins } = await loadConfigWithOrigins(path.join(dir, 'global.yaml'), repoDir);
     expect(origins.autonomous_mode).toBe('repo');
     expect(origins.state_backend).toBe('default');
@@ -144,7 +144,7 @@ import path from 'node:path';
 import {
   DEFAULT_CONFIG,
   MIN_INTERVAL_SECONDS,
-  type IssueflowConfig,
+  type FreesoloConfig,
   type StateBackend,
   type WatcherConfig
 } from './types.js';
@@ -152,7 +152,7 @@ import {
 export type ConfigOrigin = 'default' | 'global' | 'repo';
 
 export interface ConfigWithOrigins {
-  config: IssueflowConfig;
+  config: FreesoloConfig;
   origins: {
     state_backend: ConfigOrigin;
     autonomous_mode: ConfigOrigin;
@@ -168,11 +168,11 @@ export interface RawConfig {
 }
 
 export function defaultConfigPath(): string {
-  return process.env.ISSUEFLOW_CONFIG ?? path.join(os.homedir(), '.issueflow', 'config.yaml');
+  return process.env.FREESOLO_CONFIG ?? path.join(os.homedir(), '.freesolo', 'config.yaml');
 }
 
 export function repoConfigPath(repoRoot: string): string {
-  return path.join(repoRoot, '.issueflow', 'config.yaml');
+  return path.join(repoRoot, '.freesolo', 'config.yaml');
 }
 
 function parseWatcherBlock(lines: string[]): Partial<WatcherConfig> {
@@ -268,7 +268,7 @@ function parseRawConfig(content: string, configPath: string): RawConfig {
 export async function loadConfig(
   globalPath = defaultConfigPath(),
   repoRoot?: string
-): Promise<IssueflowConfig> {
+): Promise<FreesoloConfig> {
   const globalContent = await readFileOrNull(globalPath);
   const globalRaw = globalContent ? parseRawConfig(globalContent, globalPath) : {};
 
@@ -316,7 +316,7 @@ export async function loadConfigWithOrigins(
   const configPath = repoRoot ? repoConfigPath(repoRoot) : globalPath;
   validateWatcher(configPath, watcher);
 
-  const config: IssueflowConfig = {
+  const config: FreesoloConfig = {
     watcher,
     autonomous_mode: repoRaw.autonomous_mode ?? globalRaw.autonomous_mode ?? DEFAULT_CONFIG.autonomous_mode,
     state_backend: repoRaw.state_backend ?? globalRaw.state_backend ?? DEFAULT_CONFIG.state_backend
@@ -390,7 +390,7 @@ import { initConfigFile, setConfigKey } from '../../src/config/write.js';
 const tempDirs: string[] = [];
 
 async function makeTempDir(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-write-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-write-'));
   tempDirs.push(dir);
   return dir;
 }
@@ -509,10 +509,10 @@ const CONFIG_TEMPLATE = `# All fields are optional — defaults are shown below.
 # Where workflow state is persisted.
 #   github-labels (default) — writes a state:* label to the GitHub issue on
 #                             every transition. Requires gh CLI and write access.
-#   local — stores state in ~/.issueflow/state/<owner>/<repo>/<issue-number>
+#   local — stores state in ~/.freesolo/state/<owner>/<repo>/<issue-number>
 state_backend: github-labels
 
-# Autonomous watcher defaults (used by \`issueflow watch\`).
+# Autonomous watcher defaults (used by \`freesolo watch\`).
 watcher:
   interval_seconds: 60
   trigger_label: "state:triaged"
@@ -645,8 +645,8 @@ function buildHarness(overrides: Partial<ConfigCommandDeps> = {}): Harness {
     setConfigKey: vi.fn().mockResolvedValue(undefined),
     initConfigFile: vi.fn().mockResolvedValue(undefined),
     tryResolveRepoRoot: vi.fn().mockResolvedValue('/repo/root'),
-    globalConfigPath: () => '/home/user/.issueflow/config.yaml',
-    repoConfigPath: (root: string) => `${root}/.issueflow/config.yaml`,
+    globalConfigPath: () => '/home/user/.freesolo/config.yaml',
+    repoConfigPath: (root: string) => `${root}/.freesolo/config.yaml`,
     write: (msg) => io.stdout.push(msg),
     writeError: (msg) => io.stderr.push(msg),
     setExitCode: (code) => { io.exitCode = code; },
@@ -682,7 +682,7 @@ describe('config set', () => {
     const { program, deps } = buildHarness();
     await program.parseAsync(['config', 'set', 'state_backend', 'local'], { from: 'user' });
     expect(deps.setConfigKey).toHaveBeenCalledWith(
-      '/home/user/.issueflow/config.yaml',
+      '/home/user/.freesolo/config.yaml',
       'state_backend',
       'local'
     );
@@ -692,7 +692,7 @@ describe('config set', () => {
     const { program, deps } = buildHarness();
     await program.parseAsync(['config', 'set', 'state_backend', 'local', '--repo'], { from: 'user' });
     expect(deps.setConfigKey).toHaveBeenCalledWith(
-      '/repo/root/.issueflow/config.yaml',
+      '/repo/root/.freesolo/config.yaml',
       'state_backend',
       'local'
     );
@@ -749,13 +749,13 @@ describe('config init', () => {
   it('calls initConfigFile with the global path by default', async () => {
     const { program, deps } = buildHarness();
     await program.parseAsync(['config', 'init'], { from: 'user' });
-    expect(deps.initConfigFile).toHaveBeenCalledWith('/home/user/.issueflow/config.yaml');
+    expect(deps.initConfigFile).toHaveBeenCalledWith('/home/user/.freesolo/config.yaml');
   });
 
   it('calls initConfigFile with the repo path when --repo is given', async () => {
     const { program, deps } = buildHarness();
     await program.parseAsync(['config', 'init', '--repo'], { from: 'user' });
-    expect(deps.initConfigFile).toHaveBeenCalledWith('/repo/root/.issueflow/config.yaml');
+    expect(deps.initConfigFile).toHaveBeenCalledWith('/repo/root/.freesolo/config.yaml');
   });
 
   it('sets exit code 1 for --repo when not in a git repo', async () => {
@@ -873,7 +873,7 @@ export function registerConfigCommands(
 ): Command {
   const config = program
     .command('config')
-    .description('Read and write issueflow configuration');
+    .description('Read and write freesolo configuration');
 
   config
     .command('get <key>')
@@ -892,7 +892,7 @@ export function registerConfigCommands(
   config
     .command('set <key> <value>')
     .description('Set a config value (default: global config; use --repo for repo config)')
-    .option('--repo', 'Write to the repo config (.issueflow/config.yaml)')
+    .option('--repo', 'Write to the repo config (.freesolo/config.yaml)')
     .action(async (key: string, value: string, options: { repo?: boolean }) => {
       if (!isValidKey(key)) {
         deps.writeError(`unknown key "${key}" — valid keys: ${VALID_KEYS.join(', ')}\n`);
@@ -946,7 +946,7 @@ export function registerConfigCommands(
   config
     .command('init')
     .description('Create a config file with commented defaults (fails if file already exists)')
-    .option('--repo', 'Create the repo config (.issueflow/config.yaml) instead of the global config')
+    .option('--repo', 'Create the repo config (.freesolo/config.yaml) instead of the global config')
     .action(async (options: { repo?: boolean }) => {
       let targetPath: string;
       if (options.repo) {
@@ -1025,9 +1025,9 @@ npm run build && node dist/src/bin.js config --help
 
 Expected output includes:
 ```
-Usage: issueflow config [command]
+Usage: freesolo config [command]
 
-Read and write issueflow configuration
+Read and write freesolo configuration
 
 Commands:
   get <key>          Read the resolved value for a key
@@ -1038,7 +1038,7 @@ Commands:
 
 - [ ] **Step 3: Smoke-test `config show` and `config init`**
 
-From within the issueflow repo directory:
+From within the freesolo repo directory:
 
 ```bash
 # Show current resolved config (no config files needed)

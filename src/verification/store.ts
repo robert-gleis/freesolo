@@ -1,15 +1,15 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { gitIssueflowPath } from '../core/session-state.js';
+import { gitFreesoloPath } from '../core/session-state.js';
 import type { VerificationRun } from './types.js';
 
 export async function getIssueVerificationsDir(repoRoot: string, issueNumber: number): Promise<string> {
-  return gitIssueflowPath(repoRoot, 'verifications', `issue-${issueNumber}`);
+  return gitFreesoloPath(repoRoot, 'verifications', `issue-${issueNumber}`);
 }
 
 export async function getRunDirectory(repoRoot: string, issueNumber: number, runId: string): Promise<string> {
-  return gitIssueflowPath(repoRoot, 'verifications', `issue-${issueNumber}`, runId);
+  return gitFreesoloPath(repoRoot, 'verifications', `issue-${issueNumber}`, runId);
 }
 
 /**

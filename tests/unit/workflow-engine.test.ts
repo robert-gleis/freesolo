@@ -317,7 +317,7 @@ describe('createWorkflowEngine tick: spawn action', () => {
         .fn<(input: PolicyInput) => EngineAction>()
         .mockReturnValue({
           kind: 'spawn',
-          agent: { workingDirectory: '/tmp/wt', initialInstructions: 'continue issueflow' },
+          agent: { workingDirectory: '/tmp/wt', initialInstructions: 'continue freesolo' },
           nextState: 'implementing'
         }),
       agent
@@ -328,10 +328,10 @@ describe('createWorkflowEngine tick: spawn action', () => {
     expect(agent.startCalls).toHaveLength(1);
     expect(agent.startCalls[0]?.workingDirectory).toBe('/tmp/wt');
     expect(agent.startCalls[0]?.initialInstructions).toContain('## Your Role');
-    expect(agent.startCalls[0]?.initialInstructions).toContain('continue issueflow');
+    expect(agent.startCalls[0]?.initialInstructions).toContain('continue freesolo');
     expect(agent.sendCalls).toHaveLength(1);
     expect(agent.sendCalls[0]).toContain('## Your Role');
-    expect(agent.sendCalls[0]).toContain('continue issueflow');
+    expect(agent.sendCalls[0]).toContain('continue freesolo');
     expect(harness.writeState).toHaveBeenCalledWith(repo, 24, 'approved', 'implementing');
     expect(result.toState).toBe('implementing');
     expect(harness.events.map((event) => event.kind)).toEqual(['decision', 'transition']);
@@ -352,7 +352,7 @@ describe('createWorkflowEngine tick: spawn action', () => {
           kind: 'spawn',
           agent: {
             workingDirectory: '/tmp/wt',
-            initialInstructions: 'continue issueflow'
+            initialInstructions: 'continue freesolo'
           },
           nextState: 'implementing'
         }),
@@ -365,7 +365,7 @@ describe('createWorkflowEngine tick: spawn action', () => {
     expect(agent.startCalls).toHaveLength(1);
     const enriched = agent.startCalls[0]?.initialInstructions;
     expect(enriched).toContain('## Your Role');
-    expect(enriched).toContain('continue issueflow');
+    expect(enriched).toContain('continue freesolo');
     expect(enriched).toContain('## Factory Knowledge Base');
     expect(enriched).toContain('npm test');
     expect(agent.sendCalls).toEqual([enriched]);
@@ -382,7 +382,7 @@ describe('createWorkflowEngine tick: spawn action', () => {
         .fn<(input: PolicyInput) => EngineAction>()
         .mockReturnValue({
           kind: 'spawn',
-          agent: { workingDirectory: '/tmp/wt', initialInstructions: 'continue issueflow' },
+          agent: { workingDirectory: '/tmp/wt', initialInstructions: 'continue freesolo' },
           nextState: 'implementing'
         }),
       logSpawn: (line) => logLines.push(line),

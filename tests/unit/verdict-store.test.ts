@@ -103,7 +103,7 @@ describe('verdict store', () => {
     await expect(readVerdict(repo, 29, { gh })).rejects.toBeInstanceOf(MultipleVerdictLabelsError);
   });
 
-  it('roundtrips gate-verdict.json under .git/issueflow/verifications', async () => {
+  it('roundtrips gate-verdict.json under .git/freesolo/verifications', async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'verdict-'));
     await execa('git', ['init', '--quiet'], { cwd: tmpDir });
 

@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { execa } from 'execa';
 
-import { getIssueflowPath } from './session-state.js';
+import { getFreesoloPath } from './session-state.js';
 
 const branchPattern = /^issue\/(\d+)-/;
 
@@ -22,7 +22,7 @@ export interface ResolveIssueNumberDeps {
 const defaultDeps: ResolveIssueNumberDeps = {
   readSessionFile: async (worktreePath) => {
     try {
-      const sessionPath = await getIssueflowPath(worktreePath, 'session.json');
+      const sessionPath = await getFreesoloPath(worktreePath, 'session.json');
       const resolved = path.isAbsolute(sessionPath) ? sessionPath : path.join(worktreePath, sessionPath);
       const raw = await fs.readFile(resolved, 'utf8');
       return JSON.parse(raw) as { issueNumber?: number };
@@ -52,7 +52,7 @@ export async function resolveIssueNumber(
 ): Promise<number> {
   if (override !== undefined) {
     if (!Number.isInteger(override) || override <= 0) {
-      throw new IssueIdError(`issueflow verify --issue must be a positive integer (got ${override}).`);
+      throw new IssueIdError(`freesolo verify --issue must be a positive integer (got ${override}).`);
     }
     return override;
   }
@@ -74,6 +74,6 @@ export async function resolveIssueNumber(
   }
 
   throw new IssueIdError(
-    'issueflow verify needs an --issue <number> or an issueflow session in the current worktree.'
+    'freesolo verify needs an --issue <number> or an freesolo session in the current worktree.'
   );
 }

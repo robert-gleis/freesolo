@@ -4,10 +4,10 @@ import { sessionStateSchema } from '../../src/core/session-state.js';
 
 const baseState = {
   issueNumber: 12,
-  issueSlug: 'ship-issueflow-start',
+  issueSlug: 'ship-freesolo-start',
   repoRoot: '/repo',
-  branchName: 'issue/12-ship-issueflow-start',
-  worktreePath: '/tmp/issueflow-12-ship-issueflow-start',
+  branchName: 'issue/12-ship-freesolo-start',
+  worktreePath: '/tmp/freesolo-12-ship-freesolo-start',
   chosenHost: 'codex',
   currentStage: 'brainstorming',
   reviewGates: {
@@ -25,7 +25,7 @@ const baseState = {
 };
 
 describe('sessionStateSchema', () => {
-  it('accepts the persisted issueflow state shape with review loops', () => {
+  it('accepts the persisted freesolo state shape with review loops', () => {
     const parsed = sessionStateSchema.parse({
       ...baseState,
       reviewLoops: {

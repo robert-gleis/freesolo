@@ -13,7 +13,7 @@ afterEach(async () => {
 });
 
 async function makeRepo(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-policy-config-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-policy-config-'));
   dirs.push(dir);
   return dir;
 }
@@ -39,11 +39,11 @@ describe('resolveAutonomousMode', () => {
     expect(mode).toBe(true);
   });
 
-  it('repo .issueflow/config.yaml overrides global', async () => {
+  it('repo .freesolo/config.yaml overrides global', async () => {
     const repoRoot = await makeRepo();
     const globalPath = path.join(repoRoot, 'global.yaml');
     await fs.writeFile(globalPath, 'autonomous_mode: true\n');
-    const repoConfigDir = path.join(repoRoot, '.issueflow');
+    const repoConfigDir = path.join(repoRoot, '.freesolo');
     await fs.mkdir(repoConfigDir, { recursive: true });
     await fs.writeFile(path.join(repoConfigDir, 'config.yaml'), 'autonomous_mode: false\n');
     const mode = await resolveAutonomousMode(repoRoot, {
@@ -57,7 +57,7 @@ describe('resolveAutonomousMode', () => {
     const repoRoot = await makeRepo();
     const globalPath = path.join(repoRoot, 'global.yaml');
     await fs.writeFile(globalPath, 'autonomous_mode: true\n');
-    const repoConfigDir = path.join(repoRoot, '.issueflow');
+    const repoConfigDir = path.join(repoRoot, '.freesolo');
     await fs.mkdir(repoConfigDir, { recursive: true });
     await fs.writeFile(path.join(repoConfigDir, 'config.yaml'), 'watcher:\n  interval_seconds: 60\n');
     const mode = await resolveAutonomousMode(repoRoot, {
@@ -69,7 +69,7 @@ describe('resolveAutonomousMode', () => {
 
   it('throws on invalid repo config value', async () => {
     const repoRoot = await makeRepo();
-    const repoConfigDir = path.join(repoRoot, '.issueflow');
+    const repoConfigDir = path.join(repoRoot, '.freesolo');
     await fs.mkdir(repoConfigDir, { recursive: true });
     await fs.writeFile(path.join(repoConfigDir, 'config.yaml'), 'autonomous_mode: yes\n');
     await expect(

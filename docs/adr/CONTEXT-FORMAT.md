@@ -1,6 +1,6 @@
 # CONTEXT.md Format
 
-Mirrored from [mattpocock/skills — grill-with-docs/CONTEXT-FORMAT.md](https://github.com/mattpocock/skills/blob/main/skills/engineering/grill-with-docs/CONTEXT-FORMAT.md). Adopted as the IssueFlow standard.
+Mirrored from [mattpocock/skills — grill-with-docs/CONTEXT-FORMAT.md](https://github.com/mattpocock/skills/blob/main/skills/engineering/grill-with-docs/CONTEXT-FORMAT.md). Adopted as the FreeSolo standard.
 
 ## Structure
 
@@ -33,4 +33,4 @@ _Avoid_: Bill, payment request
 
 **Multiple contexts:** A `CONTEXT-MAP.md` at the repo root lists the contexts, where they live, and how they relate to each other.
 
-IssueFlow is currently single-context — see `/CONTEXT.md`.
+FreeSolo is currently single-context — see `/CONTEXT.md`.

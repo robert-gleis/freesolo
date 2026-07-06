@@ -15,11 +15,11 @@ afterEach(async () => {
 
 describe('updateSessionReportArtifact', () => {
   it('updates testReport on the session', async () => {
-    const worktreePath = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-session-artifacts-'));
+    const worktreePath = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-session-artifacts-'));
     tempDirs.push(worktreePath);
     await execa('git', ['init'], { cwd: worktreePath });
 
-    const sessionPath = path.join(worktreePath, '.git', 'issueflow', 'session.json');
+    const sessionPath = path.join(worktreePath, '.git', 'freesolo', 'session.json');
     await fs.mkdir(path.dirname(sessionPath), { recursive: true });
     await fs.writeFile(
       sessionPath,
@@ -51,7 +51,7 @@ describe('updateSessionReportArtifact', () => {
       )
     );
 
-    const reportPath = path.join(worktreePath, '.git', 'issueflow', 'reports', 'issue-30', 'TEST_REPORT.md');
+    const reportPath = path.join(worktreePath, '.git', 'freesolo', 'reports', 'issue-30', 'TEST_REPORT.md');
     await updateSessionReportArtifact(worktreePath, 'testReport', reportPath);
 
     const session = JSON.parse(await fs.readFile(sessionPath, 'utf8'));
@@ -59,7 +59,7 @@ describe('updateSessionReportArtifact', () => {
   });
 
   it('returns without throwing when session.json is missing', async () => {
-    const worktreePath = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-session-artifacts-'));
+    const worktreePath = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-session-artifacts-'));
     tempDirs.push(worktreePath);
     await execa('git', ['init'], { cwd: worktreePath });
 

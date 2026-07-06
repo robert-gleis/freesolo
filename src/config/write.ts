@@ -2,9 +2,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 const CONFIG_TEMPLATE = `# All fields are optional - defaults are shown below.
-# Workflow state is persisted locally in ~/.issueflow/state/<owner>/<repo>/<issue-number>
+# Workflow state is persisted locally in ~/.freesolo/state/<owner>/<repo>/<issue-number>
 
-# Autonomous watcher defaults (used by \`issueflow watch\`).
+# Autonomous watcher defaults (used by \`freesolo watch\`).
 watcher:
   interval_seconds: 60
   source: assigned-to-me

@@ -5,7 +5,7 @@ import { Command, InvalidArgumentError } from 'commander';
 import { execa } from 'execa';
 
 import { resolveRepoRoot } from '../core/git.js';
-import { getIssueflowPath } from '../core/session-state.js';
+import { getFreesoloPath } from '../core/session-state.js';
 import {
   createCandidateBranch,
   defaultRunGit,
@@ -40,7 +40,7 @@ const defaultDeps: CandidateCommandDeps = {
 
 export async function resolveIssueSlug(worktreePath: string, issueNumber: number): Promise<string> {
   try {
-    const packetPath = await getIssueflowPath(worktreePath, 'current-issue.md');
+    const packetPath = await getFreesoloPath(worktreePath, 'current-issue.md');
     const resolvedPacketPath = path.isAbsolute(packetPath) ? packetPath : path.join(worktreePath, packetPath);
     const markdown = await fs.readFile(resolvedPacketPath, 'utf8');
     const branchMatch = markdown.match(/^## Branch\n(.+)$/m);
@@ -57,7 +57,7 @@ export async function resolveIssueSlug(worktreePath: string, issueNumber: number
   }
 
   try {
-    const sessionPath = await getIssueflowPath(worktreePath, 'session.json');
+    const sessionPath = await getFreesoloPath(worktreePath, 'session.json');
     const resolvedSessionPath = path.isAbsolute(sessionPath) ? sessionPath : path.join(worktreePath, sessionPath);
     const session = JSON.parse(await fs.readFile(resolvedSessionPath, 'utf8')) as { issueSlug?: string };
     if (session.issueSlug) {

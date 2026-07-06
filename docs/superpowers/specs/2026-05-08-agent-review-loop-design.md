@@ -2,20 +2,20 @@
 
 ## Context
 
-Issueflow currently guides agents through a linear workflow with one plan review gate and one implementation review gate. Each gate is a single separate review agent pass. That catches obvious issues, but it does not guide the workflow through repeated review and fix cycles when the reviewer finds actionable problems.
+Freesolo currently guides agents through a linear workflow with one plan review gate and one implementation review gate. Each gate is a single separate review agent pass. That catches obvious issues, but it does not guide the workflow through repeated review and fix cycles when the reviewer finds actionable problems.
 
 The new behavior should make both review gates iterative. A reviewer agent reviews the current work, writes findings, and hands those findings to a separate fixer agent. After the fixer applies changes, a fresh reviewer agent reviews the result again. The loop repeats until a reviewer passes with no findings or the workflow reaches a maximum of 5 rounds.
 
 ## Goals
 
 - Apply the review/fix loop to both the plan review gate and the implementation review gate.
-- Put deterministic loop mechanics in a reusable skill script where Codex and Claude Code can call the same issueflow skill.
+- Put deterministic loop mechanics in a reusable skill script where Codex and Claude Code can call the same freesolo skill.
 - Use a fresh reviewer agent for every review round.
 - Use a separate fixer agent when findings need to be addressed.
 - Exit the loop only when the reviewer passes with no findings.
 - Cap each review loop at 5 rounds.
 - If findings remain after round 5, mark the gate blocked and stop for user intervention.
-- Keep older single-review artifacts readable so existing issueflow sessions do not break.
+- Keep older single-review artifacts readable so existing freesolo sessions do not break.
 
 ## Non-Goals
 
@@ -30,7 +30,7 @@ The new behavior should make both review gates iterative. A reviewer agent revie
 Both review gates use the same loop:
 
 1. Start round 1 for the active gate.
-2. Use the issueflow skill script to determine the current round, review artifact path, and reviewer prompt.
+2. Use the freesolo skill script to determine the current round, review artifact path, and reviewer prompt.
 3. Spawn a reviewer agent for the current artifact under review.
 4. The reviewer writes a round-specific review artifact.
 5. Record the review result through the skill script.
@@ -46,13 +46,13 @@ The plan review loop runs after `superpowers:writing-plans` and before implement
 
 New review artifacts should include the round number:
 
-- `docs/issueflow/reviews/YYYY-MM-DD-issue-<number>-plan-review-round-<round>.md`
-- `docs/issueflow/reviews/YYYY-MM-DD-issue-<number>-implementation-review-round-<round>.md`
+- `docs/freesolo/reviews/YYYY-MM-DD-issue-<number>-plan-review-round-<round>.md`
+- `docs/freesolo/reviews/YYYY-MM-DD-issue-<number>-implementation-review-round-<round>.md`
 
 Artifact discovery should return the latest matching round-specific artifact when present. It should continue to recognize the existing unnumbered files:
 
-- `docs/issueflow/reviews/YYYY-MM-DD-issue-<number>-plan-review.md`
-- `docs/issueflow/reviews/YYYY-MM-DD-issue-<number>-implementation-review.md`
+- `docs/freesolo/reviews/YYYY-MM-DD-issue-<number>-plan-review.md`
+- `docs/freesolo/reviews/YYYY-MM-DD-issue-<number>-implementation-review.md`
 
 The startup packet can still expose one latest plan review path and one latest implementation review path. The round number belongs in the artifact name and session state.
 
@@ -88,13 +88,13 @@ Existing session files without `reviewLoops` must remain valid, defaulting both 
 
 ## Shared Skill Script
 
-The issueflow workflow should have a shared skill directory that can be installed by hosts that support skills, including Codex and Claude Code. The script should live under:
+The freesolo workflow should have a shared skill directory that can be installed by hosts that support skills, including Codex and Claude Code. The script should live under:
 
-- `integrations/skills/issueflow-workflow/scripts/review-loop.mjs`
+- `integrations/skills/freesolo-workflow/scripts/review-loop.mjs`
 
 The script owns the deterministic loop behavior:
 
-- locate `issueflow/session.json` through `git rev-parse --git-path issueflow/session.json`
+- locate `freesolo/session.json` through `git rev-parse --git-path freesolo/session.json`
 - validate the requested gate, either `plan` or `implementation`
 - read or default `reviewLoops`
 - report the current round and max rounds
@@ -136,7 +136,7 @@ Unit tests should cover:
 - The shared skill script prints reviewer and fixer handoffs, advances rounds, and blocks after round 5.
 - Host integration assets mention separate reviewer and fixer agents and the 5-round cap.
 
-Integration tests should confirm that `issueflow start` writes initialized loop state for both gates and includes the loop instructions in the startup prompt.
+Integration tests should confirm that `freesolo start` writes initialized loop state for both gates and includes the loop instructions in the startup prompt.
 
 ## Open Decisions
 

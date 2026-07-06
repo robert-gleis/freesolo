@@ -74,10 +74,10 @@ export async function gateEvaluateAction(
   options: { issue?: number },
   deps: GateCommandDeps = defaultDeps
 ): Promise<void> {
-  if (deps.env.ISSUEFLOW_ENGINE !== '1') {
+  if (deps.env.FREESOLO_ENGINE !== '1') {
     deps.write(
       'stderr',
-      'issueflow gate evaluate is engine-only. Set ISSUEFLOW_ENGINE=1 to authorise the call.\n'
+      'freesolo gate evaluate is engine-only. Set FREESOLO_ENGINE=1 to authorise the call.\n'
     );
     deps.setExitCode(3);
     return;

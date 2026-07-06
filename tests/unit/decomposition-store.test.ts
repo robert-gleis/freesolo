@@ -29,7 +29,7 @@ const plan: DecompositionPlan = {
 const worktrees: string[] = [];
 
 async function makeWorktree(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-decomp-store-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-decomp-store-'));
   worktrees.push(dir);
   await execa('git', ['init', '--quiet'], { cwd: dir });
   return dir;

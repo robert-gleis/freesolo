@@ -6,13 +6,13 @@ import type {
 } from './merge-types.js';
 
 const NEXT_ACTIONS: Record<string, string> = {
-  'workflow-state': 'Advance the issue to pr-ready with `issueflow gate evaluate`.',
-  'verification-run': 'Run `issueflow verify` for this issue.',
+  'workflow-state': 'Advance the issue to pr-ready with `freesolo gate evaluate`.',
+  'verification-run': 'Run `freesolo verify` for this issue.',
   'verification-verdict':
-    'Run `issueflow verify` then `issueflow gate evaluate` to refresh the verification verdict.',
+    'Run `freesolo verify` then `freesolo gate evaluate` to refresh the verification verdict.',
   'review-artifact': 'Complete the implementation review loop and produce a review artifact.',
-  'pull-request': 'Create a pull request with `issueflow pr create`.',
-  'candidate-branch': 'Create a ready candidate branch with `issueflow candidate create`.'
+  'pull-request': 'Create a pull request with `freesolo pr create`.',
+  'candidate-branch': 'Create a ready candidate branch with `freesolo candidate create`.'
 };
 
 function issueBranchPattern(issueNumber: number): RegExp {
@@ -36,10 +36,10 @@ function outcomeFromChecks(checks: MergeGateCheck[]): MergeReadinessOutcome {
 function firstFailingNextAction(checks: MergeGateCheck[]): string {
   const failing = checks.find((c) => c.status === 'fail');
   if (!failing) {
-    return 'Run `issueflow merge` when ready.';
+    return 'Run `freesolo merge` when ready.';
   }
 
-  return NEXT_ACTIONS[failing.id] ?? 'Fix failing gates then run `issueflow merge evaluate`.';
+  return NEXT_ACTIONS[failing.id] ?? 'Fix failing gates then run `freesolo merge evaluate`.';
 }
 
 export function evaluateMergeReadiness(input: MergeReadinessInput): MergeReadinessEvaluation {
@@ -91,7 +91,7 @@ export function evaluateMergeReadiness(input: MergeReadinessInput): MergeReadine
         'verification-verdict',
         'Verification verdict',
         'fail',
-        `Stale verdict — re-run \`issueflow gate evaluate\`. (verdict: ${input.verdictRunId}, latest: ${input.latestRun.runId})`
+        `Stale verdict — re-run \`freesolo gate evaluate\`. (verdict: ${input.verdictRunId}, latest: ${input.latestRun.runId})`
       )
     );
   } else {

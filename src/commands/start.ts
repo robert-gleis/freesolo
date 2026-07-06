@@ -470,7 +470,7 @@ export async function createStartPlan(input: { cwd: string; tool: HostTool; prin
         console.warn(`Failed to install ${hostAssetSpec.label} at ${hostAssetSpec.target}: ${message}`);
       }
     } else {
-      console.warn(`Continuing without ${hostAssetSpec.label}; the host may not find the issueflow workflow.`);
+      console.warn(`Continuing without ${hostAssetSpec.label}; the host may not find the freesolo workflow.`);
     }
   }
 

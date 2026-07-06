@@ -1,13 +1,13 @@
-# IssueFlow
+# FreeSolo
 
-IssueFlow is the control plane that turns GitHub issues into shipped pull requests by orchestrating teams of agents through an explicit, persisted workflow.
+FreeSolo is the control plane that turns GitHub issues into shipped pull requests by orchestrating teams of agents through an explicit, persisted workflow.
 
 ## Language
 
 ### Orchestration
 
 **Factory**:
-The IssueFlow system as a whole — the autonomous software factory that consumes issues and produces merged PRs.
+The FreeSolo system as a whole — the autonomous software factory that consumes issues and produces merged PRs.
 _Avoid_: System, Platform.
 
 **Workflow Engine**:
@@ -25,7 +25,7 @@ _Avoid_: Run, Job (a session is per-agent-per-worktree, not per-issue).
 ### Agents
 
 **Host**:
-A concrete agent runtime that IssueFlow can drive: Codex, Claude Code, Cursor Agent, Pi. The CLI flag is `--tool`, the type is `HostTool` in code.
+A concrete agent runtime that FreeSolo can drive: Codex, Claude Code, Cursor Agent, Pi. The CLI flag is `--tool`, the type is `HostTool` in code.
 _Avoid_: Backend, Harness, Tool (in conversation about agent products).
 
 **Adapter**:
@@ -47,7 +47,7 @@ _Avoid_: Crew, Squad, Group.
 ### Workspace
 
 **Worktree**:
-A git worktree owned by IssueFlow, scoped to one issue or team. Created and placed by Worktrunk (`wt`); lifecycle is tracked centrally.
+A git worktree owned by FreeSolo, scoped to one issue or team. Created and placed by Worktrunk (`wt`); lifecycle is tracked centrally.
 _Avoid_: Workspace, Checkout, Clone.
 
 ### Memory
@@ -57,11 +57,11 @@ An Architecture Decision Record under `docs/adr/`. Human-written, intended for h
 _Avoid_: Decision (in isolation — say ADR when you mean the formal record).
 
 **Knowledge Base**:
-Repo-specific operational knowledge under `.issueflow/knowledge/*.md` — conventions, build/test/deploy commands. Injected into agent context at spawn.
+Repo-specific operational knowledge under `.freesolo/knowledge/*.md` — conventions, build/test/deploy commands. Injected into agent context at spawn.
 _Avoid_: Docs, Wiki, Notes.
 
 **Event Log**:
-Append-only, queryable telemetry of agent and workflow lifecycle events. Lives in SQLite at `~/.issueflow/state.db`. High-frequency, machine-written.
+Append-only, queryable telemetry of agent and workflow lifecycle events. Lives in SQLite at `~/.freesolo/state.db`. High-frequency, machine-written.
 _Avoid_: Audit Log, Activity Log, History (when referring to this specific store).
 
 ### Verification

@@ -17,7 +17,7 @@ import type { VerificationRun } from '../../src/verification/types.js';
 const tempDirs: string[] = [];
 
 async function makeRepo(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-verify-store-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-verify-store-'));
   tempDirs.push(dir);
   await execa('git', ['init', '--quiet'], { cwd: dir });
   return dir;
@@ -29,7 +29,7 @@ function makeRun(repoRoot: string, runId: string, status: 'pass' | 'fail' = 'pas
     runId,
     issueNumber: 42,
     repoRoot,
-    configPath: path.join(repoRoot, 'issueflow.config.json'),
+    configPath: path.join(repoRoot, 'freesolo.config.json'),
     startedAt: `${runId}-start`,
     finishedAt: `${runId}-end`,
     status,
@@ -46,7 +46,7 @@ function makeRun(repoRoot: string, runId: string, status: 'pass' | 'fail' = 'pas
         startedAt: `${runId}-start`,
         finishedAt: `${runId}-end`,
         durationMs: 5,
-        logPath: path.join(repoRoot, '.git/issueflow/verifications/issue-42', runId, 'lint.log')
+        logPath: path.join(repoRoot, '.git/freesolo/verifications/issue-42', runId, 'lint.log')
       }
     ]
   };
@@ -57,12 +57,12 @@ afterEach(async () => {
 });
 
 describe('verification store', () => {
-  it('resolves the issue verifications directory under .git/issueflow', async () => {
+  it('resolves the issue verifications directory under .git/freesolo', async () => {
     const repoRoot = await makeRepo();
 
     const dir = await getIssueVerificationsDir(repoRoot, 42);
 
-    expect(dir).toBe(path.join(repoRoot, '.git/issueflow/verifications/issue-42'));
+    expect(dir).toBe(path.join(repoRoot, '.git/freesolo/verifications/issue-42'));
   });
 
   it('writes run.json under the resolved run directory', async () => {

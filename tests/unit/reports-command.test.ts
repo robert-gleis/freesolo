@@ -44,8 +44,8 @@ describe('showReports', () => {
           plan: null,
           planReview: null,
           implementationReview: null,
-          testReport: '/repo/.git/issueflow/reports/issue-30/TEST_REPORT.md',
-          reviewReport: '/repo/.git/issueflow/reports/issue-30/REVIEW_REPORT.md'
+          testReport: '/repo/.git/freesolo/reports/issue-30/TEST_REPORT.md',
+          reviewReport: '/repo/.git/freesolo/reports/issue-30/REVIEW_REPORT.md'
         }),
         readFile: async (filePath) => {
           if (filePath.endsWith('TEST_REPORT.md')) {

@@ -19,7 +19,7 @@ afterEach(async () => {
 });
 
 function tempDbPath(): string {
-  const p = path.join(os.tmpdir(), `issueflow-state-${Date.now()}.db`);
+  const p = path.join(os.tmpdir(), `freesolo-state-${Date.now()}.db`);
   tempDbs.push(p);
   return p;
 }

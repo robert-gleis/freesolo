@@ -173,12 +173,12 @@ export async function mergeExecuteAction(
     }
 
     const state = await deps.readState(repo, issueNumber);
-    const engineEnabled = deps.env.ISSUEFLOW_ENGINE === '1';
+    const engineEnabled = deps.env.FREESOLO_ENGINE === '1';
 
     if (state === 'pr-ready' && !engineEnabled) {
       deps.write(
         'stderr',
-        'issueflow merge is engine-only when transitioning pr-ready → merged. Set ISSUEFLOW_ENGINE=1.\n'
+        'freesolo merge is engine-only when transitioning pr-ready → merged. Set FREESOLO_ENGINE=1.\n'
       );
       deps.setExitCode(3);
       return;

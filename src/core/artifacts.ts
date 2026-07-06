@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { gitIssueflowPath } from './session-state.js';
+import { gitFreesoloPath } from './session-state.js';
 import type { IssueArtifactPaths } from './types.js';
 
 type ReviewArtifactKind = 'plan' | 'implementation';
@@ -36,7 +36,7 @@ async function findLatestArtifact(repoRoot: string, relativeDir: string[], issue
 }
 
 async function findLatestReviewArtifact(repoRoot: string, issueNumber: number, kind: ReviewArtifactKind): Promise<string | null> {
-  const absoluteDir = path.join(repoRoot, 'docs', 'issueflow', 'reviews');
+  const absoluteDir = path.join(repoRoot, 'docs', 'freesolo', 'reviews');
   const entries = await readDirectoryEntries(absoluteDir);
 
   if (!entries) {
@@ -71,7 +71,7 @@ async function findReportArtifact(
   let reportPath: string;
 
   try {
-    reportPath = await gitIssueflowPath(repoRoot, 'reports', `issue-${issueNumber}`, filename);
+    reportPath = await gitFreesoloPath(repoRoot, 'reports', `issue-${issueNumber}`, filename);
   } catch {
     return null;
   }
@@ -90,8 +90,8 @@ async function findReportArtifact(
 
 export async function findIssueArtifacts(repoRoot: string, issueNumber: number): Promise<IssueArtifactPaths> {
   const [spec, plan, planReview, implementationReview, testReport, reviewReport] = await Promise.all([
-    findLatestArtifact(repoRoot, ['docs', 'issueflow', 'specs'], issueNumber, '-design.md'),
-    findLatestArtifact(repoRoot, ['docs', 'issueflow', 'plans'], issueNumber, '-plan.md'),
+    findLatestArtifact(repoRoot, ['docs', 'freesolo', 'specs'], issueNumber, '-design.md'),
+    findLatestArtifact(repoRoot, ['docs', 'freesolo', 'plans'], issueNumber, '-plan.md'),
     findLatestReviewArtifact(repoRoot, issueNumber, 'plan'),
     findLatestReviewArtifact(repoRoot, issueNumber, 'implementation'),
     findReportArtifact(repoRoot, issueNumber, 'TEST_REPORT.md'),

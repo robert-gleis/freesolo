@@ -17,7 +17,7 @@ import type { VerificationRun } from '../../src/verification/types.js';
 const worktrees: string[] = [];
 
 async function makeWorktree(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-pr-creator-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-pr-creator-'));
   worktrees.push(dir);
   await execa('git', ['init', '--quiet'], { cwd: dir });
   await execa('git', ['remote', 'add', 'origin', 'git@github.com:example/repo.git'], { cwd: dir });
@@ -42,7 +42,7 @@ const passingRun: VerificationRun = {
   runId: '20260608-120000',
   issueNumber: 43,
   repoRoot: '',
-  configPath: '/repo/issueflow.config.json',
+  configPath: '/repo/freesolo.config.json',
   startedAt: '2026-06-08T12:00:00.000Z',
   finishedAt: '2026-06-08T12:00:05.000Z',
   status: 'pass',
@@ -65,15 +65,15 @@ const passingRun: VerificationRun = {
 };
 
 async function seedArtifacts(repoRoot: string): Promise<void> {
-  await fs.mkdir(path.join(repoRoot, 'docs/issueflow/specs'), { recursive: true });
-  await fs.mkdir(path.join(repoRoot, 'docs/issueflow/reviews'), { recursive: true });
+  await fs.mkdir(path.join(repoRoot, 'docs/freesolo/specs'), { recursive: true });
+  await fs.mkdir(path.join(repoRoot, 'docs/freesolo/reviews'), { recursive: true });
 
   await fs.writeFile(
-    path.join(repoRoot, 'docs/issueflow/specs/2026-06-08-issue-43-design.md'),
+    path.join(repoRoot, 'docs/freesolo/specs/2026-06-08-issue-43-design.md'),
     '# Spec\n\n## Summary\n\nShip PR automation.\n'
   );
   await fs.writeFile(
-    path.join(repoRoot, 'docs/issueflow/reviews/2026-06-08-issue-43-implementation-review-round-1.md'),
+    path.join(repoRoot, 'docs/freesolo/reviews/2026-06-08-issue-43-implementation-review-round-1.md'),
     '## Verdict\npass\n'
   );
 }

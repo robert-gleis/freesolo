@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 
-import { getIssueflowPath, sessionStateSchema, writeSessionState } from '../core/session-state.js';
+import { getFreesoloPath, sessionStateSchema, writeSessionState } from '../core/session-state.js';
 
 export type ReportArtifactField = 'testReport' | 'reviewReport';
 
@@ -9,7 +9,7 @@ export async function updateSessionReportArtifact(
   field: ReportArtifactField,
   artifactPath: string
 ): Promise<void> {
-  const sessionStatePath = await getIssueflowPath(worktreePath, 'session.json');
+  const sessionStatePath = await getFreesoloPath(worktreePath, 'session.json');
 
   let raw: string;
   try {

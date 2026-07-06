@@ -1,10 +1,10 @@
 {
-  "name": "issueflow",
+  "name": "freesolo",
   "version": "0.1.0",
   "description": "Start focused issue sessions from the current git repository",
   "type": "module",
   "bin": {
-    "issueflow": "./dist/src/bin.js"
+    "freesolo": "./dist/src/bin.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && node ./scripts/ensure-bin-executable.mjs ./dist/src/bin.js",

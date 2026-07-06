@@ -3,11 +3,11 @@ import path from 'node:path';
 
 import { buildReviewReportMarkdown, type BuildReviewReportInput } from './review-report.js';
 import { buildTestReportMarkdown } from './test-report.js';
-import { gitIssueflowPath } from '../core/session-state.js';
+import { gitFreesoloPath } from '../core/session-state.js';
 import type { VerificationRun } from '../verification/types.js';
 
 export async function getIssueReportsDir(repoRoot: string, issueNumber: number): Promise<string> {
-  return gitIssueflowPath(repoRoot, 'reports', `issue-${issueNumber}`);
+  return gitFreesoloPath(repoRoot, 'reports', `issue-${issueNumber}`);
 }
 
 export async function writeTestReportToDisk(

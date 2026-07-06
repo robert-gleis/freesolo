@@ -9,7 +9,7 @@ import { defaultExecCheck, runShellCheck } from '../../src/verification/runner.j
 const tempDirs: string[] = [];
 
 async function makeDir(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-exec-check-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-exec-check-'));
   tempDirs.push(dir);
   return dir;
 }
@@ -25,9 +25,9 @@ afterEach(async () => {
 
 describe('defaultExecCheck termination bound', () => {
   it('force-kills a child that ignores the graceful signal so the await is bounded', async () => {
-    const prev = process.env.ISSUEFLOW_FORCE_KILL_MS;
+    const prev = process.env.FREESOLO_FORCE_KILL_MS;
     // Escalate to SIGKILL quickly so this test stays fast.
-    process.env.ISSUEFLOW_FORCE_KILL_MS = '300';
+    process.env.FREESOLO_FORCE_KILL_MS = '300';
     try {
       const controller = new AbortController();
       const start = Date.now();
@@ -47,17 +47,17 @@ describe('defaultExecCheck termination bound', () => {
       expect(result.exitCode).not.toBe(0);
     } finally {
       if (prev === undefined) {
-        delete process.env.ISSUEFLOW_FORCE_KILL_MS;
+        delete process.env.FREESOLO_FORCE_KILL_MS;
       } else {
-        process.env.ISSUEFLOW_FORCE_KILL_MS = prev;
+        process.env.FREESOLO_FORCE_KILL_MS = prev;
       }
     }
   }, 20_000);
 
   it('a timed-out ignoring child surfaces as a failed shell check', async () => {
     const dir = await makeDir();
-    const prev = process.env.ISSUEFLOW_FORCE_KILL_MS;
-    process.env.ISSUEFLOW_FORCE_KILL_MS = '300';
+    const prev = process.env.FREESOLO_FORCE_KILL_MS;
+    process.env.FREESOLO_FORCE_KILL_MS = '300';
     try {
       const controller = new AbortController();
       setTimeout(() => controller.abort(), 100);
@@ -73,9 +73,9 @@ describe('defaultExecCheck termination bound', () => {
       expect(outcome.status).toBe('fail');
     } finally {
       if (prev === undefined) {
-        delete process.env.ISSUEFLOW_FORCE_KILL_MS;
+        delete process.env.FREESOLO_FORCE_KILL_MS;
       } else {
-        process.env.ISSUEFLOW_FORCE_KILL_MS = prev;
+        process.env.FREESOLO_FORCE_KILL_MS = prev;
       }
     }
   }, 20_000);

@@ -7,7 +7,7 @@ import type { AgentRoleAssignment, TeamAgentSpawnSpec } from './types.js';
 export function buildDefaultImplementerRole(host: PlannerHost): AgentRoleAssignment {
   return {
     roleName: 'Implementer',
-    responsibility: 'Execute the issueflow workflow for this issue',
+    responsibility: 'Execute the freesolo workflow for this issue',
     host,
     instanceIndex: 1,
     instanceCount: 1

@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { getIssueflowPath } from '../core/session-state.js';
+import { getFreesoloPath } from '../core/session-state.js';
 import {
   decompositionPlanSchema,
   type DecompositionPlan
@@ -35,12 +35,12 @@ export interface DecompositionAppliedRecord {
 }
 
 export async function getDecompositionPath(worktreePath: string): Promise<string> {
-  const rawPath = await getIssueflowPath(worktreePath, 'decomposition.json');
+  const rawPath = await getFreesoloPath(worktreePath, 'decomposition.json');
   return path.isAbsolute(rawPath) ? rawPath : path.join(worktreePath, rawPath);
 }
 
 export async function getDecompositionAppliedPath(worktreePath: string): Promise<string> {
-  const rawPath = await getIssueflowPath(worktreePath, 'decomposition-applied.json');
+  const rawPath = await getFreesoloPath(worktreePath, 'decomposition-applied.json');
   return path.isAbsolute(rawPath) ? rawPath : path.join(worktreePath, rawPath);
 }
 

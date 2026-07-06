@@ -13,7 +13,7 @@ import type { FailureContext } from '../../src/verification/route-runner.js';
 const tempDirs: string[] = [];
 
 async function makeRunDir(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-fixer-check-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-fixer-check-'));
   tempDirs.push(dir);
   return dir;
 }

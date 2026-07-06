@@ -24,7 +24,7 @@ function buildHarness(overrides: Partial<StateCommandDeps> = {}): Harness {
     resolveRepoRef: vi.fn().mockResolvedValue({ owner: 'acme', repo: 'widgets' }),
     readState: vi.fn().mockResolvedValue('triaged'),
     writeState: vi.fn().mockResolvedValue(undefined),
-    env: { ISSUEFLOW_ENGINE: '1' },
+    env: { FREESOLO_ENGINE: '1' },
     write: (channel, message) => {
       io[channel].push(message);
     },
@@ -43,26 +43,26 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('issueflow state get', () => {
+describe('freesolo state get', () => {
   it('prints the current state when one exists', async () => {
     const { program, io, deps } = buildHarness({
       readState: vi.fn().mockResolvedValue('implementing')
     });
 
-    await program.parseAsync(['node', 'issueflow', 'state', 'get', '--issue', '17']);
+    await program.parseAsync(['node', 'freesolo', 'state', 'get', '--issue', '17']);
 
     expect(deps.readState).toHaveBeenCalledWith({ owner: 'acme', repo: 'widgets' }, 17);
     expect(io.stdout).toEqual(['implementing\n']);
     expect(io.exitCode).toBeNull();
   });
 
-  it('does not require ISSUEFLOW_ENGINE for state get', async () => {
+  it('does not require FREESOLO_ENGINE for state get', async () => {
     const { program, io, deps } = buildHarness({
       env: {},
       readState: vi.fn().mockResolvedValue('implementing')
     });
 
-    await program.parseAsync(['node', 'issueflow', 'state', 'get', '--issue', '17']);
+    await program.parseAsync(['node', 'freesolo', 'state', 'get', '--issue', '17']);
 
     expect(deps.readState).toHaveBeenCalledWith({ owner: 'acme', repo: 'widgets' }, 17);
     expect(io.stdout).toEqual(['implementing\n']);
@@ -74,7 +74,7 @@ describe('issueflow state get', () => {
       readState: vi.fn().mockResolvedValue(null)
     });
 
-    await program.parseAsync(['node', 'issueflow', 'state', 'get', '--issue', '17']);
+    await program.parseAsync(['node', 'freesolo', 'state', 'get', '--issue', '17']);
 
     expect(io.stdout).toEqual(['null\n']);
     expect(io.exitCode).toBe(2);
@@ -85,7 +85,7 @@ describe('issueflow state get', () => {
       readState: vi.fn().mockRejectedValue(new MalformedStateError(17, 'bogus'))
     });
 
-    await program.parseAsync(['node', 'issueflow', 'state', 'get', '--issue', '17']);
+    await program.parseAsync(['node', 'freesolo', 'state', 'get', '--issue', '17']);
 
     expect(io.stdout).toEqual([]);
     expect(io.stderr.join('')).toContain('unrecognised state');
@@ -93,13 +93,13 @@ describe('issueflow state get', () => {
   });
 });
 
-describe('issueflow state transition', () => {
-  it('refuses to run without ISSUEFLOW_ENGINE and exits 3', async () => {
+describe('freesolo state transition', () => {
+  it('refuses to run without FREESOLO_ENGINE and exits 3', async () => {
     const { program, io, deps } = buildHarness({ env: {} });
 
     await program.parseAsync([
       'node',
-      'issueflow',
+      'freesolo',
       'state',
       'transition',
       '--issue',
@@ -111,7 +111,7 @@ describe('issueflow state transition', () => {
     expect(deps.readState).not.toHaveBeenCalled();
     expect(deps.writeState).not.toHaveBeenCalled();
     expect(io.exitCode).toBe(3);
-    expect(io.stderr.join('')).toContain('ISSUEFLOW_ENGINE');
+    expect(io.stderr.join('')).toContain('FREESOLO_ENGINE');
   });
 
   it('reads the current state, validates, and writes the new state when gated', async () => {
@@ -121,7 +121,7 @@ describe('issueflow state transition', () => {
 
     await program.parseAsync([
       'node',
-      'issueflow',
+      'freesolo',
       'state',
       'transition',
       '--issue',
@@ -145,7 +145,7 @@ describe('issueflow state transition', () => {
 
     await program.parseAsync([
       'node',
-      'issueflow',
+      'freesolo',
       'state',
       'transition',
       '--issue',
@@ -167,7 +167,7 @@ describe('issueflow state transition', () => {
 
     await program.parseAsync([
       'node',
-      'issueflow',
+      'freesolo',
       'state',
       'transition',
       '--issue',
@@ -192,7 +192,7 @@ describe('issueflow state transition', () => {
 
     await program.parseAsync([
       'node',
-      'issueflow',
+      'freesolo',
       'state',
       'transition',
       '--issue',
@@ -212,7 +212,7 @@ describe('issueflow state transition', () => {
 
     await program.parseAsync([
       'node',
-      'issueflow',
+      'freesolo',
       'state',
       'transition',
       '--issue',

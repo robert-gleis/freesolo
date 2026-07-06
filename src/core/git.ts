@@ -47,7 +47,7 @@ export async function resolveRepoRoot(cwd: string): Promise<string> {
     const { stdout } = await execa('git', ['rev-parse', '--show-toplevel'], { cwd });
     return stdout.trim();
   } catch {
-    throw new NotAGitRepositoryError('issueflow must be started inside a git repository');
+    throw new NotAGitRepositoryError('freesolo must be started inside a git repository');
   }
 }
 
@@ -56,7 +56,7 @@ export async function readOriginRemote(cwd: string): Promise<string> {
     const { stdout } = await execa('git', ['remote', 'get-url', 'origin'], { cwd });
     return stdout.trim();
   } catch {
-    throw new MissingOriginRemoteError('issueflow requires an origin remote that points at GitHub');
+    throw new MissingOriginRemoteError('freesolo requires an origin remote that points at GitHub');
   }
 }
 

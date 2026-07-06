@@ -17,8 +17,8 @@ describe('getHostAssetSpec', () => {
 
     expect(spec.tool).toBe('codex');
     expect(spec.isDirectory).toBe(true);
-    expect(spec.target).toMatch(/\.codex\/skills\/issueflow-workflow$/);
-    expect(spec.source).toMatch(/integrations\/skills\/issueflow-workflow$/);
+    expect(spec.target).toMatch(/\.codex\/skills\/freesolo-workflow$/);
+    expect(spec.source).toMatch(/integrations\/skills\/freesolo-workflow$/);
   });
 
   it('points claude at the worktree command file', () => {
@@ -26,8 +26,8 @@ describe('getHostAssetSpec', () => {
 
     expect(spec.tool).toBe('claude');
     expect(spec.isDirectory).toBe(false);
-    expect(spec.target).toBe('/wt/example/.claude/commands/issueflow.md');
-    expect(spec.source).toMatch(/integrations\/claude\/commands\/issueflow\.md$/);
+    expect(spec.target).toBe('/wt/example/.claude/commands/freesolo.md');
+    expect(spec.source).toMatch(/integrations\/claude\/commands\/freesolo\.md$/);
   });
 
   it('points cursor at the worktree command file', () => {
@@ -35,8 +35,8 @@ describe('getHostAssetSpec', () => {
 
     expect(spec.tool).toBe('cursor');
     expect(spec.isDirectory).toBe(false);
-    expect(spec.target).toBe('/wt/example/.cursor/commands/issueflow.md');
-    expect(spec.source).toMatch(/integrations\/cursor\/commands\/issueflow\.md$/);
+    expect(spec.target).toBe('/wt/example/.cursor/commands/freesolo.md');
+    expect(spec.source).toMatch(/integrations\/cursor\/commands\/freesolo\.md$/);
   });
 });
 
@@ -46,7 +46,7 @@ describe('checkHostAsset and installHostAsset (file)', () => {
   let target: string;
 
   beforeEach(async () => {
-    workspace = await mkdtemp(path.join(tmpdir(), 'issueflow-host-asset-'));
+    workspace = await mkdtemp(path.join(tmpdir(), 'freesolo-host-asset-'));
     source = path.join(workspace, 'src.md');
     target = path.join(workspace, 'nested/dir/dest.md');
     await writeFile(source, 'hello\n');
@@ -101,9 +101,9 @@ describe('checkHostAsset and installHostAsset (directory)', () => {
   let target: string;
 
   beforeEach(async () => {
-    workspace = await mkdtemp(path.join(tmpdir(), 'issueflow-host-asset-dir-'));
+    workspace = await mkdtemp(path.join(tmpdir(), 'freesolo-host-asset-dir-'));
     source = path.join(workspace, 'source-skill');
-    target = path.join(workspace, 'install/.codex/skills/issueflow-workflow');
+    target = path.join(workspace, 'install/.codex/skills/freesolo-workflow');
     await mkdir(path.join(source, 'scripts'), { recursive: true });
     await writeFile(path.join(source, 'SKILL.md'), 'skill\n');
     await writeFile(path.join(source, 'scripts', 'review-loop.mjs'), 'console.log(1);\n');

@@ -2,9 +2,9 @@
   {
     "id": "ISSUE_12",
     "number": 12,
-    "title": "Ship issueflow start",
+    "title": "Ship freesolo start",
     "body": "Build the first working start command.",
-    "url": "https://github.com/robert-gleis/issueflow/issues/12",
+    "url": "https://github.com/robert-gleis/freesolo/issues/12",
     "labels": [
       {
         "name": "workflow"

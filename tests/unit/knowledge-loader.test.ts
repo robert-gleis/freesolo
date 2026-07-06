@@ -14,7 +14,7 @@ import {
 const tempDirs: string[] = [];
 
 async function makeTempRepo(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-knowledge-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-knowledge-'));
   tempDirs.push(dir);
   return dir;
 }
@@ -50,7 +50,7 @@ describe('formatKnowledgeSection', () => {
     const section = formatKnowledgeSection(entries);
 
     expect(section).toContain('## Factory Knowledge Base');
-    expect(section).toContain('loaded from `.issueflow/knowledge/*.md`');
+    expect(section).toContain('loaded from `.freesolo/knowledge/*.md`');
     expect(section).toContain('### Build');
     expect(section).toContain('npm run build');
   });
@@ -91,13 +91,13 @@ describe('loadKnowledgeEntries', () => {
 
   it('returns an empty array when the knowledge directory exists but is empty', async () => {
     const repoRoot = await makeTempRepo();
-    await fs.mkdir(path.join(repoRoot, '.issueflow', 'knowledge'), { recursive: true });
+    await fs.mkdir(path.join(repoRoot, '.freesolo', 'knowledge'), { recursive: true });
     await expect(loadKnowledgeEntries(repoRoot)).resolves.toEqual([]);
   });
 
   it('loads markdown files in alphabetical order', async () => {
     const repoRoot = await makeTempRepo();
-    const knowledgeDir = path.join(repoRoot, '.issueflow', 'knowledge');
+    const knowledgeDir = path.join(repoRoot, '.freesolo', 'knowledge');
     await fs.mkdir(knowledgeDir, { recursive: true });
     await fs.writeFile(path.join(knowledgeDir, 'z-last.md'), '# Z Last\n\nz');
     await fs.writeFile(path.join(knowledgeDir, 'a-first.md'), '# A First\n\na');
@@ -110,7 +110,7 @@ describe('loadKnowledgeEntries', () => {
 
   it('ignores non-markdown files and subdirectories', async () => {
     const repoRoot = await makeTempRepo();
-    const knowledgeDir = path.join(repoRoot, '.issueflow', 'knowledge');
+    const knowledgeDir = path.join(repoRoot, '.freesolo', 'knowledge');
     await fs.mkdir(path.join(knowledgeDir, 'nested'), { recursive: true });
     await fs.writeFile(path.join(knowledgeDir, 'notes.txt'), 'ignore');
     await fs.writeFile(path.join(knowledgeDir, 'valid.md'), 'content');

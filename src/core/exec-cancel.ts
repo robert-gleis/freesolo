@@ -1,6 +1,6 @@
 /**
  * Milliseconds to wait after the graceful termination signal before execa
- * escalates to SIGKILL. Overridable via ISSUEFLOW_FORCE_KILL_MS (tests set a
+ * escalates to SIGKILL. Overridable via FREESOLO_FORCE_KILL_MS (tests set a
  * short value). Defaults to 5s so a well-behaved child gets a chance to flush.
  *
  * Shared by every place that spawns a cancellable subprocess (verification
@@ -11,7 +11,7 @@
  * the timeout truly bounds the await.
  */
 export function forceKillAfterMs(): number {
-  const raw = process.env.ISSUEFLOW_FORCE_KILL_MS;
+  const raw = process.env.FREESOLO_FORCE_KILL_MS;
   if (raw !== undefined) {
     const parsed = Number(raw);
     if (Number.isFinite(parsed) && parsed >= 0) {

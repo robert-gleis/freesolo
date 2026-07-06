@@ -41,7 +41,7 @@ describe('ADR filename helpers', () => {
 
 describe('listAdrs', () => {
   it('returns numbered ADRs sorted ascending, excluding format docs', async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-adrs-'));
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-adrs-'));
     await writeAdrFixture(root, 'ADR-FORMAT.md', '# format');
     await writeAdrFixture(root, '0002-second.md', '# Second\n\ndecision.');
     await writeAdrFixture(root, '0001-first.md', '# First\n\ndecision.');
@@ -58,7 +58,7 @@ describe('listAdrs', () => {
   });
 
   it('returns an empty array when docs/adr is missing', async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-adrs-'));
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-adrs-'));
     const adrs = await listAdrs(root);
     expect(adrs).toEqual([]);
   });
@@ -66,7 +66,7 @@ describe('listAdrs', () => {
 
 describe('nextAdrNumber', () => {
   it('returns max + 1', async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-adrs-'));
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-adrs-'));
     await writeAdrFixture(root, '0001-first.md', '# First');
     await writeAdrFixture(root, '0003-third.md', '# Third');
 
@@ -74,7 +74,7 @@ describe('nextAdrNumber', () => {
   });
 
   it('returns 1 when no numbered ADRs exist', async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-adrs-'));
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-adrs-'));
     await writeAdrFixture(root, 'ADR-FORMAT.md', '# format');
 
     expect(await nextAdrNumber(root)).toBe(1);
@@ -83,7 +83,7 @@ describe('nextAdrNumber', () => {
 
 describe('listAdrs edge cases', () => {
   it('ignores non-numbered markdown files like foo.md', async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-adrs-'));
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-adrs-'));
     await writeAdrFixture(root, 'foo.md', '# not an adr');
     await writeAdrFixture(root, '0001-first.md', '# First');
 
@@ -93,7 +93,7 @@ describe('listAdrs edge cases', () => {
   });
 
   it('sorts duplicate numbers stably by filename', async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-adrs-'));
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-adrs-'));
     await writeAdrFixture(root, '0001-z-last.md', '# Z');
     await writeAdrFixture(root, '0001-a-first.md', '# A');
 

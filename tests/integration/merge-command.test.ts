@@ -18,7 +18,7 @@ function passRun(runId = 'run-1'): VerificationRun {
     runId,
     issueNumber: 44,
     repoRoot: '',
-    configPath: '/repo/issueflow.config.json',
+    configPath: '/repo/freesolo.config.json',
     startedAt: '2026-06-08T08:00:00.000Z',
     finishedAt: '2026-06-08T08:01:00.000Z',
     status: 'pass',
@@ -106,7 +106,7 @@ describe('merge command integration', () => {
         updatedAt: '2026-06-08T08:00:00.000Z'
       }),
       readMergeReadinessRecord: async () => null,
-      writeMergeReadinessRecord: async () => path.join(repoRoot, '.git/issueflow/merge-readiness.json'),
+      writeMergeReadinessRecord: async () => path.join(repoRoot, '.git/freesolo/merge-readiness.json'),
       readMergeLabelStatus: async () => null,
       writeMergeLabelVerdict: async () => {},
       runGh: async (args) => {
@@ -115,7 +115,7 @@ describe('merge command integration', () => {
         }
         return { stdout: '', stderr: '', exitCode: 0 };
       },
-      env: { ISSUEFLOW_ENGINE: '1' },
+      env: { FREESOLO_ENGINE: '1' },
       write: () => {},
       setExitCode: () => {},
       now: () => new Date('2026-06-08T08:02:00.000Z')

@@ -136,7 +136,7 @@ describe('getPromptPreset', () => {
       });
 
       // Do-not-edit-config instruction (mentions the config file and gateRoute).
-      expect(prompt).toContain('issueflow.config.json');
+      expect(prompt).toContain('freesolo.config.json');
       expect(prompt).toContain('gateRoute');
       expect(prompt).toMatch(/do not/i);
       // Minimal-change instruction.

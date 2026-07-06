@@ -13,7 +13,7 @@ import {
   showAction,
   type CandidateCommandDeps
 } from '../../src/commands/candidate.js';
-import { getIssueflowPath } from '../../src/core/session-state.js';
+import { getFreesoloPath } from '../../src/core/session-state.js';
 import type { CandidateBranchOutcome } from '../../src/integration/types.js';
 
 interface CapturedIo {
@@ -25,15 +25,15 @@ interface CapturedIo {
 const worktrees: string[] = [];
 
 async function makeWorktree(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-candidate-cmd-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-candidate-cmd-'));
   worktrees.push(dir);
   await execa('git', ['init', '--quiet'], { cwd: dir });
   await execa('git', ['commit', '--allow-empty', '-m', 'init'], { cwd: dir });
   return dir;
 }
 
-async function writeIssueflowFile(worktreePath: string, filename: string, contents: string): Promise<void> {
-  const rawPath = await getIssueflowPath(worktreePath, filename);
+async function writeFreesoloFile(worktreePath: string, filename: string, contents: string): Promise<void> {
+  const rawPath = await getFreesoloPath(worktreePath, filename);
   const resolvedPath = path.isAbsolute(rawPath) ? rawPath : path.join(worktreePath, rawPath);
   await fs.mkdir(path.dirname(resolvedPath), { recursive: true });
   await fs.writeFile(resolvedPath, contents);
@@ -90,12 +90,12 @@ afterEach(async () => {
 describe('resolveIssueSlug', () => {
   it('prefers current-issue.md branch line', async () => {
     const worktreePath = await makeWorktree();
-    await writeIssueflowFile(
+    await writeFreesoloFile(
       worktreePath,
       'current-issue.md',
       ['# Issue #35: Candidate Branch Creation', '', '## Branch', 'issue/35-from-packet', ''].join('\n')
     );
-    await writeIssueflowFile(
+    await writeFreesoloFile(
       worktreePath,
       'session.json',
       JSON.stringify({ issueNumber: 35, issueSlug: 'from-session' })
@@ -106,7 +106,7 @@ describe('resolveIssueSlug', () => {
 
   it('falls back to session.json issueSlug', async () => {
     const worktreePath = await makeWorktree();
-    await writeIssueflowFile(
+    await writeFreesoloFile(
       worktreePath,
       'session.json',
       JSON.stringify({ issueNumber: 35, issueSlug: 'from-session' })

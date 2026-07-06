@@ -30,7 +30,7 @@ export const defaultRunner: GhRunner = async (args) => {
     };
 
     if (execaError?.exitCode === undefined) {
-      throw new Error('issueflow requires GitHub CLI access. Run `gh auth status` and retry.');
+      throw new Error('freesolo requires GitHub CLI access. Run `gh auth status` and retry.');
     }
 
     return {

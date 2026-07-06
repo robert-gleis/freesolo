@@ -15,12 +15,12 @@ function createPromptCancelError(): Error {
 function issue(overrides: Partial<Awaited<ReturnType<StartPlanDeps['listAssignedIssues']>>[number]> = {}) {
   return {
     number: 12,
-    title: 'Ship issueflow start',
+    title: 'Ship freesolo start',
     body: 'Build the first working start command.',
-    url: 'https://github.com/robert-gleis/issueflow/issues/12',
+    url: 'https://github.com/robert-gleis/freesolo/issues/12',
     labels: ['workflow'],
     assignees: ['robert-gleis'],
-    slug: 'ship-issueflow-start',
+    slug: 'ship-freesolo-start',
     status: null,
     ...overrides
   };
@@ -29,7 +29,7 @@ function issue(overrides: Partial<Awaited<ReturnType<StartPlanDeps['listAssigned
 function createDeps(overrides: Partial<StartPlanDeps> = {}): StartPlanDeps {
   return {
     resolveRepoRoot: async () => '/repo',
-    readOriginRemote: async () => 'git@github.com:robert-gleis/issueflow.git',
+    readOriginRemote: async () => 'git@github.com:robert-gleis/freesolo.git',
     ensureWorktrunkAvailable: async () => undefined,
     listAssignedIssues: async () => [issue()],
     listLocalBranches: async () => [],
@@ -39,7 +39,7 @@ function createDeps(overrides: Partial<StartPlanDeps> = {}): StartPlanDeps {
     resolveBranchWorktreePath: async (_repoRoot, branchName) => `/wt/${branchName.replaceAll('/', '-')}`,
     setupNewWorktree: async () => false,
     findIssueArtifacts: async (repoRoot) => ({
-      spec: `${repoRoot}/docs/issueflow/specs/2026-04-24-issue-12-design.md`,
+      spec: `${repoRoot}/docs/freesolo/specs/2026-04-24-issue-12-design.md`,
       plan: null,
       planReview: null,
       implementationReview: null
@@ -52,7 +52,7 @@ function createDeps(overrides: Partial<StartPlanDeps> = {}): StartPlanDeps {
     getHostAssetSpec: (tool, worktreePath) => ({
       tool,
       source: `/pkg/integrations/${tool}.md`,
-      target: `${worktreePath}/.${tool}/issueflow.md`,
+      target: `${worktreePath}/.${tool}/freesolo.md`,
       isDirectory: false,
       label: `${tool} asset`
     }),
@@ -151,13 +151,13 @@ describe('createStartPlan', () => {
       expect(result.launchPlan.cwd).toBe('<worktrunk-checkout>');
       expect(result.workspacePlan.action).toBe('create-worktree');
       expect(result.workspacePlan.setupCommands).toEqual([
-        'wt switch --create issue/12-ship-issueflow-start',
+        'wt switch --create issue/12-ship-freesolo-start',
         'Worktree path will be resolved by Worktrunk when executed.'
       ]);
       expect(result.summaryLines).toContain('Source checkout: /repo');
       expect(result.summaryLines).toContain('Repo: <worktrunk-checkout>');
       expect(result.summaryLines).toContain('Worktree: resolved by Worktrunk');
-      expect(result.summaryLines).toContain('Issue: #12 Ship issueflow start');
+      expect(result.summaryLines).toContain('Issue: #12 Ship freesolo start');
       expect(result.summaryLines).toContain('Workspace action: create-worktree');
     }
   });
@@ -173,10 +173,10 @@ describe('createStartPlan', () => {
         printOnly: false
       },
       createDeps({
-        resolveBranchWorktreePath: async () => '/wt/issue-12-ship-issueflow-start',
+        resolveBranchWorktreePath: async () => '/wt/issue-12-ship-freesolo-start',
         findIssueArtifacts: async (repoRoot) => ({
-          spec: `${repoRoot}/docs/issueflow/specs/2026-04-20-issue-12-design.md`,
-          plan: `${repoRoot}/docs/issueflow/plans/2026-04-21-issue-12-plan.md`,
+          spec: `${repoRoot}/docs/freesolo/specs/2026-04-20-issue-12-design.md`,
+          plan: `${repoRoot}/docs/freesolo/plans/2026-04-21-issue-12-plan.md`,
           planReview: null,
           implementationReview: null
         }),
@@ -193,14 +193,14 @@ describe('createStartPlan', () => {
     expect(packets[0]).toContain('## Labels');
     expect(packets[0]).toContain('workflow');
     expect(packets[0]).toContain('## Repo Root');
-    expect(packets[0]).toContain('/wt/issue-12-ship-issueflow-start');
-    expect(packets[0]).toContain('/wt/issue-12-ship-issueflow-start/docs/issueflow/specs/2026-04-20-issue-12-design.md');
-    expect(packets[0]).toContain('/wt/issue-12-ship-issueflow-start/docs/issueflow/plans/2026-04-21-issue-12-plan.md');
+    expect(packets[0]).toContain('/wt/issue-12-ship-freesolo-start');
+    expect(packets[0]).toContain('/wt/issue-12-ship-freesolo-start/docs/freesolo/specs/2026-04-20-issue-12-design.md');
+    expect(packets[0]).toContain('/wt/issue-12-ship-freesolo-start/docs/freesolo/plans/2026-04-21-issue-12-plan.md');
     expect(packets[0]).toContain('## Architecture Decision Records');
     expect(packets[0]).toContain('No numbered ADRs found under docs/adr/.');
     expect(states[0]).toMatchObject({
       issueNumber: 12,
-      repoRoot: '/wt/issue-12-ship-issueflow-start',
+      repoRoot: '/wt/issue-12-ship-freesolo-start',
       reviewGates: {
         plan: 'pending',
         implementation: 'pending'
@@ -218,8 +218,8 @@ describe('createStartPlan', () => {
       createdAt: '2026-04-24T10:00:00.000Z',
       updatedAt: '2026-04-24T10:00:00.000Z',
       artifacts: {
-        spec: '/wt/issue-12-ship-issueflow-start/docs/issueflow/specs/2026-04-20-issue-12-design.md',
-        plan: '/wt/issue-12-ship-issueflow-start/docs/issueflow/plans/2026-04-21-issue-12-plan.md',
+        spec: '/wt/issue-12-ship-freesolo-start/docs/freesolo/specs/2026-04-20-issue-12-design.md',
+        plan: '/wt/issue-12-ship-freesolo-start/docs/freesolo/plans/2026-04-21-issue-12-plan.md',
         planReview: null,
         implementationReview: null
       }
@@ -249,7 +249,7 @@ describe('createStartPlan', () => {
         },
         resolveBranchWorktreePath: async (repoRoot, branchName) => {
           calls.push(`resolve:${repoRoot}:${branchName}`);
-          return '/wt/issue-12-ship-issueflow-start';
+          return '/wt/issue-12-ship-freesolo-start';
         },
         setupNewWorktree: async (sourceCheckout, worktreePath) => {
           calls.push(`setup:${sourceCheckout}:${worktreePath}`);
@@ -259,7 +259,7 @@ describe('createStartPlan', () => {
           calls.push(`artifacts:${repoRoot}`);
 
           return {
-            spec: `${repoRoot}/docs/issueflow/specs/2026-04-24-issue-12-design.md`,
+            spec: `${repoRoot}/docs/freesolo/specs/2026-04-24-issue-12-design.md`,
             plan: null,
             planReview: null,
             implementationReview: null
@@ -271,10 +271,10 @@ describe('createStartPlan', () => {
     expect(result.mode).toBe('launch');
     expect(calls).toEqual([
       'wt-check',
-      'switch-new:/repo:issue/12-ship-issueflow-start',
-      'resolve:/repo:issue/12-ship-issueflow-start',
-      'setup:/repo:/wt/issue-12-ship-issueflow-start',
-      'artifacts:/wt/issue-12-ship-issueflow-start'
+      'switch-new:/repo:issue/12-ship-freesolo-start',
+      'resolve:/repo:issue/12-ship-freesolo-start',
+      'setup:/repo:/wt/issue-12-ship-freesolo-start',
+      'artifacts:/wt/issue-12-ship-freesolo-start'
     ]);
   });
 
@@ -290,18 +290,18 @@ describe('createStartPlan', () => {
         printOnly: false
       },
       createDeps({
-        listLocalBranches: async () => ['issue/12-ship-issueflow-start'],
+        listLocalBranches: async () => ['issue/12-ship-freesolo-start'],
         listWorktreeEntries: async () => [
           {
-            branchName: 'issue/12-ship-issueflow-start',
-            worktreePath: '/wt/issue-12-ship-issueflow-start'
+            branchName: 'issue/12-ship-freesolo-start',
+            worktreePath: '/wt/issue-12-ship-freesolo-start'
           }
         ],
         findIssueArtifacts: async (repoRoot) => {
           artifactLookups.push(repoRoot);
 
           return {
-            spec: `${repoRoot}/docs/issueflow/specs/2026-04-24-issue-12-design.md`,
+            spec: `${repoRoot}/docs/freesolo/specs/2026-04-24-issue-12-design.md`,
             plan: null,
             planReview: null,
             implementationReview: null
@@ -317,11 +317,11 @@ describe('createStartPlan', () => {
     );
 
     expect(result.mode).toBe('launch');
-    expect(artifactLookups).toEqual(['/wt/issue-12-ship-issueflow-start']);
-    expect(packets[0]).toContain('/wt/issue-12-ship-issueflow-start/docs/issueflow/specs/2026-04-24-issue-12-design.md');
+    expect(artifactLookups).toEqual(['/wt/issue-12-ship-freesolo-start']);
+    expect(packets[0]).toContain('/wt/issue-12-ship-freesolo-start/docs/freesolo/specs/2026-04-24-issue-12-design.md');
     expect(states[0]).toMatchObject({
-      repoRoot: '/wt/issue-12-ship-issueflow-start',
-      worktreePath: '/wt/issue-12-ship-issueflow-start'
+      repoRoot: '/wt/issue-12-ship-freesolo-start',
+      worktreePath: '/wt/issue-12-ship-freesolo-start'
     });
   });
 
@@ -338,18 +338,18 @@ describe('createStartPlan', () => {
         printOnly: false
       },
       createDeps({
-        listLocalBranches: async () => ['issue/12-ship-issueflow-start'],
+        listLocalBranches: async () => ['issue/12-ship-freesolo-start'],
         listWorktreeEntries: async () => [],
         switchExistingIssueWorktree: async (repoRoot, branchName) => {
           switchedBranches.push({ repoRoot, branchName });
         },
-        resolveBranchWorktreePath: async () => '/wt/issue-12-ship-issueflow-start',
+        resolveBranchWorktreePath: async () => '/wt/issue-12-ship-freesolo-start',
         findIssueArtifacts: async (repoRoot) => {
           artifactLookups.push(repoRoot);
 
           return {
-            spec: `${repoRoot}/docs/issueflow/specs/2026-04-24-issue-12-design.md`,
-            plan: `${repoRoot}/docs/issueflow/plans/2026-04-24-issue-12-plan.md`,
+            spec: `${repoRoot}/docs/freesolo/specs/2026-04-24-issue-12-design.md`,
+            plan: `${repoRoot}/docs/freesolo/plans/2026-04-24-issue-12-plan.md`,
             planReview: null,
             implementationReview: null
           };
@@ -367,18 +367,18 @@ describe('createStartPlan', () => {
     expect(switchedBranches).toEqual([
       {
         repoRoot: '/repo',
-        branchName: 'issue/12-ship-issueflow-start'
+        branchName: 'issue/12-ship-freesolo-start'
       }
     ]);
-    expect(artifactLookups).toEqual(['/wt/issue-12-ship-issueflow-start']);
-    expect(packets[0]).toContain('/wt/issue-12-ship-issueflow-start/docs/issueflow/specs/2026-04-24-issue-12-design.md');
+    expect(artifactLookups).toEqual(['/wt/issue-12-ship-freesolo-start']);
+    expect(packets[0]).toContain('/wt/issue-12-ship-freesolo-start/docs/freesolo/specs/2026-04-24-issue-12-design.md');
     expect(states[0]).toMatchObject({
-      repoRoot: '/wt/issue-12-ship-issueflow-start',
-      branchName: 'issue/12-ship-issueflow-start',
-      worktreePath: '/wt/issue-12-ship-issueflow-start',
+      repoRoot: '/wt/issue-12-ship-freesolo-start',
+      branchName: 'issue/12-ship-freesolo-start',
+      worktreePath: '/wt/issue-12-ship-freesolo-start',
       artifacts: {
-        spec: '/wt/issue-12-ship-issueflow-start/docs/issueflow/specs/2026-04-24-issue-12-design.md',
-        plan: '/wt/issue-12-ship-issueflow-start/docs/issueflow/plans/2026-04-24-issue-12-plan.md',
+        spec: '/wt/issue-12-ship-freesolo-start/docs/freesolo/specs/2026-04-24-issue-12-design.md',
+        plan: '/wt/issue-12-ship-freesolo-start/docs/freesolo/plans/2026-04-24-issue-12-plan.md',
         planReview: null,
         implementationReview: null
       }
@@ -466,7 +466,7 @@ describe('createStartPlan', () => {
     expect(result.mode).toBe('launch');
     expect(prompts[0]).toContain('Install');
     expect(prompts[0]).toContain('claude asset');
-    expect(installs).toEqual(['/wt/issue-12-ship-issueflow-start/.claude/issueflow.md']);
+    expect(installs).toEqual(['/wt/issue-12-ship-freesolo-start/.claude/freesolo.md']);
   });
 
   it('updates the host asset when outdated and the user confirms', async () => {
@@ -585,11 +585,11 @@ describe('createStartPlan', () => {
         printOnly: false
       },
       createDeps({
-        listLocalBranches: async () => ['issue/12-ship-issueflow-start'],
+        listLocalBranches: async () => ['issue/12-ship-freesolo-start'],
         listWorktreeEntries: async () => [
           {
-            branchName: 'issue/12-ship-issueflow-start',
-            worktreePath: '/wt/issue-12-ship-issueflow-start'
+            branchName: 'issue/12-ship-freesolo-start',
+            worktreePath: '/wt/issue-12-ship-freesolo-start'
           }
         ],
         switchNewIssueWorktree: async (_repoRoot, branchName) => {
@@ -628,7 +628,7 @@ describe('createStartPlan', () => {
     const promptArg = result.launchPlan.args.at(-1);
     expect(promptArg).toContain('## Your Role');
     expect(promptArg).toContain('Implementer');
-    expect(promptArg).toContain('Continue the issueflow workflow');
+    expect(promptArg).toContain('Continue the freesolo workflow');
   });
 
   it('appends agent.created when appendEvent dep is provided', async () => {
@@ -669,7 +669,7 @@ describe('createStartPlan', () => {
 
     const promptArg = result.launchPlan.args.at(-1);
     expect(promptArg).toContain('## Your Role');
-    expect(promptArg).toContain('Continue the issueflow workflow');
+    expect(promptArg).toContain('Continue the freesolo workflow');
     expect(promptArg).toContain('## Factory Knowledge Base');
     expect(promptArg).toContain('npm run build');
     expect(promptArg!.indexOf('## Your Role')).toBeLessThan(promptArg!.indexOf('## Factory Knowledge Base'));
@@ -692,7 +692,7 @@ describe('createStartPlan', () => {
     );
 
     expect(result.mode).toBe('launch');
-    expect(loadCalls).toEqual(['/wt/issue-12-ship-issueflow-start']);
+    expect(loadCalls).toEqual(['/wt/issue-12-ship-freesolo-start']);
     if (result.mode !== 'launch') {
       return;
     }
@@ -723,8 +723,8 @@ describe('createStartPlan', () => {
     );
 
     expect(upsertWorktreeMetadata).toHaveBeenCalledWith({
-      path: '/wt/issue-12-ship-issueflow-start',
-      branch: 'issue/12-ship-issueflow-start',
+      path: '/wt/issue-12-ship-freesolo-start',
+      branch: 'issue/12-ship-freesolo-start',
       agentOwner: 'cursor',
       issueId: 12
     });

@@ -9,7 +9,7 @@ import { initConfigFile, setConfigKey } from '../../src/config/write.js';
 const tempDirs: string[] = [];
 
 async function makeTempDir(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-write-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-write-'));
   tempDirs.push(dir);
   return dir;
 }

@@ -1,7 +1,7 @@
-worktree /repo/issueflow
+worktree /repo/freesolo
 HEAD 1234567890abcdef1234567890abcdef12345678
 branch refs/heads/main
 
-worktree /repo/issueflow-12-ship-issueflow-start
+worktree /repo/freesolo-12-ship-freesolo-start
 HEAD fedcba0987654321fedcba0987654321fedcba09
-branch refs/heads/issue/12-ship-issueflow-start
+branch refs/heads/issue/12-ship-freesolo-start

@@ -15,14 +15,14 @@ afterEach(async () => {
 });
 
 function makeRun(repoRoot: string): VerificationRun {
-  const runDirectory = path.join(repoRoot, '.git', 'issueflow', 'verifications', 'issue-99', 'run-1');
+  const runDirectory = path.join(repoRoot, '.git', 'freesolo', 'verifications', 'issue-99', 'run-1');
 
   return {
     schemaVersion: 1,
     runId: 'run-1',
     issueNumber: 99,
     repoRoot,
-    configPath: path.join(repoRoot, 'issueflow.config.json'),
+    configPath: path.join(repoRoot, 'freesolo.config.json'),
     startedAt: '2026-06-08T10:00:00.000Z',
     finishedAt: '2026-06-08T10:01:00.000Z',
     status: 'pass',
@@ -47,7 +47,7 @@ function makeRun(repoRoot: string): VerificationRun {
 
 describe('reports store', () => {
   it('writes TEST_REPORT.md under the issue reports directory', async () => {
-    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-reports-store-'));
+    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-reports-store-'));
     tempDirs.push(repoRoot);
     await execa('git', ['init'], { cwd: repoRoot });
 

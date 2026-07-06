@@ -2,7 +2,7 @@
 
 ## Summary
 
-`issueflow start` should keep showing only open issues assigned to the current user, but the interactive overview should also expose each issue's GitHub Project `Status` field so the list is easier to scan and prioritize.
+`freesolo start` should keep showing only open issues assigned to the current user, but the interactive overview should also expose each issue's GitHub Project `Status` field so the list is easier to scan and prioritize.
 
 The change should stay repo-centric: open issues still come from the current repository, and project metadata is only used to enrich the visible list with status information and a stable status-first ordering.
 
@@ -26,7 +26,7 @@ The change should stay repo-centric: open issues still come from the current rep
 When the user runs:
 
 ```bash
-issueflow start --tool codex
+freesolo start --tool codex
 ```
 
 the CLI should:

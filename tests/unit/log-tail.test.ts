@@ -15,7 +15,7 @@ import {
 const tempDirs: string[] = [];
 
 async function makeDir(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-log-tail-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-log-tail-'));
   tempDirs.push(dir);
   return dir;
 }

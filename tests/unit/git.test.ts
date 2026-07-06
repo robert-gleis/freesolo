@@ -4,16 +4,16 @@ import { parseGitHubRemote } from '../../src/core/git.js';
 
 describe('parseGitHubRemote', () => {
   it('parses ssh remotes', () => {
-    expect(parseGitHubRemote('git@github.com:robert-gleis/issueflow.git')).toEqual({
+    expect(parseGitHubRemote('git@github.com:robert-gleis/freesolo.git')).toEqual({
       host: 'github.com',
       owner: 'robert-gleis',
-      repo: 'issueflow',
-      remoteUrl: 'git@github.com:robert-gleis/issueflow.git',
+      repo: 'freesolo',
+      remoteUrl: 'git@github.com:robert-gleis/freesolo.git',
       rootDir: ''
     });
   });
 
   it('parses https remotes', () => {
-    expect(parseGitHubRemote('https://github.com/robert-gleis/issueflow.git')?.repo).toBe('issueflow');
+    expect(parseGitHubRemote('https://github.com/robert-gleis/freesolo.git')?.repo).toBe('freesolo');
   });
 });

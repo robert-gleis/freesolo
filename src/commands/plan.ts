@@ -10,7 +10,7 @@ import type { AppendEventInput, EventLog } from '../event-log/types.js';
 import { openEventLog } from '../event-log/index.js';
 import { resolveRepoRef, resolveRepoRoot } from '../core/git.js';
 import { IssueIdError, resolveIssueNumber } from '../core/issue-id.js';
-import { getIssueflowPath } from '../core/session-state.js';
+import { getFreesoloPath } from '../core/session-state.js';
 import {
   createDefaultPlannerAgent,
   readTeamPlan,
@@ -83,7 +83,7 @@ async function defaultFetchIssue(
       body: parsed.body ?? ''
     };
   } catch {
-    const packetPath = await getIssueflowPath(worktreePath, 'current-issue.md');
+    const packetPath = await getFreesoloPath(worktreePath, 'current-issue.md');
     const markdown = await fs.readFile(packetPath, 'utf8');
     return parseIssuePacket(markdown, issueNumber);
   }
@@ -144,12 +144,12 @@ const defaultDeps: PlanCommandDeps = {
 };
 
 function requireEngineGate(subcommand: string, deps: PlanCommandDeps): boolean {
-  if (deps.env.ISSUEFLOW_ENGINE === '1') {
+  if (deps.env.FREESOLO_ENGINE === '1') {
     return true;
   }
   deps.write(
     'stderr',
-    `issueflow plan ${subcommand} is engine-only. Set ISSUEFLOW_ENGINE=1 to authorise the call; agent processes must not bypass the workflow engine.\n`
+    `freesolo plan ${subcommand} is engine-only. Set FREESOLO_ENGINE=1 to authorise the call; agent processes must not bypass the workflow engine.\n`
   );
   deps.setExitCode(3);
   return false;
@@ -278,7 +278,7 @@ export function registerPlanCommands(program: Command, deps: PlanCommandDeps = d
           throw error;
         }
 
-        const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-plan-edit-'));
+        const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-plan-edit-'));
         const tempPath = path.join(tempDir, 'team-plan.json');
         await fs.writeFile(tempPath, original);
 

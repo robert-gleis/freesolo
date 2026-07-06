@@ -22,7 +22,7 @@ const definition: TeamDefinition = {
 const worktrees: string[] = [];
 
 async function makeWorktree(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-plan-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-plan-'));
   worktrees.push(dir);
   await execa('git', ['init', '--quiet'], { cwd: dir });
   return dir;
@@ -44,10 +44,10 @@ describe('team plan store', () => {
     await expect(readTeamPlan(worktreePath)).rejects.toBeInstanceOf(TeamPlanNotFoundError);
   });
 
-  it('getTeamPlanPath resolves under git issueflow dir', async () => {
+  it('getTeamPlanPath resolves under git freesolo dir', async () => {
     const worktreePath = await makeWorktree();
     const teamPlanPath = await getTeamPlanPath(worktreePath);
-    expect(teamPlanPath).toContain('issueflow');
+    expect(teamPlanPath).toContain('freesolo');
     expect(teamPlanPath.endsWith('team-plan.json')).toBe(true);
   });
 

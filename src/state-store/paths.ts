@@ -1,9 +1,9 @@
 import path from 'node:path';
 
-import { issueflowHome } from '../core/paths.js';
+import { freesoloHome } from '../core/paths.js';
 
 function homeDir(): string {
-  return issueflowHome();
+  return freesoloHome();
 }
 
 function timestampSegment(date: Date): string {

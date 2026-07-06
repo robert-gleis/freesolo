@@ -47,7 +47,7 @@ class StoppableAdapter implements AgentAdapter {
 }
 
 async function makeRepo(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-team-manager-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-team-manager-'));
   await execa('git', ['init', '--quiet'], { cwd: dir });
   return dir;
 }

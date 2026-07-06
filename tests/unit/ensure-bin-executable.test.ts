@@ -13,11 +13,11 @@ describe('ensure-bin-executable', () => {
   });
 
   it('marks generated CLI files as executable', async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), 'issueflow-bin-'));
+    const tempDir = await mkdtemp(join(tmpdir(), 'freesolo-bin-'));
     tempDirs.push(tempDir);
 
     const binPath = join(tempDir, 'bin.js');
-    await writeFile(binPath, '#!/usr/bin/env node\nconsole.log("issueflow");\n');
+    await writeFile(binPath, '#!/usr/bin/env node\nconsole.log("freesolo");\n');
     await chmod(binPath, 0o644);
 
     await execa(process.execPath, ['scripts/ensure-bin-executable.mjs', binPath], {

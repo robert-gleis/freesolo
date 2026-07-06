@@ -1,11 +1,11 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { getIssueflowPath } from '../core/session-state.js';
+import { getFreesoloPath } from '../core/session-state.js';
 import type { TeamRuntimeSnapshot } from './types.js';
 
 export async function getTeamRuntimePath(worktreePath: string): Promise<string> {
-  const rawPath = await getIssueflowPath(worktreePath, 'team-runtime.json');
+  const rawPath = await getFreesoloPath(worktreePath, 'team-runtime.json');
   return path.isAbsolute(rawPath) ? rawPath : path.join(worktreePath, rawPath);
 }
 

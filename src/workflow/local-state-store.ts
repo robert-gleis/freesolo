@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { issueflowHome } from '../core/paths.js';
+import { freesoloHome } from '../core/paths.js';
 import type { RepoRef } from '../core/types.js';
 import { assertTransition, WORKFLOW_STATES, type WorkflowState } from './state-machine.js';
 
@@ -18,7 +18,7 @@ export class MalformedStateError extends Error {
 }
 
 function stateFilePath(repo: RepoRef, issueNumber: number): string {
-  return path.join(issueflowHome(), 'state', repo.owner, repo.repo, `${issueNumber}`);
+  return path.join(freesoloHome(), 'state', repo.owner, repo.repo, `${issueNumber}`);
 }
 
 export async function readState(repo: RepoRef, issueNumber: number): Promise<WorkflowState | null> {

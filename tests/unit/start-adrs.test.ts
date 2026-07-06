@@ -7,7 +7,7 @@ const issue: IssueSummary = {
   number: 21,
   title: 'Architecture Decision Records (ADRs)',
   body: 'Adopt ADRs.',
-  url: 'https://github.com/robert-gleis/issueflow/issues/21',
+  url: 'https://github.com/robert-gleis/freesolo/issues/21',
   labels: ['enhancement'],
   assignees: ['robert-gleis'],
   slug: 'architecture-decision-records-adrs',
@@ -17,7 +17,7 @@ const issue: IssueSummary = {
 function baseDeps(overrides: Partial<StartPlanDeps> = {}): StartPlanDeps {
   return {
     resolveRepoRoot: async () => '/repo',
-    readOriginRemote: async () => 'git@github.com:robert-gleis/issueflow.git',
+    readOriginRemote: async () => 'git@github.com:robert-gleis/freesolo.git',
     ensureWorktrunkAvailable: async () => {},
     listAssignedIssues: async () => [issue],
     listLocalBranches: async () => [],

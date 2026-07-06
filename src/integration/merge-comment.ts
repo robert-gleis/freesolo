@@ -8,7 +8,7 @@ export function buildMergeReadinessComment(
     .map((gate) => `| ${gate.label} | ${gate.status} | ${gate.detail} |`)
     .join('\n');
 
-  return `## IssueFlow Merge Readiness
+  return `## FreeSolo Merge Readiness
 
 **Verdict:** ${evaluation.outcome}
 **Evaluated:** ${evaluatedAt}
@@ -17,6 +17,6 @@ export function buildMergeReadinessComment(
 | --- | --- | --- |
 ${rows}
 
-<!-- issueflow-merge-readiness -->
+<!-- freesolo-merge-readiness -->
 `;
 }

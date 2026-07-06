@@ -16,9 +16,9 @@ describe('buildMergeReadinessComment', () => {
       '2026-06-08T12:00:00.000Z'
     );
 
-    expect(body).toContain('## IssueFlow Merge Readiness');
+    expect(body).toContain('## FreeSolo Merge Readiness');
     expect(body).toContain('| Gate | Status | Detail |');
     expect(body).toContain('| Workflow state | pass | pr-ready |');
-    expect(body).toContain('<!-- issueflow-merge-readiness -->');
+    expect(body).toContain('<!-- freesolo-merge-readiness -->');
   });
 });

@@ -50,12 +50,12 @@ export interface TeamCommandDeps {
 }
 
 function requireEngineGate(subcommand: string, deps: TeamCommandDeps): boolean {
-  if (deps.env.ISSUEFLOW_ENGINE === '1') {
+  if (deps.env.FREESOLO_ENGINE === '1') {
     return true;
   }
   deps.write(
     'stderr',
-    `issueflow team ${subcommand} is engine-only. Set ISSUEFLOW_ENGINE=1 to authorise the call; agent processes must not bypass the workflow engine.\n`
+    `freesolo team ${subcommand} is engine-only. Set FREESOLO_ENGINE=1 to authorise the call; agent processes must not bypass the workflow engine.\n`
   );
   deps.setExitCode(3);
   return false;

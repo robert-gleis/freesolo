@@ -23,26 +23,26 @@ export function getHostAssetSpec(tool: HostTool, worktreePath: string): HostAsse
     case 'codex':
       return {
         tool,
-        source: path.join(integrationsRoot, 'skills/issueflow-workflow'),
-        target: path.join(os.homedir(), '.codex/skills/issueflow-workflow'),
+        source: path.join(integrationsRoot, 'skills/freesolo-workflow'),
+        target: path.join(os.homedir(), '.codex/skills/freesolo-workflow'),
         isDirectory: true,
-        label: 'Codex skill (issueflow-workflow)'
+        label: 'Codex skill (freesolo-workflow)'
       };
     case 'claude':
       return {
         tool,
-        source: path.join(integrationsRoot, 'claude/commands/issueflow.md'),
-        target: path.join(worktreePath, '.claude/commands/issueflow.md'),
+        source: path.join(integrationsRoot, 'claude/commands/freesolo.md'),
+        target: path.join(worktreePath, '.claude/commands/freesolo.md'),
         isDirectory: false,
-        label: 'Claude command (.claude/commands/issueflow.md)'
+        label: 'Claude command (.claude/commands/freesolo.md)'
       };
     case 'cursor':
       return {
         tool,
-        source: path.join(integrationsRoot, 'cursor/commands/issueflow.md'),
-        target: path.join(worktreePath, '.cursor/commands/issueflow.md'),
+        source: path.join(integrationsRoot, 'cursor/commands/freesolo.md'),
+        target: path.join(worktreePath, '.cursor/commands/freesolo.md'),
         isDirectory: false,
-        label: 'Cursor command (.cursor/commands/issueflow.md)'
+        label: 'Cursor command (.cursor/commands/freesolo.md)'
       };
   }
 }
@@ -84,7 +84,7 @@ function findPackageRoot(start: string): string {
     try {
       const pkg = JSON.parse(fsSync.readFileSync(pkgPath, 'utf8'));
 
-      if (pkg.name === 'issueflow') {
+      if (pkg.name === 'freesolo') {
         return dir;
       }
     } catch {
@@ -94,7 +94,7 @@ function findPackageRoot(start: string): string {
     dir = path.dirname(dir);
   }
 
-  throw new Error('issueflow package root not found');
+  throw new Error('freesolo package root not found');
 }
 
 async function pathExists(target: string): Promise<boolean> {

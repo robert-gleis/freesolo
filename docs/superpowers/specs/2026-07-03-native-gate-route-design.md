@@ -2,16 +2,16 @@
 
 ## Context
 
-IssueFlow is the Factory that turns GitHub issues into shipped pull requests through an explicit Workflow Engine. It already has the main control-plane pieces for the desired workflow: issue planning, Team execution, candidate branches, verification runs, Verification Gate verdicts, pull request creation, and merge readiness.
+FreeSolo is the Factory that turns GitHub issues into shipped pull requests through an explicit Workflow Engine. It already has the main control-plane pieces for the desired workflow: issue planning, Team execution, candidate branches, verification runs, Verification Gate verdicts, pull request creation, and merge readiness.
 
-The missing piece is a deterministic pre-PR gate that can review, fail, fix, and rerun the whole route before IssueFlow creates a pull request. The design borrows the core FreeSolo idea: the route lives in code, not in an agent prompt. A red check cannot be argued with; it creates evidence, gives a Fixer Agent bounded context, and forces the whole route to run again.
+The missing piece is a deterministic pre-PR gate that can review, fail, fix, and rerun the whole route before FreeSolo creates a pull request. The design borrows the core FreeSolo idea: the route lives in code, not in an agent prompt. A red check cannot be argued with; it creates evidence, gives a Fixer Agent bounded context, and forces the whole route to run again.
 
 ## Goals
 
-- Add a native IssueFlow Gate Route that runs before PR creation.
+- Add a native FreeSolo Gate Route that runs before PR creation.
 - Keep the route configurable at the repository level.
 - Run shell checks, agent-backed review checks, and fixer loops deterministically.
-- Preserve IssueFlow's Host and model agnosticism.
+- Preserve FreeSolo's Host and model agnosticism.
 - Make the Workflow Engine, not any agent, the authority that decides whether a PR may be created.
 - Produce structured evidence for each attempt, check, review, and fix.
 
@@ -31,7 +31,7 @@ The intended end-to-end workflow is:
 flowchart TD
   A["Problem evaluation and erosion"] --> B["Spec written"]
   B --> C["GitHub issue created"]
-  C --> D["IssueFlow Workflow Engine"]
+  C --> D["FreeSolo Workflow Engine"]
   D --> E["Plan, decomposition, and Team selection"]
   E --> F["Implementation by one Agent or a Team"]
   F --> G["Candidate branch"]
@@ -41,7 +41,7 @@ flowchart TD
   J --> K{"Route green?"}
   K -- "no" --> L["Fixer Agent"]
   L --> H
-  K -- "yes" --> M["IssueFlow creates PR"]
+  K -- "yes" --> M["FreeSolo creates PR"]
   M --> N["Server CI and GitHub reviews"]
   N --> O{"Ready?"}
   O -- "no" --> P["Future PR finishing loop"]
@@ -55,7 +55,7 @@ This design covers the native Gate Route through PR creation. The future PR fini
 
 ### Gate Route Config
 
-`issueflow.config.json` will define `verification.gateRoute`. The old `verification.checks` shape is no longer accepted.
+`freesolo.config.json` will define `verification.gateRoute`. The old `verification.checks` shape is no longer accepted.
 
 Example:
 
@@ -140,9 +140,9 @@ The Fixer Agent may change code. It does not declare success for the route. Succ
 
 ### Gate Verdict and PR Creation
 
-`issueflow gate evaluate` reads the latest Gate Route run record. It writes a pass verdict only if the latest route run passed. On pass, it transitions `verifying -> pr-ready`. On failure, it transitions `verifying -> implementing`.
+`freesolo gate evaluate` reads the latest Gate Route run record. It writes a pass verdict only if the latest route run passed. On pass, it transitions `verifying -> pr-ready`. On failure, it transitions `verifying -> implementing`.
 
-`issueflow pr create` continues to require:
+`freesolo pr create` continues to require:
 
 - issue state is `pr-ready`,
 - gate verdict is pass,
@@ -204,5 +204,5 @@ Add focused tests for:
 
 - Design the post-PR watch loop that waits for server CI and GitHub review comments.
 - Reuse the Fixer Agent model to address PR comments and rerun server checks until ready.
-- Add spec-to-issue intake before IssueFlow starts implementation.
+- Add spec-to-issue intake before FreeSolo starts implementation.
 - Consider the later product rename from IssueFlow to FreeSolo after the native route exists.

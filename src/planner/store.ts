@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { getIssueflowPath } from '../core/session-state.js';
+import { getFreesoloPath } from '../core/session-state.js';
 import { teamDefinitionSchema, type TeamDefinition } from './schemas/team-definition.js';
 
 export class TeamPlanNotFoundError extends Error {
@@ -19,7 +19,7 @@ export class TeamPlanValidationError extends Error {
 }
 
 export async function getTeamPlanPath(worktreePath: string): Promise<string> {
-  const rawPath = await getIssueflowPath(worktreePath, 'team-plan.json');
+  const rawPath = await getFreesoloPath(worktreePath, 'team-plan.json');
   return path.isAbsolute(rawPath) ? rawPath : path.join(worktreePath, rawPath);
 }
 

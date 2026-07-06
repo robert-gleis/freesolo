@@ -13,7 +13,7 @@ import {
   showAction,
   type PrCommandDeps
 } from '../../src/commands/pr.js';
-import { getIssueflowPath } from '../../src/core/session-state.js';
+import { getFreesoloPath } from '../../src/core/session-state.js';
 import type { PullRequestOutcome, PullRequestRecord } from '../../src/integration/pr-types.js';
 import type { VerificationRun } from '../../src/verification/types.js';
 import { MultipleVerdictLabelsError } from '../../src/verification/verdict-store.js';
@@ -28,7 +28,7 @@ function makePassRun(): VerificationRun {
     runId: RUN_ID,
     issueNumber: 29,
     repoRoot: '/repo',
-    configPath: '/repo/issueflow.config.json',
+    configPath: '/repo/freesolo.config.json',
     startedAt: '2026-06-01T08:00:00.000Z',
     finishedAt: '2026-06-01T08:01:00.000Z',
     status: 'pass',
@@ -92,15 +92,15 @@ interface CapturedIo {
 const worktrees: string[] = [];
 
 async function makeWorktree(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-pr-cmd-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-pr-cmd-'));
   worktrees.push(dir);
   await execa('git', ['init', '--quiet'], { cwd: dir });
   await execa('git', ['commit', '--allow-empty', '-m', 'init'], { cwd: dir });
   return dir;
 }
 
-async function writeIssueflowFile(worktreePath: string, filename: string, contents: string): Promise<void> {
-  const rawPath = await getIssueflowPath(worktreePath, filename);
+async function writeFreesoloFile(worktreePath: string, filename: string, contents: string): Promise<void> {
+  const rawPath = await getFreesoloPath(worktreePath, filename);
   const resolvedPath = path.isAbsolute(rawPath) ? rawPath : path.join(worktreePath, rawPath);
   await fs.mkdir(path.dirname(resolvedPath), { recursive: true });
   await fs.writeFile(resolvedPath, contents);
@@ -355,7 +355,7 @@ describe('prCreateAction', () => {
 
   it('resolves issue number from session.json when --issue is omitted', async () => {
     const worktreePath = await makeWorktree();
-    await writeIssueflowFile(
+    await writeFreesoloFile(
       worktreePath,
       'session.json',
       JSON.stringify({ issueNumber: 43, issueSlug: 'automated-pull-request-creation' })

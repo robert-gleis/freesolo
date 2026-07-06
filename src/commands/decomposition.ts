@@ -8,7 +8,7 @@ import { execa } from 'execa';
 import type { AgentAdapter } from '../agents/index.js';
 import { resolveRepoRef, resolveRepoRoot } from '../core/git.js';
 import { IssueIdError, resolveIssueNumber } from '../core/issue-id.js';
-import { getIssueflowPath } from '../core/session-state.js';
+import { getFreesoloPath } from '../core/session-state.js';
 import { createChildIssues } from '../github/issues.js';
 import {
   assertParentIssueMatches,
@@ -73,7 +73,7 @@ async function defaultFetchIssue(
       body: parsed.body ?? ''
     };
   } catch {
-    const packetPath = await getIssueflowPath(worktreePath, 'current-issue.md');
+    const packetPath = await getFreesoloPath(worktreePath, 'current-issue.md');
     const markdown = await fs.readFile(packetPath, 'utf8');
     return parseIssuePacket(markdown, issueNumber);
   }
@@ -122,12 +122,12 @@ const defaultDeps: DecompositionCommandDeps = {
 };
 
 function requireEngineGate(subcommand: string, deps: DecompositionCommandDeps): boolean {
-  if (deps.env.ISSUEFLOW_ENGINE === '1') {
+  if (deps.env.FREESOLO_ENGINE === '1') {
     return true;
   }
   deps.write(
     'stderr',
-    `issueflow decomposition ${subcommand} is engine-only. Set ISSUEFLOW_ENGINE=1 to authorise the call; agent processes must not bypass the workflow engine.\n`
+    `freesolo decomposition ${subcommand} is engine-only. Set FREESOLO_ENGINE=1 to authorise the call; agent processes must not bypass the workflow engine.\n`
   );
   deps.setExitCode(3);
   return false;
@@ -242,7 +242,7 @@ export function registerDecompositionCommands(
           throw error;
         }
 
-        const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-decomposition-edit-'));
+        const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-decomposition-edit-'));
         const tempPath = path.join(tempDir, 'decomposition.json');
         await fs.writeFile(tempPath, original);
 

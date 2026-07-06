@@ -6,43 +6,43 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resolveDefaultPath, resolveTrashDir } from '../../src/state-store/paths.js';
 
 describe('state-store/paths', () => {
-  const originalEnv = process.env.ISSUEFLOW_HOME;
+  const originalEnv = process.env.FREESOLO_HOME;
 
   beforeEach(() => {
-    delete process.env.ISSUEFLOW_HOME;
+    delete process.env.FREESOLO_HOME;
   });
 
   afterEach(() => {
     if (originalEnv === undefined) {
-      delete process.env.ISSUEFLOW_HOME;
+      delete process.env.FREESOLO_HOME;
     } else {
-      process.env.ISSUEFLOW_HOME = originalEnv;
+      process.env.FREESOLO_HOME = originalEnv;
     }
   });
 
-  it('resolveDefaultPath defaults to <homedir>/.issueflow/state.db', () => {
-    expect(resolveDefaultPath()).toBe(path.join(os.homedir(), '.issueflow', 'state.db'));
+  it('resolveDefaultPath defaults to <homedir>/.freesolo/state.db', () => {
+    expect(resolveDefaultPath()).toBe(path.join(os.homedir(), '.freesolo', 'state.db'));
   });
 
-  it('resolveDefaultPath honours ISSUEFLOW_HOME', () => {
-    process.env.ISSUEFLOW_HOME = '/var/issueflow';
+  it('resolveDefaultPath honours FREESOLO_HOME', () => {
+    process.env.FREESOLO_HOME = '/var/freesolo';
 
-    expect(resolveDefaultPath()).toBe('/var/issueflow/state.db');
+    expect(resolveDefaultPath()).toBe('/var/freesolo/state.db');
   });
 
-  it('resolveTrashDir defaults under <homedir>/.issueflow/trash/<timestamp>', () => {
+  it('resolveTrashDir defaults under <homedir>/.freesolo/trash/<timestamp>', () => {
     const dir = resolveTrashDir(new Date('2026-06-04T17:23:18.499Z'));
 
     expect(dir).toBe(
-      path.join(os.homedir(), '.issueflow', 'trash', '2026-06-04T17-23-18-499Z')
+      path.join(os.homedir(), '.freesolo', 'trash', '2026-06-04T17-23-18-499Z')
     );
   });
 
-  it('resolveTrashDir honours ISSUEFLOW_HOME', () => {
-    process.env.ISSUEFLOW_HOME = '/var/issueflow';
+  it('resolveTrashDir honours FREESOLO_HOME', () => {
+    process.env.FREESOLO_HOME = '/var/freesolo';
 
     expect(resolveTrashDir(new Date('2026-06-04T17:23:18.499Z'))).toBe(
-      '/var/issueflow/trash/2026-06-04T17-23-18-499Z'
+      '/var/freesolo/trash/2026-06-04T17-23-18-499Z'
     );
   });
 });

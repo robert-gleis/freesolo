@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { gitIssueflowPath } from '../core/session-state.js';
+import { gitFreesoloPath } from '../core/session-state.js';
 import type { RepoRef } from '../core/types.js';
 import { defaultRunner, repoSlug, type GhRunner } from '../core/gh.js';
 
@@ -60,7 +60,7 @@ async function createVerdictLabel(repo: RepoRef, status: VerdictStatus, gh: GhRu
     '--color',
     VERDICT_LABEL_COLORS[status],
     '--description',
-    `IssueFlow verification verdict: ${status}`,
+    `FreeSolo verification verdict: ${status}`,
     '--force'
   ]);
 
@@ -151,7 +151,7 @@ export async function writeVerdict(
 }
 
 async function getGateVerdictPath(repoRoot: string, issueNumber: number): Promise<string> {
-  return gitIssueflowPath(repoRoot, 'verifications', `issue-${issueNumber}`, 'gate-verdict.json');
+  return gitFreesoloPath(repoRoot, 'verifications', `issue-${issueNumber}`, 'gate-verdict.json');
 }
 
 export async function writeGateVerdictRecord(

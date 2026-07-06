@@ -46,7 +46,7 @@ describe('TmuxRunner', () => {
       await runner.spawn({ binary: 'agent', args: ['--foo'], cwd: '/tmp' });
 
       expect((await runner.status()).state).toBe('running');
-      expect(calls.some((c) => c[0] === 'new-session' && c.includes('issueflow-r1'))).toBe(true);
+      expect(calls.some((c) => c[0] === 'new-session' && c.includes('freesolo-r1'))).toBe(true);
       expect(calls.some((c) => c[0] === 'send-keys' && c.includes('agent'))).toBe(true);
     });
 
@@ -103,7 +103,7 @@ describe('TmuxRunner', () => {
       expect(sendKeys).toEqual([
         'send-keys',
         '-t',
-        'issueflow-r1',
+        'freesolo-r1',
         '--',
         '-l',
         '--verbose',

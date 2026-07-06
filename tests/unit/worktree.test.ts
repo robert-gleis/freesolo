@@ -22,18 +22,18 @@ import {
 describe('findExistingWorkspaceMatch', () => {
   it('prefers an existing worktree for the issue branch', () => {
     const match = findExistingWorkspaceMatch(
-      ['issue/12-ship-issueflow-start'],
-      [{ branchName: 'issue/12-ship-issueflow-start', worktreePath: '/tmp/issueflow-12-ship-issueflow-start' }],
+      ['issue/12-ship-freesolo-start'],
+      [{ branchName: 'issue/12-ship-freesolo-start', worktreePath: '/tmp/freesolo-12-ship-freesolo-start' }],
       12
     );
 
-    expect(match?.worktreePath).toBe('/tmp/issueflow-12-ship-issueflow-start');
+    expect(match?.worktreePath).toBe('/tmp/freesolo-12-ship-freesolo-start');
   });
 });
 
 describe('buildBranchName', () => {
   it('uses the neutral issue prefix', () => {
-    expect(buildBranchName({ number: 12, slug: 'ship-issueflow-start' })).toBe('issue/12-ship-issueflow-start');
+    expect(buildBranchName({ number: 12, slug: 'ship-freesolo-start' })).toBe('issue/12-ship-freesolo-start');
   });
 });
 
@@ -41,14 +41,14 @@ describe('ensureUniqueWorkspaceNames', () => {
   it('appends a numeric suffix when the default branch and path already exist', () => {
     expect(
       ensureUniqueWorkspaceNames(
-        '/repo/issueflow',
-        { number: 12, slug: 'ship-issueflow-start' },
-        ['issue/12-ship-issueflow-start'],
-        [{ branchName: 'issue/12-ship-issueflow-start', worktreePath: '/repo/issueflow-12-ship-issueflow-start' }]
+        '/repo/freesolo',
+        { number: 12, slug: 'ship-freesolo-start' },
+        ['issue/12-ship-freesolo-start'],
+        [{ branchName: 'issue/12-ship-freesolo-start', worktreePath: '/repo/freesolo-12-ship-freesolo-start' }]
       )
     ).toEqual({
-      branchName: 'issue/12-ship-issueflow-start-2',
-      worktreePath: '/repo/issueflow-12-ship-issueflow-start-2'
+      branchName: 'issue/12-ship-freesolo-start-2',
+      worktreePath: '/repo/freesolo-12-ship-freesolo-start-2'
     });
   });
 });
@@ -84,14 +84,14 @@ describe('Worktrunk switch helpers', () => {
   it('creates a new issue workspace through wt switch --create', async () => {
     const calls: Array<{ command: string; args: string[]; cwd?: string }> = [];
 
-    await switchNewIssueWorktree('/repo', 'issue/12-ship-issueflow-start', async (command, args, options) => {
+    await switchNewIssueWorktree('/repo', 'issue/12-ship-freesolo-start', async (command, args, options) => {
       calls.push({ command, args, cwd: options?.cwd });
     });
 
     expect(calls).toEqual([
       {
         command: 'wt',
-        args: ['switch', '--create', 'issue/12-ship-issueflow-start'],
+        args: ['switch', '--create', 'issue/12-ship-freesolo-start'],
         cwd: '/repo'
       }
     ]);
@@ -100,14 +100,14 @@ describe('Worktrunk switch helpers', () => {
   it('switches an existing issue branch through wt switch', async () => {
     const calls: Array<{ command: string; args: string[]; cwd?: string }> = [];
 
-    await switchExistingIssueWorktree('/repo', 'issue/12-ship-issueflow-start', async (command, args, options) => {
+    await switchExistingIssueWorktree('/repo', 'issue/12-ship-freesolo-start', async (command, args, options) => {
       calls.push({ command, args, cwd: options?.cwd });
     });
 
     expect(calls).toEqual([
       {
         command: 'wt',
-        args: ['switch', 'issue/12-ship-issueflow-start'],
+        args: ['switch', 'issue/12-ship-freesolo-start'],
         cwd: '/repo'
       }
     ]);
@@ -116,24 +116,24 @@ describe('Worktrunk switch helpers', () => {
 
 describe('resolveBranchWorktreePath', () => {
   it('returns the worktree path for a branch', async () => {
-    const branchPath = await resolveBranchWorktreePath('/repo', 'issue/12-ship-issueflow-start', async () => ({
+    const branchPath = await resolveBranchWorktreePath('/repo', 'issue/12-ship-freesolo-start', async () => ({
       stdout: [
         'worktree /repo',
         'HEAD 1111111',
         'branch refs/heads/main',
         '',
-        'worktree /worktrees/issueflow/12',
+        'worktree /worktrees/freesolo/12',
         'HEAD 2222222',
-        'branch refs/heads/issue/12-ship-issueflow-start'
+        'branch refs/heads/issue/12-ship-freesolo-start'
       ].join('\n')
     }));
 
-    expect(branchPath).toBe('/worktrees/issueflow/12');
+    expect(branchPath).toBe('/worktrees/freesolo/12');
   });
 
   it('throws when the branch has no resolved worktree', async () => {
     await expect(
-      resolveBranchWorktreePath('/repo', 'issue/12-ship-issueflow-start', async () => ({
+      resolveBranchWorktreePath('/repo', 'issue/12-ship-freesolo-start', async () => ({
         stdout: ['worktree /repo', 'HEAD 1111111', 'branch refs/heads/main'].join('\n')
       }))
     ).rejects.toMatchObject({
@@ -145,7 +145,7 @@ describe('resolveBranchWorktreePath', () => {
 
 describe('runWorktreeSetup', () => {
   it('returns false when the worktree does not define a setup hook', async () => {
-    const worktreePath = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-worktree-'));
+    const worktreePath = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-worktree-'));
 
     try {
       await expect(runWorktreeSetup('/repo', worktreePath)).resolves.toBe(false);
@@ -155,7 +155,7 @@ describe('runWorktreeSetup', () => {
   });
 
   it('runs the setup hook from the worktree with the source checkout in MAIN_REPO_ROOT', async () => {
-    const worktreePath = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-worktree-'));
+    const worktreePath = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-worktree-'));
     const scriptsDir = path.join(worktreePath, 'scripts');
     const outputPath = path.join(worktreePath, 'setup-output.txt');
 
@@ -177,7 +177,7 @@ describe('runWorktreeSetup', () => {
   });
 
   it('does not stream successful setup hook output to the terminal', async () => {
-    const worktreePath = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-worktree-'));
+    const worktreePath = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-worktree-'));
     const scriptsDir = path.join(worktreePath, 'scripts');
     const originalStdoutWrite = process.stdout.write;
     const originalStderrWrite = process.stderr.write;
@@ -210,7 +210,7 @@ describe('runWorktreeSetup', () => {
   });
 
   it('shows spinner status when a setup hook runs with a TTY stream', async () => {
-    const worktreePath = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-worktree-'));
+    const worktreePath = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-worktree-'));
     const scriptsDir = path.join(worktreePath, 'scripts');
     const writes: string[] = [];
     const stream = {
@@ -240,7 +240,7 @@ describe('runWorktreeSetup', () => {
   });
 
   it('includes captured setup hook output when the hook fails', async () => {
-    const worktreePath = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-worktree-'));
+    const worktreePath = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-worktree-'));
     const scriptsDir = path.join(worktreePath, 'scripts');
 
     try {

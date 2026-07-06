@@ -20,9 +20,9 @@ afterEach(async () => {
 function makeSession(overrides: Partial<SessionState> = {}): SessionState {
   return {
     issueNumber: 12,
-    issueSlug: 'ship-issueflow-start',
+    issueSlug: 'ship-freesolo-start',
     repoRoot: '/repo',
-    branchName: 'issue/12-ship-issueflow-start',
+    branchName: 'issue/12-ship-freesolo-start',
     worktreePath: '/repo',
     chosenHost: 'codex',
     currentStage: 'plan-review',
@@ -64,10 +64,10 @@ describe('parseReviewArtifactSummary', () => {
 
 describe('listReviewRoundArtifacts', () => {
   it('discovers dated review round files', async () => {
-    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-review-report-'));
+    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-review-report-'));
     tempDirs.push(repoRoot);
 
-    const reviewsDir = path.join(repoRoot, 'docs/issueflow/reviews');
+    const reviewsDir = path.join(repoRoot, 'docs/freesolo/reviews');
     await fs.mkdir(reviewsDir, { recursive: true });
     await fs.writeFile(path.join(reviewsDir, '2026-06-08-issue-12-plan-review-round-1.md'), '# round 1');
     await fs.writeFile(path.join(reviewsDir, '2026-06-08-issue-12-plan-review-round-2.md'), '# round 2');
@@ -82,10 +82,10 @@ describe('listReviewRoundArtifacts', () => {
 
 describe('buildReviewReportMarkdown', () => {
   it('builds a plan-only report with gate status and verdict excerpts', async () => {
-    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-review-report-'));
+    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-review-report-'));
     tempDirs.push(repoRoot);
 
-    const reviewsDir = path.join(repoRoot, 'docs/issueflow/reviews');
+    const reviewsDir = path.join(repoRoot, 'docs/freesolo/reviews');
     await fs.mkdir(reviewsDir, { recursive: true });
     await fs.writeFile(
       path.join(reviewsDir, '2026-06-08-issue-12-plan-review-round-1.md'),
@@ -109,10 +109,10 @@ describe('buildReviewReportMarkdown', () => {
   });
 
   it('builds both plan and implementation sections when both gates pass', async () => {
-    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-review-report-'));
+    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-review-report-'));
     tempDirs.push(repoRoot);
 
-    const reviewsDir = path.join(repoRoot, 'docs/issueflow/reviews');
+    const reviewsDir = path.join(repoRoot, 'docs/freesolo/reviews');
     await fs.mkdir(reviewsDir, { recursive: true });
     await fs.writeFile(path.join(reviewsDir, '2026-06-08-issue-12-plan-review-round-1.md'), '# Round 1\n\n## Verdict\npass');
     await fs.writeFile(
@@ -140,10 +140,10 @@ describe('buildReviewReportMarkdown', () => {
   });
 
   it('notes missing artifacts and unknown findings', async () => {
-    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-review-report-'));
+    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-review-report-'));
     tempDirs.push(repoRoot);
 
-    const reviewsDir = path.join(repoRoot, 'docs/issueflow/reviews');
+    const reviewsDir = path.join(repoRoot, 'docs/freesolo/reviews');
     await fs.mkdir(reviewsDir, { recursive: true });
     await fs.writeFile(
       path.join(reviewsDir, '2026-06-08-issue-12-plan-review-round-1.md'),

@@ -29,7 +29,7 @@ export function formatKnowledgeSection(entries: KnowledgeEntry[]): string {
   return [
     '## Factory Knowledge Base',
     '',
-    'The following operational knowledge applies to this repository. It is loaded from `.issueflow/knowledge/*.md` at agent spawn time.',
+    'The following operational knowledge applies to this repository. It is loaded from `.freesolo/knowledge/*.md` at agent spawn time.',
     '',
     blocks.join('\n\n')
   ].join('\n');
@@ -45,7 +45,7 @@ export function appendKnowledgeToPrompt(basePrompt: string, entries: KnowledgeEn
 }
 
 export async function loadKnowledgeEntries(repoRoot: string): Promise<KnowledgeEntry[]> {
-  const knowledgeDir = path.join(repoRoot, '.issueflow', 'knowledge');
+  const knowledgeDir = path.join(repoRoot, '.freesolo', 'knowledge');
 
   let names: string[];
   try {

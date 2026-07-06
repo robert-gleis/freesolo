@@ -1,17 +1,17 @@
-# Worktrunk-Native Issueflow Design
+# Worktrunk-Native Freesolo Design
 
 ## Context
 
-`issueflow start` currently manages workspaces with direct `git worktree` commands. It computes sibling worktree paths, creates issue branches from `origin/main`, attaches existing branches to new worktrees, optionally runs `scripts/setup-new-worktree.sh`, writes session artifacts, and launches the selected host tool.
+`freesolo start` currently manages workspaces with direct `git worktree` commands. It computes sibling worktree paths, creates issue branches from `origin/main`, attaches existing branches to new worktrees, optionally runs `scripts/setup-new-worktree.sh`, writes session artifacts, and launches the selected host tool.
 
 This project is primarily a personal tool, so it can require Worktrunk instead of maintaining both direct `git worktree` and Worktrunk flows. Worktrunk should become the supported worktree backend and the source of truth for worktree placement.
 
 ## Goals
 
-- Require the `wt` CLI for `issueflow start`.
+- Require the `wt` CLI for `freesolo start`.
 - Use Worktrunk commands for workspace creation and switching.
 - Let Worktrunk determine checkout paths according to its configuration.
-- Keep issueflow's issue picker, branch naming, setup hook, session state, issue packet, artifact discovery, and host launch behavior.
+- Keep freesolo's issue picker, branch naming, setup hook, session state, issue packet, artifact discovery, and host launch behavior.
 - Update print-only output and docs so users see Worktrunk commands, not raw `git worktree add` commands.
 
 ## Non-Goals
@@ -23,11 +23,11 @@ This project is primarily a personal tool, so it can require Worktrunk instead o
 
 ## User Flow
 
-When a user runs `issueflow start`, issueflow checks that `wt` is available. If it is missing, the command fails with a clear install hint.
+When a user runs `freesolo start`, freesolo checks that `wt` is available. If it is missing, the command fails with a clear install hint.
 
-After the user chooses an issue, issueflow looks for an existing issue branch or worktree. If a matching worktree exists, issueflow asks whether to reuse it. If a matching branch exists without an attached worktree, issueflow asks whether to switch to that branch through Worktrunk. If the user declines either reuse path, issueflow creates a suffixed issue branch through Worktrunk.
+After the user chooses an issue, freesolo looks for an existing issue branch or worktree. If a matching worktree exists, freesolo asks whether to reuse it. If a matching branch exists without an attached worktree, freesolo asks whether to switch to that branch through Worktrunk. If the user declines either reuse path, freesolo creates a suffixed issue branch through Worktrunk.
 
-For a new issue branch, issueflow runs `wt switch --create <branch>`. For an existing branch without a current worktree, issueflow runs `wt switch <branch>`. After Worktrunk completes, issueflow resolves the branch's checkout path from the repository's worktree state and uses that path for all subsequent work.
+For a new issue branch, freesolo runs `wt switch --create <branch>`. For an existing branch without a current worktree, freesolo runs `wt switch <branch>`. After Worktrunk completes, freesolo resolves the branch's checkout path from the repository's worktree state and uses that path for all subsequent work.
 
 The optional setup hook still runs from the resolved checkout path. `MAIN_REPO_ROOT` still points at the source checkout where the command started.
 
@@ -53,9 +53,9 @@ The existing branch/worktree discovery functions can continue to use git because
 
 ### Path Resolution
 
-Issueflow no longer assumes `/<repo>-<issue>-<slug>` for worktrees created or switched by Worktrunk. It may still compute a candidate path for collision checks in print-only mode, but real launches must resolve the path after `wt switch`.
+Freesolo no longer assumes `/<repo>-<issue>-<slug>` for worktrees created or switched by Worktrunk. It may still compute a candidate path for collision checks in print-only mode, but real launches must resolve the path after `wt switch`.
 
-If Worktrunk succeeds but the branch path cannot be found, issueflow fails with a clear error explaining that it could not resolve the Worktrunk checkout for the branch.
+If Worktrunk succeeds but the branch path cannot be found, freesolo fails with a clear error explaining that it could not resolve the Worktrunk checkout for the branch.
 
 ### Print-Only Mode
 
@@ -94,4 +94,4 @@ Add or update tests for:
 
 ## Documentation
 
-Update the README prerequisites to include Worktrunk. Update the worktree setup section to explain that issueflow delegates checkout creation and path placement to Worktrunk, while still running the optional setup hook after Worktrunk creates or switches to a checkout.
+Update the README prerequisites to include Worktrunk. Update the worktree setup section to explain that freesolo delegates checkout creation and path placement to Worktrunk, while still running the optional setup hook after Worktrunk creates or switches to a checkout.

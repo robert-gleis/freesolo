@@ -4,7 +4,7 @@ import path from 'node:path';
 import { hasPreset, KNOWN_PRESETS } from '../prompts/presets.js';
 import { verificationConfigSchema, type VerificationConfig } from './types.js';
 
-export const DEFAULT_CONFIG_FILENAME = 'issueflow.config.json';
+export const DEFAULT_CONFIG_FILENAME = 'freesolo.config.json';
 
 export class VerificationConfigError extends Error {
   readonly configPath: string;

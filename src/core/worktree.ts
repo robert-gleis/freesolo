@@ -29,7 +29,7 @@ export class WorktreeSetupError extends Error {
 
 export class WorktrunkMissingError extends Error {
   constructor() {
-    super('Worktrunk is required for issueflow start. Install wt from https://worktrunk.dev/worktrunk/ and try again.');
+    super('Worktrunk is required for freesolo start. Install wt from https://worktrunk.dev/worktrunk/ and try again.');
     this.name = 'WorktrunkMissingError';
   }
 }

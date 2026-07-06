@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { z } from 'zod';
 
-import { getIssueflowPath } from '../core/session-state.js';
+import { getFreesoloPath } from '../core/session-state.js';
 import { PullRequestError, type PullRequestRecord } from './pr-types.js';
 
 export const pullRequestRecordSchema = z.object({
@@ -21,7 +21,7 @@ export const pullRequestRecordSchema = z.object({
 });
 
 export async function getPullRequestPath(worktreePath: string): Promise<string> {
-  const rawPath = await getIssueflowPath(worktreePath, 'pull-request.json');
+  const rawPath = await getFreesoloPath(worktreePath, 'pull-request.json');
   return path.isAbsolute(rawPath) ? rawPath : path.join(worktreePath, rawPath);
 }
 

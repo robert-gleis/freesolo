@@ -15,7 +15,7 @@ function passRun(runId = 'run-1'): VerificationRun {
     runId,
     issueNumber: 44,
     repoRoot: '/repo',
-    configPath: '/repo/issueflow.config.json',
+    configPath: '/repo/freesolo.config.json',
     startedAt: '2026-06-08T08:00:00.000Z',
     finishedAt: '2026-06-08T08:01:00.000Z',
     status: 'pass',

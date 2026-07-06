@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make `issueflow watch` default to discovering open issues assigned to the current GitHub user, confirming intake once, and tracking workflow state locally by default.
+**Goal:** Make `freesolo watch` default to discovering open issues assigned to the current GitHub user, confirming intake once, and tracking workflow state locally by default.
 
 **Architecture:** Add explicit watcher intake config, issue-source polling, local state initialization, and SQLite intake decisions. The watcher becomes a three-stage pipeline: poll GitHub issues, decide local intake, then drain accepted issues through the existing workflow engine.
 
@@ -146,7 +146,7 @@ export interface WatcherConfig {
 
 export type StateBackend = 'github-labels' | 'local';
 
-export interface IssueflowConfig {
+export interface FreesoloConfig {
   watcher: WatcherConfig;
   autonomous_mode: boolean;
   state_backend: StateBackend;
@@ -160,7 +160,7 @@ export const DEFAULT_WATCHER_CONFIG: WatcherConfig = {
   trigger_label: 'triaged'
 };
 
-export const DEFAULT_CONFIG: IssueflowConfig = {
+export const DEFAULT_CONFIG: FreesoloConfig = {
   watcher: DEFAULT_WATCHER_CONFIG,
   autonomous_mode: false,
   state_backend: 'local'
@@ -177,7 +177,7 @@ Update imports in `src/config/load.ts`:
 import {
   DEFAULT_CONFIG,
   MIN_INTERVAL_SECONDS,
-  type IssueflowConfig,
+  type FreesoloConfig,
   type StateBackend,
   type WatcherConfig,
   type WatcherIntakeMode,
@@ -330,7 +330,7 @@ it('sets watcher source', async () => {
   const { program, deps } = buildHarness();
   await program.parseAsync(['config', 'set', 'watcher.source', 'label'], { from: 'user' });
   expect(deps.setConfigKey).toHaveBeenCalledWith(
-    '/home/user/.issueflow/config.yaml',
+    '/home/user/.freesolo/config.yaml',
     'watcher.source',
     'label'
   );
@@ -371,11 +371,11 @@ Replace `CONFIG_TEMPLATE` in `src/config/write.ts` with:
 const CONFIG_TEMPLATE = `# All fields are optional - defaults are shown below.
 
 # Where workflow state is persisted.
-#   local (default) - stores state in ~/.issueflow/state/<owner>/<repo>/<issue-number>
+#   local (default) - stores state in ~/.freesolo/state/<owner>/<repo>/<issue-number>
 #   github-labels - writes a state:* label to the GitHub issue on every transition.
 state_backend: local
 
-# Autonomous watcher defaults (used by \`issueflow watch\`).
+# Autonomous watcher defaults (used by \`freesolo watch\`).
 watcher:
   interval_seconds: 60
   source: assigned-to-me
@@ -1302,7 +1302,7 @@ Add tests:
 it('passes default watcher intake config to runWatchLoop', async () => {
   const { program, deps } = buildHarness();
 
-  await program.parseAsync(['node', 'issueflow', 'watch', 'run']);
+  await program.parseAsync(['node', 'freesolo', 'watch', 'run']);
 
   expect(deps.runWatchLoop).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -1319,7 +1319,7 @@ it('passes source and intake mode CLI overrides', async () => {
 
   await program.parseAsync([
     'node',
-    'issueflow',
+    'freesolo',
     'watch',
     'run',
     '--source',
@@ -1344,7 +1344,7 @@ it('treats --trigger-label as label source when source is omitted', async () => 
 
   await program.parseAsync([
     'node',
-    'issueflow',
+    'freesolo',
     'watch',
     'run',
     '--trigger-label',
@@ -1411,7 +1411,7 @@ async function buildCycleDeps(
   repo: RepoRef,
   source: WatcherSource,
   intakeMode: WatcherIntakeMode,
-  initialState: IssueflowConfig['watcher']['initial_state'],
+  initialState: FreesoloConfig['watcher']['initial_state'],
   triggerLabel: string,
   sinceOverride?: string
 )
@@ -1516,24 +1516,24 @@ Replace the `watch` section in `README.md` with:
 ```md
 ### `watch` - autonomous issue watcher
 
-By default, `watch` polls GitHub for open issues assigned to the authenticated `gh` user. New issues are confirmed once, then IssueFlow stores workflow state locally and drains accepted issues through the Workflow Engine.
+By default, `watch` polls GitHub for open issues assigned to the authenticated `gh` user. New issues are confirmed once, then FreeSolo stores workflow state locally and drains accepted issues through the Workflow Engine.
 
 ```bash
 # Single poll + drain cycle
-issueflow watch once
+freesolo watch once
 
 # Continuous loop - graceful shutdown on SIGINT/SIGTERM
-ISSUEFLOW_ENGINE=1 issueflow watch run
-ISSUEFLOW_ENGINE=1 issueflow watch run --interval 30
+FREESOLO_ENGINE=1 freesolo watch run
+FREESOLO_ENGINE=1 freesolo watch run --interval 30
 
 # Fully automatic intake for assigned issues
-ISSUEFLOW_ENGINE=1 issueflow watch run --intake-mode auto
+FREESOLO_ENGINE=1 freesolo watch run --intake-mode auto
 
 # Compatibility: label-triggered polling
-ISSUEFLOW_ENGINE=1 issueflow watch run --source label --trigger-label triaged
+FREESOLO_ENGINE=1 freesolo watch run --source label --trigger-label triaged
 ```
 
-Configure defaults in `~/.issueflow/config.yaml` or `.issueflow/config.yaml` (see [Global configuration](#global-configuration)).
+Configure defaults in `~/.freesolo/config.yaml` or `.freesolo/config.yaml` (see [Global configuration](#global-configuration)).
 ```
 
 Update the global config template in `README.md` to match `src/config/write.ts`.

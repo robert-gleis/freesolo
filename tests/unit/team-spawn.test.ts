@@ -19,7 +19,7 @@ describe('prepareAgentSpawn', () => {
     expect(result.instructions).toContain('## Your Role');
     expect(result.instructions).toContain('Implementer');
     expect(result.logLine).toBe(
-      '[issueflow] spawn agent=agent-42-implementer-1 role="Implementer" host=cursor instance=1/1 cwd=/wt'
+      '[freesolo] spawn agent=agent-42-implementer-1 role="Implementer" host=cursor instance=1/1 cwd=/wt'
     );
     expect(result.eventPayload).toEqual({
       roleName: 'Implementer',

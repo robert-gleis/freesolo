@@ -13,7 +13,7 @@ import type { CreateCandidateBranchInput } from '../../src/integration/types.js'
 const worktrees: string[] = [];
 
 async function makeWorktree(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-candidate-int-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-candidate-int-'));
   worktrees.push(dir);
   await execa('git', ['init', '--quiet'], { cwd: dir });
   return dir;

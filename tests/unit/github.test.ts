@@ -39,7 +39,7 @@ describe('normalizeIssueList', () => {
     expect(issue.number).toBe(12);
     expect(issue.labels).toEqual(['workflow']);
     expect(issue.assignees).toContain('robert-gleis');
-    expect(issue.slug).toBe('ship-issueflow-start');
+    expect(issue.slug).toBe('ship-freesolo-start');
     expect(issue.status).toBe('In Progress');
   });
 

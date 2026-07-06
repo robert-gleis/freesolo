@@ -80,7 +80,7 @@ export const defaultVerifyPlanDeps: VerifyPlanDeps = {
       return reportPath;
     } catch (error) {
       console.error(
-        `issueflow: failed to write TEST_REPORT.md: ${error instanceof Error ? error.message : String(error)}`
+        `freesolo: failed to write TEST_REPORT.md: ${error instanceof Error ? error.message : String(error)}`
       );
       return null;
     }
@@ -202,7 +202,7 @@ export async function createVerifyPlan(
       await deps.writeTestReport(run);
     } catch (error) {
       console.error(
-        `issueflow: failed to write TEST_REPORT.md: ${error instanceof Error ? error.message : String(error)}`
+        `freesolo: failed to write TEST_REPORT.md: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }

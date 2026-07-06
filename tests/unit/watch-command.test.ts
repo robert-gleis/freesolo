@@ -41,7 +41,7 @@ function buildHarness(overrides: Partial<WatchCommandDeps> = {}): Harness {
     runWatchCycle: vi.fn().mockResolvedValue(cycleResult()),
     runWatchLoop: vi.fn().mockResolvedValue(undefined),
     confirmIntake: vi.fn().mockResolvedValue(true),
-    env: { ISSUEFLOW_ENGINE: '1' },
+    env: { FREESOLO_ENGINE: '1' },
     write: (channel, message) => {
       io[channel].push(message);
     },
@@ -72,23 +72,23 @@ describe('watch command registration', () => {
 });
 
 describe('watch run env gate', () => {
-  it('refuses without ISSUEFLOW_ENGINE=1 and exits 3 without calling runner', async () => {
+  it('refuses without FREESOLO_ENGINE=1 and exits 3 without calling runner', async () => {
     const { program, io, deps } = buildHarness({ env: {} });
 
-    await program.parseAsync(['node', 'issueflow', 'watch', 'run']);
+    await program.parseAsync(['node', 'freesolo', 'watch', 'run']);
 
     expect(deps.runWatchLoop).not.toHaveBeenCalled();
     expect(deps.runWatchCycle).not.toHaveBeenCalled();
     expect(io.exitCode).toBe(3);
-    expect(io.stderr.join('')).toContain('ISSUEFLOW_ENGINE');
+    expect(io.stderr.join('')).toContain('FREESOLO_ENGINE');
   });
 });
 
 describe('watch once env gate', () => {
-  it('runs without ISSUEFLOW_ENGINE gate', async () => {
+  it('runs without FREESOLO_ENGINE gate', async () => {
     const { program, io, deps } = buildHarness({ env: {} });
 
-    await program.parseAsync(['node', 'issueflow', 'watch', 'once']);
+    await program.parseAsync(['node', 'freesolo', 'watch', 'once']);
 
     expect(deps.runWatchCycle).toHaveBeenCalled();
     expect(io.exitCode).toBeNull();
@@ -101,7 +101,7 @@ describe('watch exit codes', () => {
       runWatchCycle: vi.fn().mockResolvedValue(cycleResult({ failed: 2 }))
     });
 
-    await program.parseAsync(['node', 'issueflow', 'watch', 'once']);
+    await program.parseAsync(['node', 'freesolo', 'watch', 'once']);
 
     expect(io.exitCode).toBe(1);
   });
@@ -111,7 +111,7 @@ describe('watch exit codes', () => {
       runWatchCycle: vi.fn().mockResolvedValue(cycleResult({ pollError: 'HTTP 401: Bad credentials' }))
     });
 
-    await program.parseAsync(['node', 'issueflow', 'watch', 'once']);
+    await program.parseAsync(['node', 'freesolo', 'watch', 'once']);
 
     expect(io.exitCode).toBe(1);
     expect(io.stderr.join('')).toContain('401');
@@ -122,7 +122,7 @@ describe('watch run CLI overrides', () => {
   it('passes default watcher intake config to runWatchLoop', async () => {
     const { program, deps } = buildHarness();
 
-    await program.parseAsync(['node', 'issueflow', 'watch', 'run']);
+    await program.parseAsync(['node', 'freesolo', 'watch', 'run']);
 
     expect(deps.runWatchLoop).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -137,7 +137,7 @@ describe('watch run CLI overrides', () => {
   it('passes confirm intake callback to the watch loop', async () => {
     const { program, deps } = buildHarness();
 
-    await program.parseAsync(['node', 'issueflow', 'watch', 'run']);
+    await program.parseAsync(['node', 'freesolo', 'watch', 'run']);
 
     expect(deps.runWatchLoop).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -151,7 +151,7 @@ describe('watch run CLI overrides', () => {
 
     await program.parseAsync([
       'node',
-      'issueflow',
+      'freesolo',
       'watch',
       'run',
       '--interval',
@@ -174,7 +174,7 @@ describe('watch run CLI overrides', () => {
 
     await program.parseAsync([
       'node',
-      'issueflow',
+      'freesolo',
       'watch',
       'run',
       '--source',
@@ -199,7 +199,7 @@ describe('watch run CLI overrides', () => {
 
     await program.parseAsync([
       'node',
-      'issueflow',
+      'freesolo',
       'watch',
       'run',
       '--trigger-label',
@@ -219,7 +219,7 @@ describe('watch once CLI overrides', () => {
   it('passes default watcher intake config to runWatchCycle', async () => {
     const { program, deps } = buildHarness();
 
-    await program.parseAsync(['node', 'issueflow', 'watch', 'once']);
+    await program.parseAsync(['node', 'freesolo', 'watch', 'once']);
 
     expect(deps.runWatchCycle).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -236,7 +236,7 @@ describe('watch once CLI overrides', () => {
 
     await program.parseAsync([
       'node',
-      'issueflow',
+      'freesolo',
       'watch',
       'once',
       '--source',
@@ -261,7 +261,7 @@ describe('watch once CLI overrides', () => {
 
     await program.parseAsync([
       'node',
-      'issueflow',
+      'freesolo',
       'watch',
       'once',
       '--trigger-label',

@@ -25,7 +25,7 @@ const RUN_ID = '2026-07-03T11-00-00-000Z';
 const worktrees: string[] = [];
 
 async function makeGitRepo(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-gate-integ-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-gate-integ-'));
   worktrees.push(dir);
   await execa('git', ['init', '--quiet'], { cwd: dir });
   await execa('git', ['commit', '--allow-empty', '-m', 'init'], { cwd: dir });
@@ -35,7 +35,7 @@ async function makeGitRepo(): Promise<string> {
 /**
  * A minimal state store that enforces the REAL state machine (assertTransition),
  * so the integration test proves the genuine transition path rather than a no-op.
- * Kept in-memory to stay isolated from the developer's ~/.issueflow local store.
+ * Kept in-memory to stay isolated from the developer's ~/.freesolo local store.
  */
 function makeStateStore(initial: WorkflowState) {
   let current: WorkflowState = initial;
@@ -109,7 +109,7 @@ describe('Gate Route state path integration', () => {
     const run = await runGateRoute(
       {
         config: makeConfig(),
-        routeConfigPath: path.join(repoRoot, 'issueflow.config.json'),
+        routeConfigPath: path.join(repoRoot, 'freesolo.config.json'),
         repoRoot,
         issueNumber: ISSUE,
         candidateBranch: 'candidate/42-native-gate-route',
@@ -140,7 +140,7 @@ describe('Gate Route state path integration', () => {
       },
       loadLatestRun,
       writeGateVerdictRecord,
-      env: { ISSUEFLOW_ENGINE: '1' },
+      env: { FREESOLO_ENGINE: '1' },
       write: () => {},
       setExitCode: () => {},
       now: () => new Date('2026-07-03T11:30:00.000Z')
@@ -192,7 +192,7 @@ describe('Gate Route state path integration', () => {
     const run = await runGateRoute(
       {
         config: makeConfig(),
-        routeConfigPath: path.join(repoRoot, 'issueflow.config.json'),
+        routeConfigPath: path.join(repoRoot, 'freesolo.config.json'),
         repoRoot,
         issueNumber: ISSUE,
         candidateBranch: 'candidate/42-native-gate-route',
@@ -224,7 +224,7 @@ describe('Gate Route state path integration', () => {
       },
       loadLatestRun,
       writeGateVerdictRecord,
-      env: { ISSUEFLOW_ENGINE: '1' },
+      env: { FREESOLO_ENGINE: '1' },
       write: () => {},
       setExitCode: () => {},
       now: () => new Date('2026-07-03T11:30:00.000Z')

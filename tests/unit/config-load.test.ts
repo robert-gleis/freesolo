@@ -17,14 +17,14 @@ afterEach(async () => {
 });
 
 async function writeTempConfig(content: string): Promise<string> {
-  const file = path.join(os.tmpdir(), `issueflow-config-${Date.now()}.yaml`);
+  const file = path.join(os.tmpdir(), `freesolo-config-${Date.now()}.yaml`);
   await fs.writeFile(file, content);
   tempFiles.push(file);
   return file;
 }
 
 async function makeTempDir(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-config-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-config-'));
   tempDirs.push(dir);
   return dir;
 }
@@ -126,8 +126,8 @@ watcher:
 });
 
 describe('repoConfigPath', () => {
-  it('returns .issueflow/config.yaml inside the given root', () => {
-    expect(repoConfigPath('/my/repo')).toBe('/my/repo/.issueflow/config.yaml');
+  it('returns .freesolo/config.yaml inside the given root', () => {
+    expect(repoConfigPath('/my/repo')).toBe('/my/repo/.freesolo/config.yaml');
   });
 });
 
@@ -145,8 +145,8 @@ describe('loadConfig with repoRoot', () => {
     const globalPath = path.join(dir, 'global.yaml');
     await fs.writeFile(globalPath, 'autonomous_mode: true\nwatcher:\n  interval_seconds: 90\n');
     const repoDir = await makeTempDir();
-    await fs.mkdir(path.join(repoDir, '.issueflow'), { recursive: true });
-    await fs.writeFile(path.join(repoDir, '.issueflow', 'config.yaml'), 'watcher:\n  interval_seconds: 120\n');
+    await fs.mkdir(path.join(repoDir, '.freesolo'), { recursive: true });
+    await fs.writeFile(path.join(repoDir, '.freesolo', 'config.yaml'), 'watcher:\n  interval_seconds: 120\n');
     const config = await loadConfig(globalPath, repoDir);
     expect(config.watcher.interval_seconds).toBe(120); // repo wins
     expect(config.autonomous_mode).toBe(true);         // falls back to global
@@ -186,8 +186,8 @@ describe('loadConfigWithOrigins', () => {
   it('marks a key as repo when set in repo config', async () => {
     const dir = await makeTempDir();
     const repoDir = await makeTempDir();
-    await fs.mkdir(path.join(repoDir, '.issueflow'), { recursive: true });
-    await fs.writeFile(path.join(repoDir, '.issueflow', 'config.yaml'), 'autonomous_mode: true\n');
+    await fs.mkdir(path.join(repoDir, '.freesolo'), { recursive: true });
+    await fs.writeFile(path.join(repoDir, '.freesolo', 'config.yaml'), 'autonomous_mode: true\n');
     const { origins } = await loadConfigWithOrigins(path.join(dir, 'global.yaml'), repoDir);
     expect(origins.autonomous_mode).toBe('repo');
     expect(origins['watcher.interval_seconds']).toBe('default');

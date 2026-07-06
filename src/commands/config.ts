@@ -103,7 +103,7 @@ export function registerConfigCommands(
 ): Command {
   const config = program
     .command('config')
-    .description('Read and write issueflow configuration');
+    .description('Read and write freesolo configuration');
 
   config
     .command('get <key>')
@@ -122,7 +122,7 @@ export function registerConfigCommands(
   config
     .command('set <key> <value>')
     .description('Set a config value (default: global config; use --repo for repo config)')
-    .option('--repo', 'Write to the repo config (.issueflow/config.yaml)')
+    .option('--repo', 'Write to the repo config (.freesolo/config.yaml)')
     .action(async (key: string, value: string, options: { repo?: boolean }) => {
       if (!isValidKey(key)) {
         deps.writeError(`unknown key "${key}" — valid keys: ${VALID_KEYS.join(', ')}\n`);
@@ -178,7 +178,7 @@ export function registerConfigCommands(
   config
     .command('init')
     .description('Create a config file with commented defaults (fails if file already exists)')
-    .option('--repo', 'Create the repo config (.issueflow/config.yaml) instead of the global config')
+    .option('--repo', 'Create the repo config (.freesolo/config.yaml) instead of the global config')
     .action(async (options: { repo?: boolean }) => {
       let targetPath: string;
       if (options.repo) {

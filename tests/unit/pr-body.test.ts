@@ -12,7 +12,7 @@ const sampleRun: VerificationRun = {
   runId: '20260608-120000',
   issueNumber: 43,
   repoRoot: '/repo',
-  configPath: '/repo/issueflow.config.json',
+  configPath: '/repo/freesolo.config.json',
   startedAt: '2026-06-08T12:00:00.000Z',
   finishedAt: '2026-06-08T12:00:05.000Z',
   status: 'pass',

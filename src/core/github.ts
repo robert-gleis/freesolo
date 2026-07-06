@@ -182,7 +182,7 @@ export async function listAssignedIssues(repo: RepoContext): Promise<IssueSummar
       '100'
     ]));
   } catch {
-    throw new Error('issueflow requires GitHub CLI access. Run `gh auth status` and retry.');
+    throw new Error('freesolo requires GitHub CLI access. Run `gh auth status` and retry.');
   }
 
   const issues = JSON.parse(stdout) as GitHubIssueJson[];

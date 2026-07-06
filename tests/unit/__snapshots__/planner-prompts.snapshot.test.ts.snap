@@ -1,7 +1,7 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`planner prompts snapshots > buildDecompositionPrompt snapshot 1`] = `
-"You are a planner agent for the IssueFlow factory.
+"You are a planner agent for the FreeSolo factory.
 
 Your job is to decompose the GitHub issue below into smaller, independently-executable child issues.
 
@@ -36,7 +36,7 @@ exports[`planner prompts snapshots > buildRetryPrompt has stable preamble and fo
 `;
 
 exports[`planner prompts snapshots > buildTeamPrompt snapshot 1`] = `
-"You are a planner agent for the IssueFlow factory.
+"You are a planner agent for the FreeSolo factory.
 
 Your job is to analyse the GitHub issue below and propose a team of agents to ship it.
 

@@ -23,7 +23,7 @@ describe('maybeAutoApproveTeamPlan', () => {
         worktreePath: '/repo',
         repo,
         issueNumber: 45,
-        teamPlanPath: '/repo/.git/issueflow/team-plan.json'
+        teamPlanPath: '/repo/.git/freesolo/team-plan.json'
       },
       {
         resolveAutonomousMode: vi.fn().mockResolvedValue(false),
@@ -42,7 +42,7 @@ describe('maybeAutoApproveTeamPlan', () => {
     const writeState = vi.fn().mockResolvedValue(undefined);
     const appendEvent = vi.fn();
     const readTeamPlan = vi.fn().mockResolvedValue(definition);
-    const teamPlanPath = '/repo/.git/issueflow/team-plan.json';
+    const teamPlanPath = '/repo/.git/freesolo/team-plan.json';
 
     const result = await maybeAutoApproveTeamPlan(
       { repoRoot: '/repo', worktreePath: '/repo', repo, issueNumber: 45, teamPlanPath },
@@ -73,7 +73,7 @@ describe('maybeAutoApproveTeamPlan', () => {
           worktreePath: '/repo',
           repo,
           issueNumber: 45,
-          teamPlanPath: '/repo/.git/issueflow/team-plan.json'
+          teamPlanPath: '/repo/.git/freesolo/team-plan.json'
         },
         {
           resolveAutonomousMode: vi.fn().mockResolvedValue(true),
@@ -95,7 +95,7 @@ describe('maybeAutoApproveTeamPlan', () => {
           worktreePath: '/repo',
           repo,
           issueNumber: 45,
-          teamPlanPath: '/repo/.git/issueflow/team-plan.json'
+          teamPlanPath: '/repo/.git/freesolo/team-plan.json'
         },
         {
           resolveAutonomousMode: vi.fn().mockResolvedValue(true),
@@ -122,7 +122,7 @@ describe('maybeAutoApproveTeamPlan', () => {
           worktreePath: '/repo',
           repo,
           issueNumber: 45,
-          teamPlanPath: '/repo/.git/issueflow/team-plan.json'
+          teamPlanPath: '/repo/.git/freesolo/team-plan.json'
         },
         {
           resolveAutonomousMode: vi.fn().mockResolvedValue(true),

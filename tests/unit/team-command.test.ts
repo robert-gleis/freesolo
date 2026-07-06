@@ -25,7 +25,7 @@ const definition: TeamDefinition = {
 const worktrees: string[] = [];
 
 async function makeWorktree(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-team-cmd-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-team-cmd-'));
   worktrees.push(dir);
   await execa('git', ['init', '--quiet'], { cwd: dir });
   return dir;
@@ -77,7 +77,7 @@ function buildHarness(
     readTeamRuntimeSnapshot: vi.fn().mockResolvedValue(null),
     writeTeamRuntimeSnapshot: vi.fn().mockResolvedValue(undefined),
     appendEvent,
-    env: { ISSUEFLOW_ENGINE: '1' },
+    env: { FREESOLO_ENGINE: '1' },
     write: (channel, message) => {
       io[channel].push(message);
     },
@@ -97,12 +97,12 @@ afterEach(async () => {
   await Promise.all(worktrees.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })));
 });
 
-describe('issueflow team start', () => {
+describe('freesolo team start', () => {
   it('creates a team and transitions approved to implementing', async () => {
     const worktreePath = await makeWorktree();
     const { program, io, deps } = buildHarness(worktreePath);
 
-    await program.parseAsync(['node', 'issueflow', 'team', 'start', '--issue', '41']);
+    await program.parseAsync(['node', 'freesolo', 'team', 'start', '--issue', '41']);
 
     expect(deps.writeState).toHaveBeenCalledWith(
       { owner: 'acme', repo: 'widgets' },
@@ -120,31 +120,31 @@ describe('issueflow team start', () => {
       readState: vi.fn().mockResolvedValue('triaged')
     });
 
-    await program.parseAsync(['node', 'issueflow', 'team', 'start', '--issue', '41']);
+    await program.parseAsync(['node', 'freesolo', 'team', 'start', '--issue', '41']);
 
     expect(io.exitCode).toBe(1);
     expect(io.stderr.join('')).toContain('approved');
   });
 
-  it('requires ISSUEFLOW_ENGINE for start', async () => {
+  it('requires FREESOLO_ENGINE for start', async () => {
     const worktreePath = await makeWorktree();
     const { program, io } = buildHarness(worktreePath, { env: {} });
 
-    await program.parseAsync(['node', 'issueflow', 'team', 'start', '--issue', '41']);
+    await program.parseAsync(['node', 'freesolo', 'team', 'start', '--issue', '41']);
 
     expect(io.exitCode).toBe(3);
     expect(io.stderr.join('')).toContain('engine-only');
   });
 });
 
-describe('issueflow team status', () => {
+describe('freesolo team status', () => {
   it('exits 2 when no snapshot exists', async () => {
     const worktreePath = await makeWorktree();
     const { program, io } = buildHarness(worktreePath, {
       readTeamRuntimeSnapshot: vi.fn().mockResolvedValue(null)
     });
 
-    await program.parseAsync(['node', 'issueflow', 'team', 'status', '--issue', '41']);
+    await program.parseAsync(['node', 'freesolo', 'team', 'status', '--issue', '41']);
 
     expect(io.exitCode).toBe(2);
     expect(io.stderr.join('')).toContain('no active team');
@@ -157,13 +157,13 @@ describe('issueflow team status', () => {
       readTeamRuntimeSnapshot: vi.fn().mockResolvedValue(snapshot)
     });
 
-    await program.parseAsync(['node', 'issueflow', 'team', 'status', '--issue', '41']);
+    await program.parseAsync(['node', 'freesolo', 'team', 'status', '--issue', '41']);
 
     expect(JSON.parse(io.stdout.join(''))).toEqual(snapshot);
   });
 });
 
-describe('issueflow team stop', () => {
+describe('freesolo team stop', () => {
   it('cancels from snapshot and emits teardown events', async () => {
     const worktreePath = await makeWorktree();
     const snapshot = {
@@ -177,7 +177,7 @@ describe('issueflow team stop', () => {
       appendEvent
     });
 
-    await program.parseAsync(['node', 'issueflow', 'team', 'stop', '--issue', '41']);
+    await program.parseAsync(['node', 'freesolo', 'team', 'stop', '--issue', '41']);
 
     expect(appendEvent).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'team.tearing-down' }));
     expect(appendEvent).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'agent.stopped' }));
@@ -191,7 +191,7 @@ describe('issueflow team stop', () => {
       readTeamRuntimeSnapshot: vi.fn().mockResolvedValue(null)
     });
 
-    await program.parseAsync(['node', 'issueflow', 'team', 'stop', '--issue', '41']);
+    await program.parseAsync(['node', 'freesolo', 'team', 'stop', '--issue', '41']);
 
     expect(io.exitCode).toBe(2);
     expect(io.stderr.join('')).toContain('no active team');
@@ -207,7 +207,7 @@ describe('issueflow team stop', () => {
       })
     });
 
-    await program.parseAsync(['node', 'issueflow', 'team', 'stop', '--issue', '41']);
+    await program.parseAsync(['node', 'freesolo', 'team', 'stop', '--issue', '41']);
 
     expect(io.exitCode).toBe(2);
   });
@@ -227,7 +227,7 @@ describe('issueflow team stop', () => {
       })
     });
 
-    await program.parseAsync(['node', 'issueflow', 'team', 'status', '--issue', '41']);
+    await program.parseAsync(['node', 'freesolo', 'team', 'status', '--issue', '41']);
     expect(io.stdout.join('')).toContain('"phase": "running"');
   });
 });

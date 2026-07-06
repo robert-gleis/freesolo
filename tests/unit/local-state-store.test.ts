@@ -10,7 +10,7 @@ import { initializeState, readState, writeState } from '../../src/workflow/local
 const repo = { owner: 'acme', repo: 'widgets' };
 
 function stateFilePath(issueNumber: number): string {
-  return path.join(os.homedir(), '.issueflow', 'state', repo.owner, repo.repo, String(issueNumber));
+  return path.join(os.homedir(), '.freesolo', 'state', repo.owner, repo.repo, String(issueNumber));
 }
 
 const testIssueNumber = 99_000 + Math.floor(Math.random() * 1000);

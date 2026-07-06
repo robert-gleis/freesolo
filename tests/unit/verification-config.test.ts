@@ -9,7 +9,7 @@ import { DEFAULT_CONFIG_FILENAME, VerificationConfigError, loadVerificationConfi
 const tempDirs: string[] = [];
 
 async function makeRepo(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-verify-config-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-verify-config-'));
   tempDirs.push(dir);
   return dir;
 }

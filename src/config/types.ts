@@ -20,7 +20,7 @@ export interface WatcherConfig {
   trigger_label: string;
 }
 
-export interface IssueflowConfig {
+export interface FreesoloConfig {
   watcher: WatcherConfig;
   autonomous_mode: boolean;
 }
@@ -33,7 +33,7 @@ export const DEFAULT_WATCHER_CONFIG: WatcherConfig = {
   trigger_label: 'triaged'
 };
 
-export const DEFAULT_CONFIG: IssueflowConfig = {
+export const DEFAULT_CONFIG: FreesoloConfig = {
   watcher: DEFAULT_WATCHER_CONFIG,
   autonomous_mode: false
 };

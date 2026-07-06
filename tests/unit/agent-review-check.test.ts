@@ -16,7 +16,7 @@ import type { AgentReviewRequest } from '../../src/verification/route-runner.js'
 const tempDirs: string[] = [];
 
 async function makeRunDir(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-agent-review-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-agent-review-'));
   tempDirs.push(dir);
   return dir;
 }

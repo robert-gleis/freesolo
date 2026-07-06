@@ -225,7 +225,7 @@ export async function createPullRequest(
     throw new PullRequestError('git-error', pushResult.stderr || 'git push failed');
   }
 
-  const bodyFile = path.join(os.tmpdir(), `issueflow-pr-body-${input.issueNumber}-${Date.now()}.md`);
+  const bodyFile = path.join(os.tmpdir(), `freesolo-pr-body-${input.issueNumber}-${Date.now()}.md`);
 
   try {
     await deps.writeFile(bodyFile, body, 'utf8');

@@ -3,14 +3,14 @@ import fs from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
 const assetFiles = [
-  'integrations/skills/issueflow-workflow/SKILL.md',
-  'integrations/claude/commands/issueflow.md',
-  'integrations/cursor/commands/issueflow.md'
+  'integrations/skills/freesolo-workflow/SKILL.md',
+  'integrations/claude/commands/freesolo.md',
+  'integrations/cursor/commands/freesolo.md'
 ];
 
 const requiredSnippets = [
-  'git rev-parse --git-path issueflow/current-issue.md',
-  'git rev-parse --git-path issueflow/session.json',
+  'git rev-parse --git-path freesolo/current-issue.md',
+  'git rev-parse --git-path freesolo/session.json',
   'Issue Intake',
   'Brainstorming',
   'Spec',

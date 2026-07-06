@@ -6,18 +6,18 @@ describe('buildIssuePacket', () => {
   it('includes the issue context needed for stage 1 intake', () => {
     const packet = buildIssuePacket({
       issueNumber: 12,
-      issueTitle: 'Ship issueflow start',
+      issueTitle: 'Ship freesolo start',
       issueBody: 'Build the first working start command.',
-      issueUrl: 'https://github.com/robert-gleis/issueflow/issues/12',
+      issueUrl: 'https://github.com/robert-gleis/freesolo/issues/12',
       labels: ['workflow', 'cli'],
       assignees: ['robert-gleis'],
       repoRoot: '/repo',
-      branchName: 'issue/12-ship-issueflow-start',
-      worktreePath: '/tmp/issueflow-12-ship-issueflow-start',
+      branchName: 'issue/12-ship-freesolo-start',
+      worktreePath: '/tmp/freesolo-12-ship-freesolo-start',
       artifacts: {
-        spec: '/repo/docs/issueflow/specs/2026-04-24-issue-12-design.md',
+        spec: '/repo/docs/freesolo/specs/2026-04-24-issue-12-design.md',
         plan: null,
-        planReview: '/repo/docs/issueflow/reviews/2026-04-24-issue-12-plan-review.md',
+        planReview: '/repo/docs/freesolo/reviews/2026-04-24-issue-12-plan-review.md',
         implementationReview: null
       },
       adrs: []
@@ -30,7 +30,7 @@ describe('buildIssuePacket', () => {
     expect(packet).toContain('## Repo Root');
     expect(packet).toContain('/repo');
     expect(packet).toContain('## Existing Artifacts');
-    expect(packet).toContain('/repo/docs/issueflow/specs/2026-04-24-issue-12-design.md');
+    expect(packet).toContain('/repo/docs/freesolo/specs/2026-04-24-issue-12-design.md');
     expect(packet).toContain('plan: not created yet');
     expect(packet).toContain('## Architecture Decision Records');
     expect(packet).toContain('No numbered ADRs found under docs/adr/.');
@@ -41,7 +41,7 @@ describe('buildIssuePacket', () => {
       issueNumber: 21,
       issueTitle: 'Architecture Decision Records (ADRs)',
       issueBody: 'Adopt ADRs.',
-      issueUrl: 'https://github.com/robert-gleis/issueflow/issues/21',
+      issueUrl: 'https://github.com/robert-gleis/freesolo/issues/21',
       labels: ['enhancement'],
       assignees: ['robert-gleis'],
       repoRoot: '/repo',
@@ -75,14 +75,14 @@ describe('buildWorkflowKernel', () => {
   it('contains the required stage order and review gates', () => {
     const kernel = buildWorkflowKernel({
       issueNumber: 12,
-      issueTitle: 'Ship issueflow start',
+      issueTitle: 'Ship freesolo start',
       issueBody: 'Build the first working start command.',
-      issueUrl: 'https://github.com/robert-gleis/issueflow/issues/12',
+      issueUrl: 'https://github.com/robert-gleis/freesolo/issues/12',
       labels: ['workflow'],
       assignees: ['robert-gleis'],
       repoRoot: '/repo',
-      branchName: 'issue/12-ship-issueflow-start',
-      worktreePath: '/tmp/issueflow-12-ship-issueflow-start',
+      branchName: 'issue/12-ship-freesolo-start',
+      worktreePath: '/tmp/freesolo-12-ship-freesolo-start',
       artifacts: {
         spec: null,
         plan: null,

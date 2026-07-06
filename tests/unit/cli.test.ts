@@ -7,7 +7,7 @@ describe('buildCli', () => {
     const program = buildCli();
 
     expect(program.commands.map((command) => command.name())).toContain('start');
-    expect(program.name()).toBe('issueflow');
+    expect(program.name()).toBe('freesolo');
   });
 
   it('documents the optional worktree setup hook in start help', () => {

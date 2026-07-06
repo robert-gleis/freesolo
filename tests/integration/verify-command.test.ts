@@ -10,7 +10,7 @@ import { createVerifyPlan, defaultVerifyPlanDeps } from '../../src/commands/veri
 const tempDirs: string[] = [];
 
 async function makeRepo(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-verify-int-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-verify-int-'));
   tempDirs.push(dir);
   await execa('git', ['init', '--quiet'], { cwd: dir });
   return dir;
@@ -34,10 +34,10 @@ afterEach(async () => {
   await Promise.all(tempDirs.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })));
 });
 
-describe('issueflow verify (integration)', () => {
+describe('freesolo verify (integration)', () => {
   it('runs configured shell checks end-to-end and writes run.json plus per-check logs', async () => {
     const repoRoot = await makeRepo();
-    const configPath = path.join(repoRoot, 'issueflow.config.json');
+    const configPath = path.join(repoRoot, 'freesolo.config.json');
 
     await fs.writeFile(
       configPath,
@@ -73,7 +73,7 @@ describe('issueflow verify (integration)', () => {
     expect(result.run.checks[1].exitCode).toBe(3);
     expect(result.run.attemptsUsed).toBe(1);
 
-    const runDir = path.join(repoRoot, '.git/issueflow/verifications/issue-99', result.run.runId);
+    const runDir = path.join(repoRoot, '.git/freesolo/verifications/issue-99', result.run.runId);
     const runJson = JSON.parse(await fs.readFile(path.join(runDir, 'run.json'), 'utf8'));
     expect(runJson.runId).toBe(result.run.runId);
     expect(runJson.schemaVersion).toBe(2);
@@ -87,7 +87,7 @@ describe('issueflow verify (integration)', () => {
 
   it('print-only does not spawn checks or create run.json', async () => {
     const repoRoot = await makeRepo();
-    const configPath = path.join(repoRoot, 'issueflow.config.json');
+    const configPath = path.join(repoRoot, 'freesolo.config.json');
 
     await fs.writeFile(
       configPath,
@@ -108,7 +108,7 @@ describe('issueflow verify (integration)', () => {
 
     expect(result.summaryLines.join('\n')).toContain('pass-check');
 
-    const issueDir = path.join(repoRoot, '.git/issueflow/verifications/issue-7');
+    const issueDir = path.join(repoRoot, '.git/freesolo/verifications/issue-7');
     await expect(fs.access(issueDir)).rejects.toThrow();
   });
 
@@ -120,7 +120,7 @@ describe('issueflow verify (integration)', () => {
 
     const repoRoot = await makeRepo();
     await fs.writeFile(
-      path.join(repoRoot, 'issueflow.config.json'),
+      path.join(repoRoot, 'freesolo.config.json'),
       gateRouteConfig([
         {
           name: 'long-running',
@@ -153,7 +153,7 @@ describe('issueflow verify (integration)', () => {
 
     const runDir = path.join(
       repoRoot,
-      '.git/issueflow/verifications/issue-42',
+      '.git/freesolo/verifications/issue-42',
       result.run.runId
     );
     await expect(fs.access(path.join(runDir, 'run.json'))).resolves.toBeUndefined();
@@ -179,7 +179,7 @@ describe('issueflow verify (integration)', () => {
   it('reports a hard error (exit 2) when the config uses the old checks shape', async () => {
     const repoRoot = await makeRepo();
     await fs.writeFile(
-      path.join(repoRoot, 'issueflow.config.json'),
+      path.join(repoRoot, 'freesolo.config.json'),
       JSON.stringify({ verification: { checks: [{ name: 'x', command: 'true', args: [] }] } })
     );
 

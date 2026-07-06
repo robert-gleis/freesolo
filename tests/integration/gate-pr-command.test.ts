@@ -18,7 +18,7 @@ import type { RepoRef } from '../../src/core/types.js';
 const tempDirs: string[] = [];
 
 async function makeRepo(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-gate-int-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-gate-int-'));
   tempDirs.push(dir);
   await execa('git', ['init', '--quiet'], { cwd: dir });
   return dir;
@@ -34,7 +34,7 @@ function makePassRun(repoRoot: string, issueNumber: number, runId: string): Veri
     runId,
     issueNumber,
     repoRoot,
-    configPath: path.join(repoRoot, 'issueflow.config.json'),
+    configPath: path.join(repoRoot, 'freesolo.config.json'),
     startedAt: '2026-06-01T08:00:00.000Z',
     finishedAt: '2026-06-01T08:01:00.000Z',
     status: 'pass',
@@ -101,7 +101,7 @@ describe('gate evaluate + pr create (integration)', () => {
       },
       loadLatestRun,
       writeGateVerdictRecord,
-      env: { ISSUEFLOW_ENGINE: '1' },
+      env: { FREESOLO_ENGINE: '1' },
       write: () => {},
       setExitCode: (code) => {
         gateExitCode = code;

@@ -17,7 +17,7 @@ import type { CandidateBranchRecord } from '../../src/integration/types.js';
 const worktrees: string[] = [];
 
 async function makeWorktree(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-candidate-store-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-candidate-store-'));
   worktrees.push(dir);
   await execa('git', ['init', '--quiet'], { cwd: dir });
   return dir;

@@ -219,7 +219,7 @@ export async function syncMergePrComment(
       'api',
       `repos/${repoSlug(repo)}/issues/${prNumber}/comments`,
       '--jq',
-      '.[] | select(.body | contains("issueflow-merge-readiness")) | .id'
+      '.[] | select(.body | contains("freesolo-merge-readiness")) | .id'
     ],
     { cwd: repoRoot }
   );

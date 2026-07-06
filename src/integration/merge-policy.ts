@@ -23,7 +23,7 @@ const DEFAULT_POLICY: MergePolicyConfig = {
 };
 
 export async function loadMergePolicy(repoRoot: string): Promise<MergePolicyConfig> {
-  const configPath = path.join(repoRoot, '.issueflow', 'merge-policy.json');
+  const configPath = path.join(repoRoot, '.freesolo', 'merge-policy.json');
 
   try {
     const raw = await fs.readFile(configPath, 'utf8');

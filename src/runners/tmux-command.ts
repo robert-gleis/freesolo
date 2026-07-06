@@ -37,5 +37,5 @@ export function sanitizeSessionName(id: string): string {
 }
 
 export function sessionNameForRunnerId(id: string): string {
-  return `issueflow-${sanitizeSessionName(id)}`;
+  return `freesolo-${sanitizeSessionName(id)}`;
 }

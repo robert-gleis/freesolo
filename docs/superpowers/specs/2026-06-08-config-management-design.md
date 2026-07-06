@@ -5,15 +5,15 @@
 
 ## Overview
 
-Add two complementary capabilities to IssueFlow:
+Add two complementary capabilities to FreeSolo:
 
-1. **Repo-Level Config** — `.issueflow/config.yaml` in the repo root that overrides the global config on a per-field basis.
-2. **`issueflow config` CLI** — subcommands to read, write, show, and initialise config files without manually editing YAML.
+1. **Repo-Level Config** — `.freesolo/config.yaml` in the repo root that overrides the global config on a per-field basis.
+2. **`freesolo config` CLI** — subcommands to read, write, show, and initialise config files without manually editing YAML.
 
 ## Config Resolution Order
 
 ```
-DEFAULT_CONFIG  →  global (~/.issueflow/config.yaml)  →  repo (.issueflow/config.yaml)
+DEFAULT_CONFIG  →  global (~/.freesolo/config.yaml)  →  repo (.freesolo/config.yaml)
 ```
 
 Repo values have highest precedence. Missing fields fall back to global, then to defaults. Validation runs on the fully-merged result.
@@ -22,8 +22,8 @@ Repo values have highest precedence. Missing fields fall back to global, then to
 
 | Scope  | Path |
 |--------|------|
-| Global | `~/.issueflow/config.yaml` (existing, via `ISSUEFLOW_CONFIG` env override) |
-| Repo   | `<repo-root>/.issueflow/config.yaml` (new) |
+| Global | `~/.freesolo/config.yaml` (existing, via `FREESOLO_CONFIG` env override) |
+| Repo   | `<repo-root>/.freesolo/config.yaml` (new) |
 
 ## Config Fields
 
@@ -38,18 +38,18 @@ Repo values have highest precedence. Missing fields fall back to global, then to
 
 ```bash
 # Read resolved (merged) value
-issueflow config get <key>
+freesolo config get <key>
 
 # Write to global (default) or repo config
-issueflow config set <key> <value>
-issueflow config set <key> <value> --repo
+freesolo config set <key> <value>
+freesolo config set <key> <value> --repo
 
 # Show all resolved values with origin annotation
-issueflow config show
+freesolo config show
 
 # Create config file with commented defaults (fails if file already exists)
-issueflow config init          # → ~/.issueflow/config.yaml
-issueflow config init --repo   # → <repo-root>/.issueflow/config.yaml
+freesolo config init          # → ~/.freesolo/config.yaml
+freesolo config init --repo   # → <repo-root>/.freesolo/config.yaml
 ```
 
 ### `config show` output format
@@ -74,16 +74,16 @@ Values are validated immediately on write. Invalid values are rejected with a cl
 `loadConfig` gains an optional `repoRoot` parameter:
 
 ```ts
-loadConfig(globalPath?: string, repoRoot?: string): Promise<IssueflowConfig>
+loadConfig(globalPath?: string, repoRoot?: string): Promise<FreesoloConfig>
 ```
 
-When `repoRoot` is provided, `loadConfig` additionally reads `<repoRoot>/.issueflow/config.yaml` and merges it (repo wins per-field). All existing callers pass no `repoRoot` and continue to behave unchanged.
+When `repoRoot` is provided, `loadConfig` additionally reads `<repoRoot>/.freesolo/config.yaml` and merges it (repo wins per-field). All existing callers pass no `repoRoot` and continue to behave unchanged.
 
 A new helper is exported:
 
 ```ts
 repoConfigPath(repoRoot: string): string
-// returns: path.join(repoRoot, '.issueflow', 'config.yaml')
+// returns: path.join(repoRoot, '.freesolo', 'config.yaml')
 ```
 
 ### New File: `src/config/write.ts`
@@ -117,7 +117,7 @@ Registers the `config` command with four subcommands: `get`, `set`, `show`, `ini
 
 ## Non-Goals
 
-- No support for environment-variable-per-key overrides (the existing `ISSUEFLOW_CONFIG` path override is sufficient).
+- No support for environment-variable-per-key overrides (the existing `FREESOLO_CONFIG` path override is sufficient).
 - No interactive `config edit` that opens an editor — users can edit the YAML directly.
 - No migration of existing callers to pass `repoRoot`; that is opt-in per caller.
 
@@ -129,10 +129,10 @@ Registers the `config` command with four subcommands: `get`, `set`, `show`, `ini
 # Where workflow state is persisted.
 #   github-labels (default) — writes a state:* label to the GitHub issue on
 #                             every transition. Requires gh CLI and write access.
-#   local — stores state in ~/.issueflow/state/<owner>/<repo>/<issue-number>
+#   local — stores state in ~/.freesolo/state/<owner>/<repo>/<issue-number>
 state_backend: github-labels
 
-# Autonomous watcher defaults (used by `issueflow watch`).
+# Autonomous watcher defaults (used by `freesolo watch`).
 watcher:
   interval_seconds: 60
   trigger_label: "state:triaged"

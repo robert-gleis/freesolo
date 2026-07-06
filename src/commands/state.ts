@@ -66,7 +66,7 @@ function withCommanderErrorHandling(
 export function registerStateCommands(program: Command, deps: StateCommandDeps = defaultDeps): Command {
   const state = program
     .command('state')
-    .description('Inspect and advance the IssueFlow workflow state for a GitHub issue');
+    .description('Inspect and advance the FreeSolo workflow state for a GitHub issue');
 
   state
     .command('get')
@@ -99,10 +99,10 @@ export function registerStateCommands(program: Command, deps: StateCommandDeps =
     )
     .requiredOption('--to <state>', 'Target workflow state')
     .action(async (options: { issue: number; to: string }) => {
-      if (deps.env.ISSUEFLOW_ENGINE !== '1') {
+      if (deps.env.FREESOLO_ENGINE !== '1') {
         deps.write(
           'stderr',
-          'issueflow state transition is engine-only. Set ISSUEFLOW_ENGINE=1 to authorise the call; agent processes must not bypass the workflow engine.\n'
+          'freesolo state transition is engine-only. Set FREESOLO_ENGINE=1 to authorise the call; agent processes must not bypass the workflow engine.\n'
         );
         deps.setExitCode(3);
         return;

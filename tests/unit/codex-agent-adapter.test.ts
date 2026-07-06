@@ -44,7 +44,7 @@ describe('CodexAgentAdapter start', () => {
     });
 
     await expect(
-      adapter.start({ workingDirectory: '/path/that-does-not-exist-issueflow-40' })
+      adapter.start({ workingDirectory: '/path/that-does-not-exist-freesolo-40' })
     ).rejects.toMatchObject({
       name: 'AgentAdapterError',
       code: 'start-failed'

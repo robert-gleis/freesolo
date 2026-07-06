@@ -39,7 +39,7 @@ const issue = { number: 37, title: 'Automatic Issue Decomposition', body: 'Big e
 const worktrees: string[] = [];
 
 async function makeWorktree(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-decomp-cmd-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-decomp-cmd-'));
   worktrees.push(dir);
   await execa('git', ['init', '--quiet'], { cwd: dir });
   return dir;
@@ -60,7 +60,7 @@ function buildHarness(
     resolveIssueNumber: vi.fn().mockResolvedValue(37),
     runIssueDecomposer: vi.fn().mockResolvedValue({
       plan,
-      decompositionPath: '/repo/.git/issueflow/decomposition.json'
+      decompositionPath: '/repo/.git/freesolo/decomposition.json'
     }),
     createDecompositionAgent: vi.fn().mockReturnValue({}),
     fetchIssue: vi.fn().mockResolvedValue(issue),
@@ -76,7 +76,7 @@ function buildHarness(
       { number: 101, title: 'Backend', url: 'https://github.com/acme/widgets/issues/101' }
     ]),
     openEditor: vi.fn().mockResolvedValue(0),
-    env: { ISSUEFLOW_ENGINE: '1' },
+    env: { FREESOLO_ENGINE: '1' },
     write: (channel, message) => {
       io[channel].push(message);
     },
@@ -96,13 +96,13 @@ afterEach(async () => {
   await Promise.all(worktrees.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })));
 });
 
-describe('issueflow decomposition show', () => {
+describe('freesolo decomposition show', () => {
   it('prints pretty JSON when a decomposition preview exists', async () => {
     const worktreePath = await makeWorktree();
     await writeDecomposition(worktreePath, plan);
     const { program, io } = buildHarness(worktreePath);
 
-    await program.parseAsync(['node', 'issueflow', 'decomposition', 'show', '--issue', '37']);
+    await program.parseAsync(['node', 'freesolo', 'decomposition', 'show', '--issue', '37']);
 
     expect(JSON.parse(io.stdout.join(''))).toEqual(plan);
     expect(io.exitCode).toBeNull();
@@ -114,7 +114,7 @@ describe('issueflow decomposition show', () => {
       readDecomposition: vi.fn().mockRejectedValue(new DecompositionNotFoundError('/missing'))
     });
 
-    await program.parseAsync(['node', 'issueflow', 'decomposition', 'show', '--issue', '37']);
+    await program.parseAsync(['node', 'freesolo', 'decomposition', 'show', '--issue', '37']);
 
     expect(io.stderr.join('')).toContain('decomposition preview not found');
     expect(io.exitCode).toBe(1);
@@ -126,21 +126,21 @@ describe('issueflow decomposition show', () => {
       resolveIssueNumber: vi.fn().mockRejectedValue(new IssueIdError('no issue'))
     });
 
-    await program.parseAsync(['node', 'issueflow', 'decomposition', 'show']);
+    await program.parseAsync(['node', 'freesolo', 'decomposition', 'show']);
 
     expect(io.stderr.join('')).toContain('no issue');
     expect(io.exitCode).toBe(2);
   });
 });
 
-describe('issueflow decomposition generate', () => {
-  it('requires ISSUEFLOW_ENGINE=1', async () => {
+describe('freesolo decomposition generate', () => {
+  it('requires FREESOLO_ENGINE=1', async () => {
     const worktreePath = await makeWorktree();
     const { program, io } = buildHarness(worktreePath, { env: {} });
 
-    await program.parseAsync(['node', 'issueflow', 'decomposition', 'generate', '--issue', '37']);
+    await program.parseAsync(['node', 'freesolo', 'decomposition', 'generate', '--issue', '37']);
 
-    expect(io.stderr.join('')).toContain('ISSUEFLOW_ENGINE=1');
+    expect(io.stderr.join('')).toContain('FREESOLO_ENGINE=1');
     expect(io.exitCode).toBe(3);
   });
 
@@ -148,7 +148,7 @@ describe('issueflow decomposition generate', () => {
     const worktreePath = await makeWorktree();
     const { program, io, deps } = buildHarness(worktreePath);
 
-    await program.parseAsync(['node', 'issueflow', 'decomposition', 'generate', '--issue', '37']);
+    await program.parseAsync(['node', 'freesolo', 'decomposition', 'generate', '--issue', '37']);
 
     expect(deps.runIssueDecomposer).toHaveBeenCalled();
     expect(io.stdout.join('')).toContain('decomposition preview written:');
@@ -164,7 +164,7 @@ describe('issueflow decomposition generate', () => {
     });
     const { program, io } = buildHarness(worktreePath);
 
-    await program.parseAsync(['node', 'issueflow', 'decomposition', 'generate', '--issue', '37']);
+    await program.parseAsync(['node', 'freesolo', 'decomposition', 'generate', '--issue', '37']);
 
     expect(io.stderr.join('')).toContain('already been applied');
     expect(io.exitCode).toBe(1);
@@ -175,7 +175,7 @@ describe('issueflow decomposition generate', () => {
     await writeDecomposition(worktreePath, plan);
     const { program, io } = buildHarness(worktreePath);
 
-    await program.parseAsync(['node', 'issueflow', 'decomposition', 'generate', '--issue', '37']);
+    await program.parseAsync(['node', 'freesolo', 'decomposition', 'generate', '--issue', '37']);
 
     expect(io.stderr.join('')).toContain('--force');
     expect(io.exitCode).toBe(1);
@@ -188,7 +188,7 @@ describe('issueflow decomposition generate', () => {
 
     await program.parseAsync([
       'node',
-      'issueflow',
+      'freesolo',
       'decomposition',
       'generate',
       '--issue',
@@ -212,7 +212,7 @@ describe('issueflow decomposition generate', () => {
 
     await program.parseAsync([
       'node',
-      'issueflow',
+      'freesolo',
       'decomposition',
       'generate',
       '--issue',
@@ -225,7 +225,7 @@ describe('issueflow decomposition generate', () => {
   });
 });
 
-describe('issueflow decomposition edit', () => {
+describe('freesolo decomposition edit', () => {
   it('writes validated editor output back to decomposition.json', async () => {
     const worktreePath = await makeWorktree();
     await writeDecomposition(worktreePath, plan);
@@ -240,7 +240,7 @@ describe('issueflow decomposition edit', () => {
       })
     });
 
-    await program.parseAsync(['node', 'issueflow', 'decomposition', 'edit', '--issue', '37']);
+    await program.parseAsync(['node', 'freesolo', 'decomposition', 'edit', '--issue', '37']);
 
     expect(deps.openEditor).toHaveBeenCalled();
     expect(await readDecomposition(worktreePath)).toEqual(updated);
@@ -252,7 +252,7 @@ describe('issueflow decomposition edit', () => {
     const worktreePath = await makeWorktree();
     const { program, io } = buildHarness(worktreePath);
 
-    await program.parseAsync(['node', 'issueflow', 'decomposition', 'edit', '--issue', '37']);
+    await program.parseAsync(['node', 'freesolo', 'decomposition', 'edit', '--issue', '37']);
 
     expect(io.stderr.join('')).toContain('decomposition preview not found');
     expect(io.exitCode).toBe(1);
@@ -271,7 +271,7 @@ describe('issueflow decomposition edit', () => {
       })
     });
 
-    await program.parseAsync(['node', 'issueflow', 'decomposition', 'edit', '--issue', '37']);
+    await program.parseAsync(['node', 'freesolo', 'decomposition', 'edit', '--issue', '37']);
 
     expect(await readDecomposition(worktreePath)).toEqual(plan);
     expect(io.stderr.join('')).toContain('does not match issue #37');
@@ -288,7 +288,7 @@ describe('issueflow decomposition edit', () => {
       })
     });
 
-    await program.parseAsync(['node', 'issueflow', 'decomposition', 'edit', '--issue', '37']);
+    await program.parseAsync(['node', 'freesolo', 'decomposition', 'edit', '--issue', '37']);
 
     expect(await readDecomposition(worktreePath)).toEqual(plan);
     expect(io.stderr.join('')).toMatch(/children/i);
@@ -296,14 +296,14 @@ describe('issueflow decomposition edit', () => {
   });
 });
 
-describe('issueflow decomposition approve', () => {
-  it('requires ISSUEFLOW_ENGINE=1', async () => {
+describe('freesolo decomposition approve', () => {
+  it('requires FREESOLO_ENGINE=1', async () => {
     const worktreePath = await makeWorktree();
     const { program, io } = buildHarness(worktreePath, { env: {} });
 
-    await program.parseAsync(['node', 'issueflow', 'decomposition', 'approve', '--issue', '37']);
+    await program.parseAsync(['node', 'freesolo', 'decomposition', 'approve', '--issue', '37']);
 
-    expect(io.stderr.join('')).toContain('ISSUEFLOW_ENGINE=1');
+    expect(io.stderr.join('')).toContain('FREESOLO_ENGINE=1');
     expect(io.exitCode).toBe(3);
   });
 
@@ -312,7 +312,7 @@ describe('issueflow decomposition approve', () => {
     await writeDecomposition(worktreePath, plan);
     const { program, io, deps } = buildHarness(worktreePath);
 
-    await program.parseAsync(['node', 'issueflow', 'decomposition', 'approve', '--issue', '37']);
+    await program.parseAsync(['node', 'freesolo', 'decomposition', 'approve', '--issue', '37']);
 
     expect(deps.createChildIssues).toHaveBeenCalledWith({
       repo: { owner: 'acme', repo: 'widgets' },
@@ -334,7 +334,7 @@ describe('issueflow decomposition approve', () => {
     });
     const { program, io, deps } = buildHarness(worktreePath);
 
-    await program.parseAsync(['node', 'issueflow', 'decomposition', 'approve', '--issue', '37']);
+    await program.parseAsync(['node', 'freesolo', 'decomposition', 'approve', '--issue', '37']);
 
     expect(deps.createChildIssues).not.toHaveBeenCalled();
     expect(io.stdout.join('')).toBe(
@@ -343,14 +343,14 @@ describe('issueflow decomposition approve', () => {
     expect(io.exitCode).toBeNull();
   });
 
-  it('succeeds with ISSUEFLOW_AUTONOMOUS=1 and ISSUEFLOW_ENGINE=1', async () => {
+  it('succeeds with FREESOLO_AUTONOMOUS=1 and FREESOLO_ENGINE=1', async () => {
     const worktreePath = await makeWorktree();
     await writeDecomposition(worktreePath, plan);
     const { program, io } = buildHarness(worktreePath, {
-      env: { ISSUEFLOW_ENGINE: '1', ISSUEFLOW_AUTONOMOUS: '1' }
+      env: { FREESOLO_ENGINE: '1', FREESOLO_AUTONOMOUS: '1' }
     });
 
-    await program.parseAsync(['node', 'issueflow', 'decomposition', 'approve', '--issue', '37']);
+    await program.parseAsync(['node', 'freesolo', 'decomposition', 'approve', '--issue', '37']);
 
     expect(io.stdout.join('')).toContain('#101 Backend');
     expect(io.exitCode).toBeNull();
@@ -362,7 +362,7 @@ describe('issueflow decomposition approve', () => {
       readDecomposition: vi.fn().mockRejectedValue(new DecompositionValidationError('invalid'))
     });
 
-    await program.parseAsync(['node', 'issueflow', 'decomposition', 'approve', '--issue', '37']);
+    await program.parseAsync(['node', 'freesolo', 'decomposition', 'approve', '--issue', '37']);
 
     expect(io.stderr.join('')).toContain('invalid');
     expect(io.exitCode).toBe(1);
@@ -376,7 +376,7 @@ describe('issueflow decomposition approve', () => {
     });
     const { program, io, deps } = buildHarness(worktreePath);
 
-    await program.parseAsync(['node', 'issueflow', 'decomposition', 'approve', '--issue', '37']);
+    await program.parseAsync(['node', 'freesolo', 'decomposition', 'approve', '--issue', '37']);
 
     expect(deps.createChildIssues).not.toHaveBeenCalled();
     expect(io.stderr.join('')).toContain('does not match issue #37');
@@ -392,7 +392,7 @@ describe('issueflow decomposition approve', () => {
     });
     const { program, io, deps } = buildHarness(worktreePath);
 
-    await program.parseAsync(['node', 'issueflow', 'decomposition', 'approve', '--issue', '37']);
+    await program.parseAsync(['node', 'freesolo', 'decomposition', 'approve', '--issue', '37']);
 
     expect(deps.createChildIssues).not.toHaveBeenCalled();
     expect(io.stderr.join('')).toContain('does not match issue #37');
@@ -408,7 +408,7 @@ describe('issueflow decomposition approve', () => {
         .mockRejectedValue(new ChildIssueCreationError(0, 'gh: validation failed'))
     });
 
-    await program.parseAsync(['node', 'issueflow', 'decomposition', 'approve', '--issue', '37']);
+    await program.parseAsync(['node', 'freesolo', 'decomposition', 'approve', '--issue', '37']);
 
     expect(await readDecompositionApplied(worktreePath)).toBeNull();
     expect(io.stderr.join('')).toContain('failed to create child issue');
@@ -425,7 +425,7 @@ describe('issueflow decomposition approve', () => {
       createChildIssues
     });
 
-    await program.parseAsync(['node', 'issueflow', 'decomposition', 'approve', '--issue', '37']);
+    await program.parseAsync(['node', 'freesolo', 'decomposition', 'approve', '--issue', '37']);
 
     expect(await readDecompositionApplied(worktreePath)).toBeNull();
     expect(io.stderr.join('')).toContain('references parent #99');

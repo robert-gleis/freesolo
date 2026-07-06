@@ -65,29 +65,29 @@ export const sessionStateSchema = z.object({
 
 export type SessionState = z.infer<typeof sessionStateSchema>;
 
-export async function gitIssueflowPath(repoRoot: string, ...segments: string[]): Promise<string> {
-  const joined = ['issueflow', ...segments].join('/');
+export async function gitFreesoloPath(repoRoot: string, ...segments: string[]): Promise<string> {
+  const joined = ['freesolo', ...segments].join('/');
   const { stdout } = await execa('git', ['rev-parse', '--git-path', joined], { cwd: repoRoot });
   const resolved = stdout.trim();
   return path.isAbsolute(resolved) ? resolved : path.join(repoRoot, resolved);
 }
 
-export async function getIssueflowDir(worktreePath: string): Promise<string> {
-  return gitIssueflowPath(worktreePath);
+export async function getFreesoloDir(worktreePath: string): Promise<string> {
+  return gitFreesoloPath(worktreePath);
 }
 
-export async function getIssueflowPath(worktreePath: string, filename: string): Promise<string> {
-  return gitIssueflowPath(worktreePath, filename);
+export async function getFreesoloPath(worktreePath: string, filename: string): Promise<string> {
+  return gitFreesoloPath(worktreePath, filename);
 }
 
 export async function writeSessionState(worktreePath: string, state: SessionState): Promise<void> {
-  const sessionStatePath = await getIssueflowPath(worktreePath, 'session.json');
+  const sessionStatePath = await getFreesoloPath(worktreePath, 'session.json');
   await fs.mkdir(path.dirname(sessionStatePath), { recursive: true });
   await fs.writeFile(sessionStatePath, JSON.stringify(state, null, 2));
 }
 
 export async function writeIssuePacket(worktreePath: string, markdown: string): Promise<void> {
-  const issuePacketPath = await getIssueflowPath(worktreePath, 'current-issue.md');
+  const issuePacketPath = await getFreesoloPath(worktreePath, 'current-issue.md');
   await fs.mkdir(path.dirname(issuePacketPath), { recursive: true });
   await fs.writeFile(issuePacketPath, markdown);
 }

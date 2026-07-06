@@ -11,7 +11,7 @@ const tempDirs: string[] = [];
 const originalCwd = process.cwd();
 
 async function makeRepo(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-issue-id-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-issue-id-'));
   tempDirs.push(dir);
   await execa('git', ['init', '--quiet'], { cwd: dir });
   return dir;
@@ -85,14 +85,14 @@ describe('resolveIssueNumber', () => {
 
   it('reads session.json from the worktree root regardless of process cwd', async () => {
     const worktreePath = await makeRepo();
-    const issueflowDir = path.join(worktreePath, '.git', 'issueflow');
-    await fs.mkdir(issueflowDir, { recursive: true });
+    const freesoloDir = path.join(worktreePath, '.git', 'freesolo');
+    await fs.mkdir(freesoloDir, { recursive: true });
     await fs.writeFile(
-      path.join(issueflowDir, 'session.json'),
+      path.join(freesoloDir, 'session.json'),
       JSON.stringify({ issueNumber: 7 })
     );
 
-    const otherDir = await fs.mkdtemp(path.join(os.tmpdir(), 'issueflow-issue-id-other-'));
+    const otherDir = await fs.mkdtemp(path.join(os.tmpdir(), 'freesolo-issue-id-other-'));
     tempDirs.push(otherDir);
     process.chdir(otherDir);
 
