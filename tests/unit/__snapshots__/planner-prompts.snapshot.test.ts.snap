@@ -47,7 +47,7 @@ Schema:
   "roles": [
     {
       "name": string,           // human-readable role title, e.g. "Backend Engineer"
-      "host": "pi" | "claude" | "codex" | "cursor",
+      "host": "claude" | "codex" | "cursor",
       "responsibility": string, // one-sentence description of what this role does
       "count": integer >= 1     // how many agents of this role to spawn
     }

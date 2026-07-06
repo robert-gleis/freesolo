@@ -45,9 +45,6 @@ export type {
 
 export type { AgentLogOptions, AgentLogSnapshot } from './log-snapshot.js';
 
-export { PiAgentAdapter, createInMemoryPiTransport } from './pi.js';
-export type { InMemoryPiTransport, PiAgentAdapterOptions, PiTransportFactory } from './pi.js';
-
 export { runReviewAgent, reviewVerdictSchema, reviewFindingSchema } from './review-runner.js';
 export type { ReviewVerdict, ReviewFinding, RunReviewAgentInput } from './review-runner.js';
 
@@ -62,8 +59,8 @@ import { createCursorAgentAdapter } from './cursor.js';
 
 /**
  * Resolves a fresh host-agnostic {@link AgentAdapter} for a {@link HostTool}.
- * Host-keyed and exhaustive over HOST_TOOLS ('codex' | 'claude' | 'cursor');
- * no 'pi'. Callers that need a fake (tests) construct a ScriptedAgentAdapter
+ * Host-keyed and exhaustive over HOST_TOOLS ('codex' | 'claude' | 'cursor').
+ * Callers that need a fake (tests) construct a ScriptedAgentAdapter
  * directly instead of going through this factory.
  */
 export function getAgentAdapter(host: HostTool): AgentAdapter {
