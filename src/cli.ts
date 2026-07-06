@@ -7,6 +7,7 @@ import { registerDecompositionCommands } from './commands/decomposition.js';
 import { registerEngineCommands } from './commands/engine.js';
 import { registerGateCommands } from './commands/gate.js';
 import { registerMergeCommands } from './commands/merge.js';
+import { registerOrchestrateCommands } from './commands/orchestrate.js';
 import { registerPlanCommands } from './commands/plan.js';
 import { registerPrCommands } from './commands/pr.js';
 import { registerReplayCommands } from './commands/replay.js';
@@ -64,7 +65,8 @@ Worktree setup:
   registerGateCommands(program);
   registerPrCommands(program);
   registerMergeCommands(program);
-  registerPlanCommands(program);
+  const plan = registerPlanCommands(program);
+  registerOrchestrateCommands(program, plan);
   registerDecompositionCommands(program);
   registerTeamCommands(program);
   registerWatchCommands(program);

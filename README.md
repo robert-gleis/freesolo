@@ -48,7 +48,17 @@ freesolo --help
 
 ## Quick start
 
-Pick up the next assigned issue and launch your preferred host in a dedicated worktree:
+As a human you only need two commands. Everything else in the reference below is plumbing for agents and the engine.
+
+```bash
+freesolo plan 42          # initialise → generate team plan → approve (add --edit to review in $EDITOR first)
+freesolo work 42          # team → verify → gate → candidate → PR → merge readiness
+freesolo work 42 --merge  # same, and merge the PR once readiness is green
+```
+
+`freesolo work` runs until the PR is ready (or merged with `--merge`). While agents own a state (implementing/reviewing) or CI is still red, it waits and polls (`--poll <seconds>`, default 30). Watch progress from another terminal with `freesolo agents list`.
+
+Alternatively, pick up the next assigned issue and launch your preferred host in a dedicated worktree:
 
 ```bash
 freesolo start --tool claude
